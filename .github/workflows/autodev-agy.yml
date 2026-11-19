@@ -121,6 +121,11 @@ jobs:
           echo "Locked read-only contract files:"
           cat "${LOCK_MANIFEST}" || true
 
+          if [ -f "package.json" ] && [ ! -d "node_modules" ]; then
+            echo "Installing project dependencies before AGY coding & deterministic verification..."
+            npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+          fi
+
       - name: Execute AGY Outer-Loop Harness (Sentinel Watchdog + 4-Gate Deterministic Verifier)
         id: agy
         env:
@@ -138,7 +143,7 @@ jobs:
           LOCK_MANIFEST: ${{ steps.lock.outputs.lock_manifest }}
           REPORT_CHANNEL_BRANCH: 'autodev-plan-channel'
           MAX_ROUNDS: '3'
-          ROUND_TIMEOUT_MINUTES: '7'
+          ROUND_TIMEOUT_MINUTES: '9'
           CI: 'true'
           PLAYWRIGHT_HTML_OPEN: 'never'
         shell: bash
@@ -406,7 +411,7 @@ jobs:
             }, 3000).unref();
           }
 
-          function runAgyRound({ round, prompt, resumeId }) {
+          function runAgyRound({ round, prompt, resumeId, useStreamJson = false }) {
             return new Promise((resolve) => {
               try {
                 if (fs.existsSync(sentinelFile)) fs.rmSync(sentinelFile, { force: true });
@@ -419,12 +424,20 @@ jobs:
                 '--print-timeout',
                 roundTimeoutMin + 'm',
               ];
+              if (useStreamJson) {
+                args.push('--output-format', 'stream-json');
+              }
               if (resumeId) {
                 args.push('--resume', resumeId);
               }
               args.push('--print=' + prompt);
 
-              appendLog('=== [Outer Harness] Starting AGY Round ' + round + '/' + maxRounds + ' (timeout ' + roundTimeoutMin + 'm' + (resumeId ? ', resume ' + resumeId : ', fresh session') + ') ===');
+              appendLog(
+                '=== [Outer Harness] Starting AGY Round ' + round + '/' + maxRounds +
+                ' (timeout ' + roundTimeoutMin + 'm' +
+                (useStreamJson ? ', stream-json' : '') +
+                (resumeId ? ', resume ' + resumeId : ', fresh session') + ') ==='
+              );
 
               const child = spawn('agy', args, {
                 cwd: process.cwd(),
@@ -438,19 +451,62 @@ jobs:
               });
 
               let combinedOut = '';
+              let lineBuf = '';
               let idleDetectedAt = null;
               let sentinelDetectedAt = null;
+              let streamResultDetectedAt = null;
               let earlyStopReason = '';
               let settled = false;
               const roundStart = Date.now();
               const hardWallMs = (roundTimeoutMin + 1) * 60 * 1000;
 
+              const formatStreamJsonLine = (rawLine) => {
+                const trimmed = rawLine.trim();
+                if (!trimmed) return '';
+                if (!trimmed.startsWith('{')) return rawLine;
+                try {
+                  const ev = JSON.parse(trimmed);
+                  const evType = String(ev.type || ev.event || '');
+                  if (ev.session_id || ev.sessionId) {
+                    combinedOut += '\nsession_id=' + String(ev.session_id || ev.sessionId) + '\n';
+                  }
+                  if (evType === 'result' || evType === 'turn_complete' || evType === 'done') {
+                    if (!streamResultDetectedAt) streamResultDetectedAt = Date.now();
+                    const msg = typeof ev.result === 'string' ? ev.result.slice(0, 300) : JSON.stringify(ev).slice(0, 300);
+                    return '[agy:result] ' + msg;
+                  }
+                  if (evType === 'tool_use' || evType === 'tool_call' || ev.tool_name || ev.name) {
+                    const toolName = String(ev.tool_name || ev.name || ev.tool?.name || 'tool');
+                    const inputPreview = JSON.stringify(ev.input || ev.arguments || ev.args || {}).slice(0, 180);
+                    return '[agy:tool] ' + toolName + ' ' + inputPreview;
+                  }
+                  if (evType === 'assistant' && ev.message) {
+                    const blocks = Array.isArray(ev.message.content) ? ev.message.content : [];
+                    const parts = [];
+                    for (const b of blocks) {
+                      if (b?.type === 'tool_use') {
+                        parts.push('[agy:tool] ' + String(b.name || 'tool') + ' ' + JSON.stringify(b.input || {}).slice(0, 160));
+                      } else if (b?.type === 'text' && b.text) {
+                        parts.push('[agy] ' + String(b.text).replace(/\s+/g, ' ').slice(0, 240));
+                      }
+                    }
+                    if (parts.length > 0) return parts.join('\n');
+                  }
+                  if (evType === 'text' || evType === 'delta' || typeof ev.text === 'string' || typeof ev.delta === 'string') {
+                    const t = String(ev.text || ev.delta || '').trim();
+                    return t ? '[agy] ' + t.slice(0, 240) : '';
+                  }
+                  if (evType === 'error' || ev.error) {
+                    return '[agy:error] ' + String(ev.error?.message || ev.error || trimmed).slice(0, 300);
+                  }
+                  return '';
+                } catch {
+                  return rawLine;
+                }
+              };
+
               const onChunk = (buf) => {
                 const text = buf.toString('utf8');
-                process.stdout.write(text);
-                try {
-                  fs.appendFileSync(logFile, text);
-                } catch {}
                 combinedOut += text;
                 if (combinedOut.length > 250000) {
                   combinedOut = combinedOut.slice(-250000);
@@ -458,6 +514,25 @@ jobs:
                 if (!idleDetectedAt && /root agent idle; waiting up to/i.test(text)) {
                   idleDetectedAt = Date.now();
                   appendLog('[Outer Harness] Detected AGY root-agent-idle waiting for background task; arming 25s watchdog.');
+                }
+                if (!useStreamJson) {
+                  process.stdout.write(text);
+                  try {
+                    fs.appendFileSync(logFile, text);
+                  } catch {}
+                  return;
+                }
+                lineBuf += text;
+                const lines = lineBuf.split('\n');
+                lineBuf = lines.pop() || '';
+                for (const l of lines) {
+                  const formatted = formatStreamJsonLine(l);
+                  if (formatted) {
+                    process.stdout.write(formatted + '\n');
+                    try {
+                      fs.appendFileSync(logFile, formatted + '\n');
+                    } catch {}
+                  }
                 }
               };
 
@@ -489,6 +564,12 @@ jobs:
                 if (sentinelDetectedAt && now - sentinelDetectedAt >= 12000) {
                   earlyStopReason = 'sentinel_grace_elapsed';
                   appendLog('[Outer Harness] Stopping AGY process group cleanly after completion sentinel grace window.');
+                  killProcessGroup(child.pid);
+                  return;
+                }
+                if (streamResultDetectedAt && now - streamResultDetectedAt >= 15000) {
+                  earlyStopReason = 'stream_result_grace_elapsed';
+                  appendLog('[Outer Harness] Stopping AGY process group cleanly after stream-json result event.');
                   killProcessGroup(child.pid);
                   return;
                 }
@@ -603,13 +684,17 @@ jobs:
               return res.status === 0;
             };
 
-            // Gate 2: Typecheck, Build & Unit Tests
+            // Gate 2: Dependencies, Typecheck, Build & Unit Tests
             if (fs.existsSync('package.json')) {
+              if (!fs.existsSync('node_modules')) {
+                runCheck('check-deps', '安装项目依赖 (npm ci)', 'npm', ['ci', '--no-audit', '--no-fund'], 240000);
+              }
               let pkg = {};
               try {
                 pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
               } catch {}
               const scripts = pkg.scripts || {};
+              const hasPlaywrightCfg = fs.existsSync('playwright.config.ts') || fs.existsSync('playwright.config.js');
               if (scripts.typecheck || scripts.lint) {
                 const sName = scripts.typecheck ? 'typecheck' : 'lint';
                 runCheck('check-type', 'TypeScript / Lint 静态检查 (' + sName + ')', 'npm', ['run', sName]);
@@ -617,7 +702,12 @@ jobs:
               if (scripts.build) {
                 runCheck('check-build', '生产构建检查 (npm run build)', 'npm', ['run', 'build']);
               }
-              if (scripts.test && !String(scripts.test).includes('no test specified')) {
+              const testCmd = String(scripts.test || '');
+              if (
+                testCmd &&
+                !testCmd.includes('no test specified') &&
+                !(hasPlaywrightCfg && /playwright/i.test(testCmd))
+              ) {
                 kind = 'unit';
                 runCheck('check-unit', '自动化单元测试 (npm test)', 'npm', ['test']);
               }
@@ -795,13 +885,21 @@ jobs:
 
                 const prompt = buildRoundPrompt(round);
                 const useResumeThisRound = round === 1 ? activeSessionId : undefined;
-                let res = await runAgyRound({ round, prompt, resumeId: useResumeThisRound });
+                let useStreamJson = Boolean(caps.supportsStreamJson);
+                let res = await runAgyRound({ round, prompt, resumeId: useResumeThisRound, useStreamJson });
+
+                if (useStreamJson && res.exitCode !== 0 && res.elapsedMs < 20000 && !res.sentinelWritten) {
+                  appendLog('[Outer Harness] stream-json flag exited quickly; retrying Round ' + round + ' without --output-format stream-json.');
+                  useStreamJson = false;
+                  caps.supportsStreamJson = false;
+                  res = await runAgyRound({ round, prompt, resumeId: useResumeThisRound, useStreamJson: false });
+                }
 
                 if (useResumeThisRound && res.exitCode !== 0 && res.elapsedMs < 45000 && !res.sentinelWritten) {
                   appendLog('[Outer Harness] Resuming session ' + useResumeThisRound + ' failed quickly; retrying Round 1 with clean fresh session.');
                   sessionReused = false;
                   activeSessionId = undefined;
-                  res = await runAgyRound({ round, prompt, resumeId: undefined });
+                  res = await runAgyRound({ round, prompt, resumeId: undefined, useStreamJson });
                 }
 
                 lastRoundResult = res;
