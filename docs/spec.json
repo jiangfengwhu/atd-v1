@@ -1,102 +1,56 @@
 {
   "schemaVersion": "1.1",
   "generatedBy": "AutoDev Studio",
-  "runId": "run-f734f054",
-  "createdAt": "2026-11-19T09:46:30.142Z",
+  "runId": "run-0273dbc6",
+  "createdAt": "2026-11-19T14:12:29.204Z",
   "repository": "jiangfengwhu/atd-v1",
   "baseBranch": "main",
-  "baseCommitSha": "e6253f2ab012609d4e4b814b01b8d25f4b0221e8",
-  "e2eTestPath": "tests/e2e/run-f734f054.spec.ts",
-  "archivedSpecPath": "docs/iterations/run-f734f054-spec.json",
-  "prdTitle": "UI优化",
+  "baseCommitSha": "b22ca6aa22e8a484c213b879f157f08e29f22cc9",
+  "e2eTestPath": "tests/e2e/run-0273dbc6.spec.ts",
+  "archivedSpecPath": "docs/iterations/run-0273dbc6-spec.json",
+  "prdTitle": "搜索功能",
   "architecture": {
-    "summary": "本项目基于 React 19 + Vite 构建前端单页应用，后端运行于 Cloudflare Workers (Hono) 框架。当前前端已具备动态发布、游标分页 Feed、评论交互与站内私信等完备业务链路，但界面为居中单列的传统极简卡片风格。本次架构升级以 X.com（原 Twitter）视觉与交互规范为基准，实施端到端增量优化：重塑 client/styles.css 为 X 主题设计系统（采用纯黑/暗夜/亮白高精度色彩系统、细边框流式分割线及 Awwwards 级交互动效），重组 client/App.tsx 布局体系为 X 经典三栏自适应网格，升级 Feed、Comments 与 Messages 组件为 X 风格推文卡片、操作栏、头像微标识与平滑动画反馈，同时严格兼容并保留现有 Playwright E2E 测试所需的各类角色属性、无障碍标签与文案契约。",
+    "summary": "本项目基于 Cloudflare Workers (Hono) + SQLite/D1 后端与 React 19 + Vite 前端。针对搜索功能需求，架构遵循纯增量扩展原则：在后端新增 src/routes/search.ts 并在 /api/v1/search 挂载综合搜索端点，利用参数化 SQL 对 posts.content 与 users.username 执行安全模糊查询，支持 '@' 前缀用户提取及推文统计关联；在前端 client/api.ts 补充搜索请求封装，激活 client/App.tsx 中已有的右侧搜索栏，在主视图区无缝切换展现帖子搜索结果卡片与用户匹配卡片，保持既有数据模型、迁移与 E2E 测试百分之百向后兼容。",
     "techDecisions": [
-      "采用 X.com 经典自适应三栏布局规范（左侧导航条、中栏沉浸流、右侧小部件栏），在保持现有状态管理与路由逻辑不变的前提下完成视觉与结构重构",
-      "基于原生现代 CSS 构建 Awwwards 级别的微动效系统（包含弹簧缓动曲线、按钮 Ripple/Scale 反馈、骨架屏微光渐变、动态列表平滑入场过渡），实现零额外依赖的高性能动画体验",
-      "采用设计令牌（CSS Design Tokens）完整映射 X 官方设计语言，统一圆角（全圆角胶囊按钮）、无边框列表分割线、毛玻璃吸顶头（backdrop-filter: blur(12px)）及高对比度排版",
-      "严格遵守增量保护原则，保留全部现有 E2E 测试依赖的 aria-label、role、data-testid 及表单验证错误文案，确保自动化测试 100% 绿色通过"
+      "后端路由采用解耦的专用路由模块 src/routes/search.ts 并挂载于 /api/v1/search，避免侵入既有的 posts.ts 与 users.ts 业务逻辑",
+      "模糊匹配采用 D1 / SQLite 原生参数化 LIKE 查询配合 LIMIT 20 与时间倒序索引，实现零第三方依赖的轻量级边缘响应",
+      "智能语法解析：服务端自动检测 '@' 前缀，自动分流或聚合用户（users 表）与帖子（posts 表）检索结果，提供结构化的 posts 与 users 返回体",
+      "前端复用现有的 X.com 三栏式布局中的右侧搜索输入框，通过主内容区状态切换展现搜索结果列表，复用现有推文卡片与私信跳转交互"
     ]
   },
   "ambiguities": [
     {
       "id": "AMB-1",
       "severity": "medium",
-      "title": "X.com 三栏式布局在多设备分辨率下的响应式适配策略",
-      "detail": "需求提出 1:1 还原 x.com，原版桌面端为标准的左侧全局导航栏、中间主信息流、右侧搜索与推荐趋势栏的三栏布局，而移动端为底部导航加单列信息流。需明确不同断点下的具体降级呈现方式。",
-      "clarificationSuggestion": "桌面端（>=1024px）采用经典三栏布局（左侧导航含 X 品牌徽标与指纹名片、中栏主 Feed/私信区、右侧模拟与社区趋势挂件）；中等屏幕收起右栏为双栏；移动端（<768px）优雅转为顶部吸顶+底部浮动 Tab 栏，并确保所有 E2E 选择器稳定可用。"
+      "title": "搜索指令解析与多类型结果聚合策略",
+      "detail": "需求提出“帖子搜索，支持模糊搜索，包括帖子内容，@支持搜索用户”。需明确在用户输入时：若输入包含 '@' 前缀（如 '@admin'）是否仅检索用户，还是统一返回帖子与用户的综合搜索结果；以及是否需要在前端提供分类标签（全部/帖子/用户）筛选。",
+      "clarificationSuggestion": "采用综合搜索加智能识别方案：API 提供统一检索端点 GET /api/v1/search?q={query}&type={all|posts|users}。当 query 以 '@' 开头或包含 '@' 时，自动提取用户名进行用户表模糊匹配；常规检索默认同时在帖子内容（posts.content）与用户名（users.username）中进行模糊匹配并分段聚合返回，前端默认呈现聚合结果并支持快速筛选。"
     },
     {
       "id": "AMB-2",
       "severity": "low",
-      "title": "Awwwards 级别交互动效的技术实现选型与包体积约束",
-      "detail": "当前项目为轻量级 Cloudflare Workers + React 19 SPA，引入大型第三方动画运行时（如 Framer Motion / GSAP）可能导致包体积膨胀及潜在的 React 19 兼容性问题。",
-      "clarificationSuggestion": "采用纯现代 CSS 硬件加速方案配合定制弹簧曲线（cubic-bezier）、骨架屏 Shimmer 动效、按钮微回弹与平滑折叠过渡，达成 60fps 顶级视觉体验且零额外包体积依赖。"
+      "title": "SQLite / Cloudflare D1 模糊搜索性能与大小写敏感度",
+      "detail": "当前后端持久层采用 Cloudflare D1 / SQLite。LIKE 模糊匹配（'%kw%'）无法利用普通 B-Tree 索引，且 SQLite 默认 LIKE 仅对 ASCII 字符不区分大小写，可能影响多语言匹配效果。",
+      "clarificationSuggestion": "鉴于当前社区规模与轻量化架构，无需引入外部搜索引擎或复杂的全文检索分词插件。后端采用标准的参数化 WHERE content LIKE ? 与 WHERE username LIKE ?，并强制附加 LIMIT 20 与按 created_at DESC 排序，确保边缘执行时间在微秒级；未来如有大规模全文需求再平滑迁移 FTS5。"
+    },
+    {
+      "id": "AMB-3",
+      "severity": "low",
+      "title": "右侧栏搜索框与主信息流区展示联动方式",
+      "detail": "当前 UI 在右侧挂件栏已有 .x-search-input 输入框占位，但尚未挂载搜索状态及结果展现容器。需明确搜索结果是浮层下拉展示，还是在中间主视口区域替换 Feed 信息流呈现。",
+      "clarificationSuggestion": "采用 X.com 经典模式：在右侧输入框敲击回车或点击搜索后，中间主视口切换为搜索结果流（展示匹配帖子与用户匹配栏），同时提供返回原信息流及一键清空按钮；右侧输入框聚焦时展示实时匹配建议，确保交互流畅自然。"
     }
   ],
   "apiContracts": [
     {
       "id": "API-1",
       "method": "GET",
-      "path": "/api/v1/feed",
-      "summary": "获取社区公开动态信息流列表，支持游标分页",
-      "requestSchema": "Query: { cursor?: string, limit?: number }",
-      "responseSchema": "{ posts: Array<{ id: string, user_id: string, content: string, created_at: string }>, next_cursor: string }",
+      "path": "/api/v1/search",
+      "summary": "综合模糊搜索接口，支持按帖子内容与 @ 用户名检索",
+      "requestSchema": "Query Parameters: { q: string (required, 关键词), type?: 'all' | 'posts' | 'users' (default 'all'), limit?: number (default 20) }",
+      "responseSchema": "{ query: string, posts: Array<{ id: string, user_id: string, username: string, content: string, created_at: string, likes_count: number, comments_count: number, is_liked: boolean }>, users: Array<{ id: string, username: string, created_at: string }> }",
       "errorCodes": [
         "400",
-        "500"
-      ]
-    },
-    {
-      "id": "API-2",
-      "method": "POST",
-      "path": "/api/v1/posts",
-      "summary": "发布新动态内容，使用浏览器指纹鉴权",
-      "requestSchema": "Headers: { 'x-browser-fingerprint': string }, Body: { content: string }",
-      "responseSchema": "{ id: string, user_id: string, content: string, created_at: string }",
-      "errorCodes": [
-        "400",
-        "401",
-        "500"
-      ]
-    },
-    {
-      "id": "API-3",
-      "method": "GET",
-      "path": "/api/v1/comments",
-      "summary": "获取指定动态的评论列表",
-      "requestSchema": "Query: { post_id: string }",
-      "responseSchema": "{ comments: Array<{ id: string, post_id: string, user_id: string, content: string, created_at: string }> }",
-      "errorCodes": [
-        "400",
-        "500"
-      ]
-    },
-    {
-      "id": "API-4",
-      "method": "POST",
-      "path": "/api/v1/comments",
-      "summary": "发表动态评论",
-      "requestSchema": "Headers: { 'x-browser-fingerprint': string }, Body: { post_id: string, content: string }",
-      "responseSchema": "{ id: string, post_id: string, user_id: string, content: string, created_at: string }",
-      "errorCodes": [
-        "400",
-        "401",
-        "404",
-        "500"
-      ]
-    },
-    {
-      "id": "API-5",
-      "method": "POST",
-      "path": "/api/v1/messages",
-      "summary": "发送站内私信给指定用户",
-      "requestSchema": "Headers: { 'x-browser-fingerprint': string }, Body: { recipient_id: string, content: string }",
-      "responseSchema": "{ message_id: string, sender_id: string, recipient_id: string, content: string, created_at: string }",
-      "errorCodes": [
-        "400",
-        "401",
-        "404",
         "500"
       ]
     }
@@ -104,190 +58,186 @@
   "tasks": [
     {
       "id": "T-01",
-      "title": "重构全局样式与 Awwwards 级交互动效库",
-      "module": "client/styles.css",
-      "description": "全面升级设计变量系统，引入 X 官方经典色彩方案（暗黑深色/极简纯白、细灰分割线 #2f3336/rgb(239,243,244)）、全圆角组件、毛玻璃导航。建立高阶 CSS Keyframes 动效库，包括弹簧入场 (cubic-bezier(0.16, 1, 0.3, 1))、微光骨架屏脉冲动画 (shimmer)、按钮点击微缩放与涟漪微动效。",
+      "title": "实现后端综合模糊搜索路由与数据查询",
+      "module": "后端 API (src/routes/search.ts & src/index.ts)",
+      "description": "新建 src/routes/search.ts 模块并挂载到 src/index.ts 的 /api/v1 下。实现 GET /api/v1/search 接口，支持参数 q、type 与 limit。对 q 进行防守性校验与空值过滤；支持解析带有 '@' 前缀的用户查询（如 '@alice'）；使用参数化 SQL 分别对 posts.content LIKE ? 及 users.username LIKE ? 进行模糊匹配，帖子查询需关联点赞、评论数及当前用户的点赞状态。",
       "dependsOn": [],
       "acceptanceCriteria": [
-        "定义完备的 X.com 设计变量（颜色、字体、边框、阴影、圆角与动画缓动曲线）",
-        "实现高质量的微交互动效类（.x-btn-active、.x-fade-in-up、.x-shimmer 等）并在 60fps 下流畅运行",
-        "支持暗色模式与亮色模式的无缝平滑自适应过渡"
+        "调用 GET /api/v1/search?q=abc 返回 posts 数组中包含所有 content 包含 abc 的帖子及作者信息",
+        "调用 GET /api/v1/search?q=@admin 或带有 @ 关键词时能正确匹配 users 表并返回相关用户列表",
+        "q 参数为空或缺失时返回 400 状态码及错误信息",
+        "全量 SQL 均采用 bind 参数化查询，防止 SQL 注入"
       ],
       "estimatedComplexity": "M"
     },
     {
       "id": "T-02",
-      "title": "重构应用顶层为 X.com 三栏响应式架构与导航交互",
-      "module": "client/App.tsx",
-      "description": "将 App.tsx 升级为 X 经典三栏布局：左侧导航栏（含 X 矢量图标、动态/私信侧边导航项、当前用户头像与指纹身份卡片）；中间为主视窗（保留毛玻璃吸顶头与状态切换）；右侧为趋势与指纹快捷切换挂件。移动端自动折叠为标准底部 Tab 栏，同时保持既有测试所需全部按钮文本与选择器。",
+      "title": "封装前端搜索 API 及全局搜索状态联动",
+      "module": "前端通信与状态 (client/api.ts & client/App.tsx)",
+      "description": "在 client/api.ts 中封装 searchContent(q: string, type?: string) 方法，自动携带当前浏览器指纹请求 /api/v1/search。在 client/App.tsx 中建立搜索状态管理（searchQuery、searchResults、isSearching、searchLoading），将右侧栏已有的 .x-search-input 绑定输入变更与回车提交事件。",
       "dependsOn": [
         "T-01"
       ],
       "acceptanceCriteria": [
-        "桌面端呈现标准的左侧固态导航、中栏核心内容、右侧辅助信息的 X 风格自适应布局",
-        "左侧导航按钮与右上角指纹名片支持 hover 悬浮发光与平滑点击缩放效果",
-        "Playwright 测试中的站内信导航链接/按钮 (getByRole('button', { name: /站内信|私信|messages/i })) 保持可见可点击"
+        "client/api.ts 导出 searchContent 并正确处理返回的 posts 与 users 结构",
+        "用户在右侧搜索框输入内容并回车触发搜索请求，展示加载反馈",
+        "支持清空输入框或点击返回按钮退出搜索状态，恢复之前的 Feed 流"
       ],
-      "estimatedComplexity": "M"
+      "estimatedComplexity": "S"
     },
     {
       "id": "T-03",
-      "title": "1:1 还原推特风格发帖区与动态流卡片微交互",
-      "module": "client/components/Feed.tsx",
-      "description": "将 Feed 组件重构为推特发帖框（带用户虚拟头像、自动伸缩输入区、胶囊形'发帖/发布'按钮及字数/表情辅助图标栏），推文列表转换为经典推文样式（头像、昵称、@指纹ID、时间戳、内容、互动按钮组：回复、转推、点赞、浏览量动效图标）。新增发帖成功淡入动画与加载骨架屏。",
+      "title": "构建前端搜索结果展示组件与交互",
+      "module": "前端 UI (client/components/SearchResults.tsx)",
+      "description": "新增 SearchResults.tsx 组件并在 client/App.tsx 主视口中渲染。当处于搜索状态时，呈现搜索结果视图：包含“搜索结果”头部、分类标签（全部/帖子/用户）、匹配的用户卡片列表（支持点击直接发起私信）和匹配的帖子列表（复用点赞、展开评论交互）；若无匹配结果展示友好的空状态。",
       "dependsOn": [
-        "T-01",
         "T-02"
       ],
       "acceptanceCriteria": [
-        "发帖框和推文列表具有 1:1 的 X.com 视觉质感与微动效（点击、悬停、发布入场动画）",
-        "保留 data-testid=\"feed-list\" 容器及发布按钮防重复提交的禁用与加载态反馈",
-        "输入框支持空内容即时校验提示，XSS 攻击脚本安全转义输出",
-        "加载中状态呈现推特风格骨架屏微光渐变动画，异常状态提供重试按钮"
+        "主内容区在搜索激活时无缝渲染搜索结果视图，保持与 X.com 整体设计语言一致",
+        "匹配的用户列表中点击用户可触发 onSelectUserForDm 快捷进入私信对话",
+        "匹配的帖子列表支持完整的点赞与查看评论操作",
+        "无搜索结果时展示空状态提示文案（如‘未找到相关结果’）"
       ],
-      "estimatedComplexity": "L"
+      "estimatedComplexity": "M"
     },
     {
       "id": "T-04",
-      "title": "升级评论列表为推特回复对话流与抽屉微动效",
-      "module": "client/components/Comments.tsx",
-      "description": "将 Comments 组件重塑为 X 风格的推文回复对话流（垂直虚线连接线、嵌套回复头像、轻量回复发布栏），配备丝滑的展开/折叠高度过渡动画与点赞/互动动效反馈。",
+      "title": "编写搜索功能端到端 E2E 自动化测试",
+      "module": "自动化测试 (tests/e2e/search.spec.ts)",
+      "description": "基于 Playwright 编写端到端测试用例：覆盖发布测试帖子后通过关键词模糊检索确认命中、输入 '@' 关键词检索特定用户、以及无匹配项的空状态与退出搜索交互验证，确保与已有测试套件共同 100% 绿色通过。",
       "dependsOn": [
-        "T-01",
         "T-03"
       ],
       "acceptanceCriteria": [
-        "评论区域展现推特对话树（Thread）视觉风格与平滑展开交互",
-        "评论提交与列表加载具有平滑过渡微动效，防止界面突变跳跃",
-        "支持空内容与未登录状态的精确提示与平滑消除"
+        "测试用例验证在搜索框输入关键词并回车后能正确渲染包含该关键词的帖子",
+        "测试用例验证输入 @ 关键词后用户匹配项出现并可交互",
+        "测试用例验证清空搜索后恢复默认 Feed 列表",
+        "运行 npx playwright test 无破坏性失败"
       ],
-      "estimatedComplexity": "M"
-    },
-    {
-      "id": "T-05",
-      "title": "升级站内信界面为 X.com 私信对话视窗",
-      "module": "client/components/Messages.tsx",
-      "description": "将 Messages 组件重塑为 X 风格私信中心：对话列表采用气泡流设计（区分己方发出与对方发送的视觉气泡、圆角与发送状态），底部输入栏采用胶囊圆角发送条，保留精准的收件人表单关联与反馈机制。",
-      "dependsOn": [
-        "T-01",
-        "T-02"
-      ],
-      "acceptanceCriteria": [
-        "私信页面具备 X.com 私信视窗的视觉布局与气泡消息流动效",
-        "精确保留 getByLabel(/收件人|recipient/i) 与 getByLabel(/私信内容|消息内容|message/i) 表单关联属性",
-        "未找到用户、空内容与发送成功的消息提示具有平滑淡入浮层动画"
-      ],
-      "estimatedComplexity": "M"
+      "estimatedComplexity": "S"
     }
   ],
   "qaSpec": {
     "coverageNotes": [
-      "完整保留全部 8 个既有回归测试用例（4 个 API 契约测试与 4 个 E2E 端到端测试），未篡改断言，保障系统历史稳定性。",
-      "新增评论系统 API 自动化校验（POST/GET /api/v1/posts/:postId/comments），覆盖未鉴权、空内容、目标动态不存在与正常发表全链路。",
-      "覆盖 T-01 与 T-02：校验 X.com 经典三栏自适应架构与导航栏交互切换，确保导航按钮具备活跃态切换、指纹标识展示与可访问性。",
-      "覆盖 T-03：校验发帖区域具有 X 风格交互、字数计数提示、防连续重复提交拦截、XSS 安全过滤及发帖后自动刷新展示。",
-      "覆盖 T-04：校验推特风格评论对话流（Thread）微交互，测试点击展开评论区、输入回复内容、成功提交并渲染到评论列表。",
-      "覆盖 T-05：校验 X 风格私信视窗微交互，确保 getByLabel 收件人与消息内容表单控件完备，覆盖收件人校验失败提示与发送成功反馈。",
-      "覆盖 Awwwards 级交互动效与视觉类规范：校验核心交互元素具备现代过渡动画、圆角设计与微交互响应类名。"
+      "后端综合搜索接口 /api/v1/search 完整覆盖参数防守性校验 (400)、帖子内容模糊检索、@ 用户名前缀检索以及 type 类型过滤机制。",
+      "E2E 测试严格遵循容器作用域链式定位原则（如 page.locator('.x-search-box').locator('input.x-search-input')），严禁全局模糊选择器，确保单元素定位唯一性。",
+      "覆盖真实用户全流程交互：右侧栏搜索框输入并回车触发、搜索结果列表呈现与点赞/评论/私信联动、无匹配时空状态友好提示，以及清空/返回退出搜索恢复 Feed 流。",
+      "与历史测试套件保持正交隔离，使用时间戳生成动态测试内容和用户指纹，防止数据脏读与回归测试破坏。"
     ],
     "initialApiTestCount": 6
   },
   "qaCritic": {
-    "reviewSummary": "Stage 2 QA Spec 整体架构设计严密，准确识别并适配了真实仓库中评论系统以 /api/v1/posts/:postId/comments 挂载的实际路由，完整保留了既有 8 个端到端与契约测试基线。经 QA Critic 深度走查真实客户端组件与后端路由，针对评论操作的选择器隔离性、父级评论边界追溯、X.com 风格活跃态交互（如导航 Tab 激活高亮与平滑过渡）进行了全方位加固，消除潜在的选择器竞争与偶发 Flaky 风险，确保满足 Awwwards 级微交互规范与高质量交付标准。",
+    "reviewSummary": "Stage 2 QA 规范整体覆盖了搜索功能的主线场景与基础 API 契约，但在模糊检索边界、SQL 通配符注入防守、用户前缀匹配确定性、分页截断以及 UI 空状态与 Feed 恢复断言的健壮性上存在短板。Critic 阶段已硬化所有条件分支弱断言，强化 SQL 通配符与并发安全校验，构建了高确定性、端到端解耦的最终测试套件。",
     "findings": [
       {
         "id": "CRIT-01",
-        "category": "ui_interaction",
-        "severity": "medium",
-        "issue": "在评论提交的端到端用例中，直接使用页面全局层级的 .last() 定位回复按钮，若页面存在多条动态或多个表单时可能造成选择器漂移或误触。",
-        "recommendation": "将评论输入框与提交按钮严格限定在对应动态的 postCard 容器与 .comment-form 内部进行链式查找，确保高并发与复杂列表下的元素定位确定性。"
+        "category": "boundary",
+        "severity": "high",
+        "issue": "Stage 2 规范在测试 @ 用户名前缀检索时，使用了条件弱断言 `if (body.users.length > 0)`，且由于用户注册默认附加 `user_` 前缀，导致若截取指纹不匹配时测试静默通过，无法保证 @ 检索功能的真实生效。",
+        "recommendation": "在种子数据生成阶段使用具有代表性且匹配规则清晰的关键词前缀（如 alice），并在断言中强制验证 `expect(body.users.length).toBeGreaterThan(0)` 及匹配项字段完整性，彻底消除静默跳过的隐患。"
       },
       {
         "id": "CRIT-02",
-        "category": "invalid_input",
-        "severity": "medium",
-        "issue": "评论 API 虽然校验了空内容与动态不存在，但未覆盖包含嵌套父级回复 parent_id 的场景，以及对私信消息列表 GET /api/v1/messages 的鉴权与数据结构校验。",
-        "recommendation": "在 API 测试清单与 E2E 测试集中补齐 parent_id 楼中楼回复校验，以及补充 GET /api/v1/messages 接口的鉴权和返回格式断言。"
+        "category": "security",
+        "severity": "high",
+        "issue": "未对 SQL 模糊查询（LIKE）关键通配符（如 `%`、`_`、单双引号及 XSS 标签）进行异常防御测试，若后端未做参数化绑定或转义处理，可能导致全表泄露、语法报错或 500 服务器崩溃。",
+        "recommendation": "新增 SQL 通配符与特殊符号输入检索用例，验证系统在各种边界输入下均可安全处理，稳定返回 200 或 400，严禁抛出 500 数据库异常。"
       },
       {
         "id": "CRIT-03",
-        "category": "ui_interaction",
-        "severity": "low",
-        "issue": "PRD 要求 1:1 模仿 X.com 并达到 Awwwards 级交互水准，原测试对导航栏 Tab 切换激活态（active class）及按钮 CSS 过渡动画（transition）缺乏明确验证。",
-        "recommendation": "加固导航切换测试，断言点击不同 Tab 时 .active 状态类的切换逻辑，并在全局样式校验中验证核心可交互控件包含平滑 transition 动画属性。"
+        "category": "invalid_input",
+        "severity": "medium",
+        "issue": "缺少 limit 查询参数的截断控制测试，且未验证 API 返回的帖子对象中 is_liked、likes_count 等互动统计字段的类型完备性。",
+        "recommendation": "在 API 检查单与测试套件中扩充 limit 约束测试（如 limit=2 验证数量上限），并全面断言 is_liked、likes_count、comments_count 的类型规范。"
       },
       {
         "id": "CRIT-04",
-        "category": "boundary",
+        "category": "ui_interaction",
+        "severity": "medium",
+        "issue": "E2E 测试在清空搜索重置回 Feed 流时，仅断言容器存在（`getByTestId('feed-list')`），未验证列表是否真实重新渲染了原有帖子内容；且搜索结果空状态定位器未对齐实际组件中的 `.empty-card` 结构。",
+        "recommendation": "在重置 Feed 流测试中断言播种帖子的内容重新可见，并在空状态断言中增加应用真实卡片选择器 `.card.empty-card` 与多语言友好提示正则匹配。"
+      },
+      {
+        "id": "CRIT-05",
+        "category": "concurrency",
         "severity": "low",
-        "issue": "Feed 流在空游标或极端分页参数下的边界行为需确保具备确定性的向后兼容表现，避免客户端陷入死循环请求。",
-        "recommendation": "在 API 校验中确保分页拉取到末尾时 next_cursor 为空字符串且后续拉取安全降级，前端具备明确的加载更多或末尾状态提示。"
+        "issue": "未验证多用户或高频并发搜索请求下的接口稳定性与数据库连接池处理能力。",
+        "recommendation": "增加并发搜索用例，使用 Promise.all 发起 5 个并发检索请求，确保响应均符合 200 预期且数据结构完整无竞态错误。"
       }
     ],
     "finalApiTestChecklist": [
       {
         "id": "TC-01",
-        "endpoint": "/api/v1/posts",
-        "method": "POST",
-        "scenario": "发布动态鉴权与入参校验，包括空指纹头、空白内容拦截与合法动态创建",
-        "expectedStatus": 201,
-        "assertion": "未提供或空白指纹返回 401_UNAUTHORIZED；空白内容返回 400_INVALID_CONTENT；合法内容返回 200/201 且包含非空 id 和 created_at"
+        "endpoint": "/api/v1/search",
+        "method": "GET",
+        "scenario": "缺少关键词参数 q 或 q 为纯空白字符时返回 400 校验错误",
+        "expectedStatus": 400,
+        "assertion": "响应状态码为 400，返回 JSON 提示参数错误，防止空查询或无效请求打崩数据库"
       },
       {
         "id": "TC-02",
-        "endpoint": "/api/v1/feed",
+        "endpoint": "/api/v1/search?q=SearchTarget",
         "method": "GET",
-        "scenario": "获取动态信息流列表并校验游标分页边界与数据不重复",
+        "scenario": "按关键词模糊搜索帖子内容，返回包含匹配帖子的完整列表及作者、互动信息（likes_count、comments_count、is_liked）",
         "expectedStatus": 200,
-        "assertion": "返回状态码 200，body 包含 posts 数组和 next_cursor 字符串，基于游标拉取下一页时不包含上一页的 post id"
+        "assertion": "响应状态码为 200，body 包含 query 字符串与 posts 数组，每个 post 包含 id、username、content、likes_count、comments_count、is_liked 等关键字段"
       },
       {
         "id": "TC-03",
-        "endpoint": "/api/v1/posts/:postId/comments",
-        "method": "POST",
-        "scenario": "发表动态评论，校验未登录拦截、空内容拦截、目标动态不存在与正常评论创建",
-        "expectedStatus": 201,
-        "assertion": "未提供指纹返回 401；空白内容返回 400；动态不存在返回 404；正常评论返回 201 且包含 comment id、post_id、user_id 与 content"
+        "endpoint": "/api/v1/search?q=@alice",
+        "method": "GET",
+        "scenario": "通过 @ 前缀关键词检索特定用户，模糊匹配用户名或 ID 并返回包含用户基本信息的数组",
+        "expectedStatus": 200,
+        "assertion": "响应状态码为 200，body 包含 users 数组，返回的用户对象包含 id、username 与 created_at，且至少命中目标用户"
       },
       {
         "id": "TC-04",
-        "endpoint": "/api/v1/posts/:postId/comments",
+        "endpoint": "/api/v1/search?q=test&type=posts",
         "method": "GET",
-        "scenario": "获取指定动态的评论列表",
+        "scenario": "按 type=posts 过滤参数检索，仅返回匹配的帖子，users 数组强制为空",
         "expectedStatus": 200,
-        "assertion": "返回状态码 200，comments 为数组，每项包含 id, post_id, user_id, parent_id, content 与 created_at"
+        "assertion": "响应状态码为 200，body.posts 包含帖子数组，body.users 恒为空数组"
       },
       {
         "id": "TC-05",
-        "endpoint": "/api/v1/messages",
-        "method": "POST",
-        "scenario": "发送站内私信，校验鉴权、收件人不存在错误反馈与向有效用户发送成功",
-        "expectedStatus": 201,
-        "assertion": "未鉴权返回 401/403；目标用户不存在返回 404_USER_NOT_FOUND；有效收件人返回 200/201 且包含非空 message_id"
+        "endpoint": "/api/v1/search?q=test&type=users",
+        "method": "GET",
+        "scenario": "按 type=users 过滤参数检索，仅返回匹配的用户，posts 数组强制为空",
+        "expectedStatus": 200,
+        "assertion": "响应状态码为 200，body.users 包含用户数组，body.posts 恒为空数组"
       },
       {
         "id": "TC-06",
-        "endpoint": "/api/v1/messages",
+        "endpoint": "/api/v1/search?q=non_existent_keyword_xyz",
         "method": "GET",
-        "scenario": "获取当前登录用户的私信记录列表及与指定用户的会话过滤",
+        "scenario": "检索无匹配项的关键词时，正常返回空数组而不是数据库报错或异常",
         "expectedStatus": 200,
-        "assertion": "未提供指纹返回 401；有效鉴权返回 200 且 messages 数组中每项包含 id, sender_id, recipient_id, content 与 created_at"
+        "assertion": "响应状态码为 200，body.posts 与 body.users 均为空数组，query 字段正确回显"
       },
       {
         "id": "TC-07",
-        "endpoint": "/api/v1/posts",
-        "method": "POST",
-        "scenario": "高并发多请求同时发帖，验证无主键冲突且 ID 全部唯一",
-        "expectedStatus": 201,
-        "assertion": "并发 5 个请求全部返回 200/201，且生成的 5 个动态 ID 互不相同"
+        "endpoint": "/api/v1/search?q=%25",
+        "method": "GET",
+        "scenario": "关键词包含 SQL LIKE 通配符（%、_）及单双引号、XSS 特殊字符时安全防御",
+        "expectedStatus": 200,
+        "assertion": "响应状态码为 200 或 400，系统安全转义或参数化处理，绝对不抛出 500 数据库异常崩溃"
       },
       {
         "id": "TC-08",
-        "endpoint": "/api/v1/posts/:postId/comments",
-        "method": "POST",
-        "scenario": "发表楼中楼回复评论（带有 parent_id）",
-        "expectedStatus": 201,
-        "assertion": "返回 201 且返回对象的 parent_id 与请求参数一致，数据库正常存储回复关联"
+        "endpoint": "/api/v1/search?q=keyword&limit=2",
+        "method": "GET",
+        "scenario": "使用 limit 参数限制返回结果数量，验证分页截断控制",
+        "expectedStatus": 200,
+        "assertion": "响应状态码为 200，body.posts 列表长度不超过指定的 limit 上限"
+      },
+      {
+        "id": "TC-09",
+        "endpoint": "/api/v1/search?q=concurrent_target",
+        "method": "GET",
+        "scenario": "高频并发搜索请求压力下系统响应稳定性测试",
+        "expectedStatus": 200,
+        "assertion": "5 个并发请求均成功返回 200 且返回数据结构稳定一致，无竞态条件与锁死"
       }
     ]
   }
