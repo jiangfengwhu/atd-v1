@@ -1,0 +1,19 @@
+{
+  "jobId": "job-da40bc4e",
+  "status": "queued",
+  "updatedAt": "2026-11-19T09:11:10.475Z",
+  "model": "gemini-3.8-flash-high",
+  "steps": {
+    "architect": {
+      "status": "running",
+      "message": "已入队，等待 Instabox AGY Runner 接单并检出最新代码…"
+    },
+    "qa_spec": {
+      "status": "idle"
+    },
+    "qa_critic": {
+      "status": "idle"
+    }
+  },
+  "outputFiles": {}
+}
