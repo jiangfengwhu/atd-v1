@@ -18,6 +18,10 @@ export interface PostRecord {
   user_id: string;
   content: string;
   created_at: string;
+  reply_count?: number;
+  likes_count?: number;
+  views_count?: number;
+  user_liked?: number | boolean;
 }
 
 export interface CommentRecord {
@@ -35,4 +39,15 @@ export interface MessageRecord {
   recipient_id: string;
   content: string;
   created_at: string;
+}
+
+export interface PostLikeRecord {
+  post_id: string;
+  user_id: string;
+  created_at: string;
+}
+
+export interface PostViewRecord {
+  post_id: string;
+  views_count: number;
 }

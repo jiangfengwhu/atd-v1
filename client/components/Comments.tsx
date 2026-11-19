@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { apiRequest } from '../api';
+import { apiRequest, getFingerprint } from '../api';
 
 interface Comment {
   id: string;
@@ -43,7 +43,7 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) {
-      setError('评论内容不能为空');
+      setError('评论内容不能为空 (invalid content)');
       return;
     }
 
@@ -67,13 +67,18 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
     }
   };
 
-  return (
-    <div className="comments-section">
-      <h4 className="comments-title">评论互动 ({comments.length})</h4>
+  const currentFp = getFingerprint();
 
-      <form onSubmit={handleSubmit} className="comment-form">
+  return (
+    <div className="comments-section x-comments-thread x-fade-in-up">
+      <h4 className="comments-title">
+        💬 回复对话流 ({comments.length})
+      </h4>
+
+      {/* Reply compose form */}
+      <form onSubmit={handleSubmit} className="comment-form x-thread-reply-form">
         {replyTo && (
-          <div className="replying-banner">
+          <div className="replying-banner x-fade-in-up">
             <span>回复评论 #{replyTo.slice(0, 6)}</span>
             <button
               type="button"
@@ -84,53 +89,81 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
             </button>
           </div>
         )}
-        <div className="comment-input-row">
-          <input
-            type="text"
-            className="input-field"
-            placeholder={replyTo ? '撰写回复...' : '撰写评论...'}
-            value={content}
-            onChange={(e) => {
-              setContent(e.target.value);
-              if (error) setError('');
-            }}
-          />
-          <button
-            type="submit"
-            className="btn btn-secondary"
-            disabled={submitting}
-          >
-            {submitting ? '发送中...' : '回复'}
-          </button>
+
+        <div className="x-thread-input-row">
+          <div className="avatar x-avatar-sm">
+            {currentFp ? currentFp.slice(0, 2).toUpperCase() : 'ME'}
+          </div>
+          <div className="x-thread-input-wrapper">
+            <input
+              type="text"
+              className="input-field x-thread-input"
+              placeholder={replyTo ? '撰写回复...' : '撰写评论...'}
+              aria-label="回复"
+              value={content}
+              onChange={(e) => {
+                setContent(e.target.value);
+                if (error) setError('');
+              }}
+            />
+            <button
+              type="submit"
+              className="btn btn-primary x-thread-submit-btn x-btn-active"
+              disabled={submitting}
+            >
+              {submitting ? '回复中...' : '回复'}
+            </button>
+          </div>
         </div>
-        {error && <div className="error-message">{error}</div>}
+
+        {error && (
+          <div className="error-message x-fade-in-up" role="alert">
+            {error}
+          </div>
+        )}
       </form>
 
+      {/* Thread list */}
       {loading ? (
-        <div className="loading-spinner">加载评论中...</div>
+        <div className="x-comments-loading" style={{ padding: '12px 0' }}>
+          <div className="x-shimmer x-skeleton-line short" style={{ marginBottom: 8 }} />
+          <div className="x-shimmer x-skeleton-line medium" />
+        </div>
       ) : comments.length === 0 ? (
-        <div className="empty-state-sm">暂无评论，来抢沙发吧~</div>
+        <div className="empty-state-sm">暂无回复，发表第一条观点吧~</div>
       ) : (
-        <div className="comments-list">
+        <div className="comments-list x-thread-list">
           {comments.map((c) => (
             <div
               key={c.id}
-              className={`comment-item ${c.parent_id ? 'nested-reply' : ''}`}
+              className={`comment-item x-thread-item ${
+                c.parent_id ? 'nested-reply' : ''
+              } x-fade-in-up`}
             >
+              {c.parent_id && <div className="x-thread-line" />}
               <div className="comment-header">
-                <span className="user-badge">{c.user_id}</span>
-                <span className="timestamp">
+                <div className="x-comment-author">
+                  <div className="avatar x-avatar-xs">
+                    {c.user_id.slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="user-badge author-name">
+                    {c.user_id.length > 12 ? `User-${c.user_id.slice(0, 6)}` : c.user_id}
+                  </span>
+                </div>
+                <time className="timestamp" dateTime={c.created_at}>
                   {new Date(c.created_at).toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit',
                   })}
-                </span>
+                </time>
               </div>
+
               <div className="comment-content">{c.content}</div>
+
               <div className="comment-actions">
                 <button
                   type="button"
-                  className="btn-link"
+                  className="btn-link x-comment-reply-btn"
                   onClick={() => setReplyTo(c.id)}
                 >
                   回复
