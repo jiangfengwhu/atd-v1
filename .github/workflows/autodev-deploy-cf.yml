@@ -1,0 +1,81 @@
+name: AutoDev Cloudflare Workers Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Branch to build and deploy to Cloudflare Workers'
+        required: false
+        default: 'main'
+        type: string
+      worker_name:
+        description: 'Optional Worker name override (defaults to wrangler.toml name)'
+        required: false
+        default: ''
+        type: string
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - '.github/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: autodev-cf-deploy-${{ inputs.target_branch || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-cloudflare:
+    if: github.actor == 'jiangfengwhu'
+    runs-on: [self-hosted, linux, x64, vps-agy]
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Target Branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.target_branch || github.ref_name }}
+
+      - name: Verify Cloudflare Credentials & Wrangler Config
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          if [ -z "${CLOUDFLARE_API_TOKEN}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID}" ]; then
+            echo "::error::Missing CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID in GitHub Repository Secrets."
+            echo "Please configure both secrets at: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            exit 1
+          fi
+          if [ ! -f "wrangler.toml" ] && [ ! -f "wrangler.jsonc" ] && [ ! -f "wrangler.json" ]; then
+            echo "::error::No wrangler.toml / wrangler.jsonc found on branch ${{ inputs.target_branch || github.ref_name }}."
+            exit 1
+          fi
+
+      - name: Install Dependencies & Build Project
+        shell: bash
+        run: |
+          if [ -f "package-lock.json" ]; then
+            npm ci
+          elif [ -f "package.json" ]; then
+            npm install
+          fi
+          if [ -f "package.json" ] && node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.build ? 0 : 1)"; then
+            npm run build
+          fi
+
+      - name: Deploy to Cloudflare Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.worker_name }}" ]; then
+            npx --yes wrangler deploy --name "${{ inputs.worker_name }}"
+          else
+            npx --yes wrangler deploy
+          fi
