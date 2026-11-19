@@ -42,7 +42,7 @@ jobs:
   agy-plan:
     if: github.actor == 'jiangfengwhu'
     runs-on: [self-hosted, linux, x64, vps-agy]
-    timeout-minutes: 25
+    timeout-minutes: 30
 
     steps:
       - name: Checkout Latest Base Branch (Full Codebase Context)
@@ -70,7 +70,7 @@ jobs:
           cat > /tmp/autodev-plan-runner.mjs <<'PLAN_RUNNER_EOF'
           import fs from 'fs';
           import path from 'path';
-          import { execSync, spawnSync } from 'child_process';
+          import { execSync, spawn } from 'child_process';
 
           const token = process.env.GH_TOKEN;
           const repo = process.env.PLAN_REPO;
@@ -100,17 +100,66 @@ jobs:
             Accept: 'application/vnd.github+json',
             'X-GitHub-Api-Version': '2022-11-28',
             'Content-Type': 'application/json',
+            Connection: 'close',
           };
 
+          function sleep(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+          }
+
+          function formatNetworkError(err) {
+            const base = err instanceof Error ? err.message : String(err);
+            const cause = err && typeof err === 'object' && err.cause ? err.cause : null;
+            if (!cause) return base;
+            const code = cause.code ? '[' + cause.code + '] ' : '';
+            const cMsg = cause.message || String(cause);
+            return base + ' (' + code + cMsg + ')';
+          }
+
           async function gh(apiPath, options = {}) {
-            const res = await fetch('https://api.github.com' + apiPath, { ...options, headers });
-            const text = await res.text();
-            if (!res.ok) {
-              const err = new Error('GitHub API ' + res.status + ' on ' + apiPath + ': ' + text.slice(0, 300));
-              err.status = res.status;
-              throw err;
+            const url = 'https://api.github.com' + apiPath;
+            const maxAttempts = 4;
+            let lastErr = null;
+
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              try {
+                const res = await fetch(url, {
+                  ...options,
+                  headers: { ...headers, ...(options.headers || {}) },
+                  signal: AbortSignal.timeout(30000),
+                });
+                const text = await res.text();
+                if (!res.ok) {
+                  const err = new Error('GitHub API ' + res.status + ' on ' + apiPath + ': ' + text.slice(0, 300));
+                  err.status = res.status;
+                  const retryableStatus = res.status === 429 || res.status >= 500;
+                  if (retryableStatus && attempt < maxAttempts) {
+                    const waitMs = 1500 * attempt;
+                    console.warn('[gh retry ' + attempt + '/' + maxAttempts + '] HTTP ' + res.status + ', waiting ' + waitMs + 'ms');
+                    await sleep(waitMs);
+                    continue;
+                  }
+                  throw err;
+                }
+                return text ? JSON.parse(text) : null;
+              } catch (err) {
+                lastErr = err;
+                // Do not retry non-retryable 4xx API errors (400/401/403/404/409/422)
+                if (err && typeof err.status === 'number' && err.status >= 400 && err.status < 500 && err.status !== 429) {
+                  throw err;
+                }
+                if (attempt < maxAttempts) {
+                  const waitMs = 1500 * attempt;
+                  console.warn('[gh retry ' + attempt + '/' + maxAttempts + '] ' + formatNetworkError(err) + ', waiting ' + waitMs + 'ms');
+                  await sleep(waitMs);
+                  continue;
+                }
+                const wrapped = new Error('GitHub request failed after ' + maxAttempts + ' attempts on ' + apiPath + ': ' + formatNetworkError(err));
+                if (err && typeof err.status === 'number') wrapped.status = err.status;
+                throw wrapped;
+              }
             }
-            return text ? JSON.parse(text) : null;
+            throw lastErr;
           }
 
           function encodeRepoPath(filePath) {
@@ -167,6 +216,27 @@ jobs:
               }
             }
             return sha;
+          }
+
+          function buildQuickRepoDigest() {
+            const parts = [];
+            try {
+              const files = execSync('git ls-files', { encoding: 'utf8' })
+                .split('\n')
+                .map((s) => s.trim())
+                .filter((p) => p && !p.startsWith('node_modules/') && !p.startsWith('dist/'))
+                .slice(0, 120);
+              parts.push('Tracked files (' + files.length + '):\n' + files.join('\n'));
+            } catch {}
+            for (const cfg of ['package.json', 'wrangler.toml']) {
+              if (fs.existsSync(cfg)) {
+                try {
+                  const snippet = fs.readFileSync(cfg, 'utf8').slice(0, 1800);
+                  parts.push(cfg + ':\n' + snippet);
+                } catch {}
+              }
+            }
+            return parts.join('\n\n');
           }
 
           function extractJsonLoose(text) {
@@ -284,30 +354,54 @@ jobs:
             return { ok: false, error: 'Unknown stage: ' + stage };
           }
 
-          function invokeAgy(promptText, timeoutStr = '8m') {
-            const res = spawnSync(
-              'agy',
-              [
-                '--dangerously-skip-permissions',
-                '--model',
-                model,
-                '--print-timeout',
-                timeoutStr,
-                '--print=' + promptText,
-              ],
-              {
-                cwd: process.cwd(),
-                encoding: 'utf8',
-                maxBuffer: 25 * 1024 * 1024,
-              }
-            );
-            if (res.stdout) process.stdout.write(res.stdout.slice(-4000) + '\n');
-            if (res.stderr) process.stderr.write(res.stderr.slice(-2000) + '\n');
-            return {
-              status: res.status ?? 1,
-              stdout: res.stdout || '',
-              stderr: res.stderr || '',
-            };
+          function invokeAgyAsync(promptText, timeoutStr = '10m') {
+            return new Promise((resolve) => {
+              const child = spawn(
+                'agy',
+                [
+                  '--dangerously-skip-permissions',
+                  '--model',
+                  model,
+                  '--print-timeout',
+                  timeoutStr,
+                  '--print=' + promptText,
+                ],
+                {
+                  cwd: process.cwd(),
+                  stdio: ['ignore', 'pipe', 'pipe'],
+                }
+              );
+
+              const maxCapture = 4 * 1024 * 1024;
+              let stdout = '';
+              let stderr = '';
+
+              child.stdout.on('data', (chunk) => {
+                const text = chunk.toString('utf8');
+                process.stdout.write(text);
+                stdout += text;
+                if (stdout.length > maxCapture) {
+                  stdout = stdout.slice(-maxCapture);
+                }
+              });
+
+              child.stderr.on('data', (chunk) => {
+                const text = chunk.toString('utf8');
+                process.stderr.write(text);
+                stderr += text;
+                if (stderr.length > maxCapture) {
+                  stderr = stderr.slice(-maxCapture);
+                }
+              });
+
+              child.on('error', (err) => {
+                resolve({ status: 1, stdout, stderr: stderr + '\n' + String(err) });
+              });
+
+              child.on('close', (code) => {
+                resolve({ status: code ?? 1, stdout, stderr });
+              });
+            });
           }
 
           async function runStage(stage, basePrompt, summaryFn) {
@@ -342,7 +436,7 @@ jobs:
                     ' (do not modify any other repository files).';
 
               console.log('=== Running stage:', stage, 'attempt:', attempt, '===');
-              const execRes = invokeAgy(prompt, '8m');
+              const execRes = await invokeAgyAsync(prompt, '10m');
 
               let parsed = null;
               try {
@@ -402,6 +496,7 @@ jobs:
               throw new Error('Failed to load valid input.json from channel branch ' + channelBranch);
             }
 
+            const repoDigest = buildQuickRepoDigest();
             const stackNote = input.isDefaultCloudflare
               ? 'Default Cloudflare Workers + Hono + D1 + KV + React/Vite stack. Inspect existing wrangler.toml, migrations/, src/, and client/ first!'
               : 'User specified tech stack: ' + input.effectiveTechStack;
@@ -410,9 +505,12 @@ jobs:
             const architectPrompt = [
               'You are Step 1 (Architect Agent) in AutoDev Studio running directly inside the real repository on branch ' + baseBranch + ' (HEAD ' + headSha.slice(0, 7) + ').',
               'STRICT READ-ONLY RULE: Do NOT modify, create, or delete any repository source files, package.json, migrations, or tests. ONLY write your final JSON result to .autodev-plan-output/architect.json.',
-              'IMPORTANT: Inspect the existing repository files first (directory structure, package.json, wrangler.toml, migrations/*.sql, existing src/ routes, client/ components, tests/e2e/).',
+              'SPEED & FOCUS RULE: Use the pre-collected repository digest below as your map; inspect only the 3-6 most relevant source files directly and write .autodev-plan-output/architect.json promptly (aim for under 90 seconds).',
               'INCREMENTAL ITERATION RULE: If the repository already has working code, design INCREMENTAL changes on top of the existing architecture. NEVER delete or rewrite working unrelated modules or already-applied migrations (append sequentially numbered SQL migrations only when schema changes are genuinely needed).',
               'LANGUAGE: All Chinese text fields (titles, descriptions, summaries, ambiguity details, acceptanceCriteria) MUST be written in concise, professional Simplified Chinese.',
+              '',
+              'Repository Digest:',
+              repoDigest,
               '',
               'Target Repo: ' + input.repoFullName + ' (' + baseBranch + ')',
               'Tech Stack Guideline: ' + stackNote,
@@ -439,7 +537,7 @@ jobs:
             const qaSpecPrompt = [
               'You are Step 2 (QA Spec Agent) in AutoDev Studio running in the real repository on branch ' + baseBranch + '.',
               'STRICT READ-ONLY RULE: Do NOT modify any repository files. ONLY write your final JSON result to .autodev-plan-output/qa_spec.json.',
-              'Inspect existing tests/e2e/ (and tests/e2e.spec.ts if present), playwright config, and current frontend routes/selectors so your new Playwright E2E test suite aligns with the real app structure and does NOT duplicate or break historical regression tests.',
+              'SPEED & FOCUS RULE: Inspect existing tests/e2e* and playwright.config.ts plus the main UI entry file only, then write .autodev-plan-output/qa_spec.json promptly (aim for under 90 seconds). Do NOT duplicate or break historical regression tests.',
               'LANGUAGE: All Chinese scenario descriptions, assertions, and coverageNotes MUST be in Simplified Chinese.',
               '',
               'PRD Title: ' + input.prdTitle,
@@ -465,7 +563,7 @@ jobs:
             const qaCriticPrompt = [
               'You are Step 3 (QA Critic Agent) in AutoDev Studio running in the real repository on branch ' + baseBranch + '.',
               'STRICT READ-ONLY RULE: Do NOT modify any repository files. ONLY write your final JSON result to .autodev-plan-output/qa_critic.json.',
-              'Critically review the Stage 2 QA Spec output against the PRD, real repository routes/layout, boundary conditions, invalid inputs, UI interactions, security, and concurrency.',
+              'SPEED & FOCUS RULE: Review Stage 2 QA Spec directly against the PRD and real repository routes/selectors, harden edge cases, and write .autodev-plan-output/qa_critic.json promptly (aim for under 90 seconds).',
               'Produce a hardened, deterministic final Playwright E2E test suite (finalE2eTestCode) and final API checklist (finalApiTestChecklist) that is realistic, fast, and aligned with the real app.',
               'LANGUAGE: All reviewSummary, finding issues, recommendations, and checklist text MUST be in Simplified Chinese.',
               '',
@@ -500,8 +598,14 @@ jobs:
 
           main().catch(async (err) => {
             console.error(err);
+            const msg = formatNetworkError(err);
             state.status = 'error';
-            state.error = err instanceof Error ? err.message : String(err);
+            state.error = msg;
+            for (const key of ['architect', 'qa_spec', 'qa_critic']) {
+              if (state.steps[key] && state.steps[key].status === 'running') {
+                state.steps[key] = { ...state.steps[key], status: 'error', message: msg };
+              }
+            }
             try {
               await syncState();
             } catch {}
