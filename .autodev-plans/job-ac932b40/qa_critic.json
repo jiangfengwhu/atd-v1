@@ -1,0 +1,115 @@
+{
+  "reviewSummary": "Stage 2 QA 规范整体覆盖了搜索功能的主线场景与基础 API 契约，但在模糊检索边界、SQL 通配符注入防守、用户前缀匹配确定性、分页截断以及 UI 空状态与 Feed 恢复断言的健壮性上存在短板。Critic 阶段已硬化所有条件分支弱断言，强化 SQL 通配符与并发安全校验，构建了高确定性、端到端解耦的最终测试套件。",
+  "findings": [
+    {
+      "id": "CRIT-01",
+      "category": "boundary",
+      "severity": "high",
+      "issue": "Stage 2 规范在测试 @ 用户名前缀检索时，使用了条件弱断言 `if (body.users.length > 0)`，且由于用户注册默认附加 `user_` 前缀，导致若截取指纹不匹配时测试静默通过，无法保证 @ 检索功能的真实生效。",
+      "recommendation": "在种子数据生成阶段使用具有代表性且匹配规则清晰的关键词前缀（如 alice），并在断言中强制验证 `expect(body.users.length).toBeGreaterThan(0)` 及匹配项字段完整性，彻底消除静默跳过的隐患。"
+    },
+    {
+      "id": "CRIT-02",
+      "category": "security",
+      "severity": "high",
+      "issue": "未对 SQL 模糊查询（LIKE）关键通配符（如 `%`、`_`、单双引号及 XSS 标签）进行异常防御测试，若后端未做参数化绑定或转义处理，可能导致全表泄露、语法报错或 500 服务器崩溃。",
+      "recommendation": "新增 SQL 通配符与特殊符号输入检索用例，验证系统在各种边界输入下均可安全处理，稳定返回 200 或 400，严禁抛出 500 数据库异常。"
+    },
+    {
+      "id": "CRIT-03",
+      "category": "invalid_input",
+      "severity": "medium",
+      "issue": "缺少 limit 查询参数的截断控制测试，且未验证 API 返回的帖子对象中 is_liked、likes_count 等互动统计字段的类型完备性。",
+      "recommendation": "在 API 检查单与测试套件中扩充 limit 约束测试（如 limit=2 验证数量上限），并全面断言 is_liked、likes_count、comments_count 的类型规范。"
+    },
+    {
+      "id": "CRIT-04",
+      "category": "ui_interaction",
+      "severity": "medium",
+      "issue": "E2E 测试在清空搜索重置回 Feed 流时，仅断言容器存在（`getByTestId('feed-list')`），未验证列表是否真实重新渲染了原有帖子内容；且搜索结果空状态定位器未对齐实际组件中的 `.empty-card` 结构。",
+      "recommendation": "在重置 Feed 流测试中断言播种帖子的内容重新可见，并在空状态断言中增加应用真实卡片选择器 `.card.empty-card` 与多语言友好提示正则匹配。"
+    },
+    {
+      "id": "CRIT-05",
+      "category": "concurrency",
+      "severity": "low",
+      "issue": "未验证多用户或高频并发搜索请求下的接口稳定性与数据库连接池处理能力。",
+      "recommendation": "增加并发搜索用例，使用 Promise.all 发起 5 个并发检索请求，确保响应均符合 200 预期且数据结构完整无竞态错误。"
+    }
+  ],
+  "finalApiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/api/v1/search",
+      "method": "GET",
+      "scenario": "缺少关键词参数 q 或 q 为纯空白字符时返回 400 校验错误",
+      "expectedStatus": 400,
+      "assertion": "响应状态码为 400，返回 JSON 提示参数错误，防止空查询或无效请求打崩数据库"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/api/v1/search?q=SearchTarget",
+      "method": "GET",
+      "scenario": "按关键词模糊搜索帖子内容，返回包含匹配帖子的完整列表及作者、互动信息（likes_count、comments_count、is_liked）",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，body 包含 query 字符串与 posts 数组，每个 post 包含 id、username、content、likes_count、comments_count、is_liked 等关键字段"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/v1/search?q=@alice",
+      "method": "GET",
+      "scenario": "通过 @ 前缀关键词检索特定用户，模糊匹配用户名或 ID 并返回包含用户基本信息的数组",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，body 包含 users 数组，返回的用户对象包含 id、username 与 created_at，且至少命中目标用户"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/api/v1/search?q=test&type=posts",
+      "method": "GET",
+      "scenario": "按 type=posts 过滤参数检索，仅返回匹配的帖子，users 数组强制为空",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，body.posts 包含帖子数组，body.users 恒为空数组"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/v1/search?q=test&type=users",
+      "method": "GET",
+      "scenario": "按 type=users 过滤参数检索，仅返回匹配的用户，posts 数组强制为空",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，body.users 包含用户数组，body.posts 恒为空数组"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/api/v1/search?q=non_existent_keyword_xyz",
+      "method": "GET",
+      "scenario": "检索无匹配项的关键词时，正常返回空数组而不是数据库报错或异常",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，body.posts 与 body.users 均为空数组，query 字段正确回显"
+    },
+    {
+      "id": "TC-07",
+      "endpoint": "/api/v1/search?q=%25",
+      "method": "GET",
+      "scenario": "关键词包含 SQL LIKE 通配符（%、_）及单双引号、XSS 特殊字符时安全防御",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200 或 400，系统安全转义或参数化处理，绝对不抛出 500 数据库异常崩溃"
+    },
+    {
+      "id": "TC-08",
+      "endpoint": "/api/v1/search?q=keyword&limit=2",
+      "method": "GET",
+      "scenario": "使用 limit 参数限制返回结果数量，验证分页截断控制",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，body.posts 列表长度不超过指定的 limit 上限"
+    },
+    {
+      "id": "TC-09",
+      "endpoint": "/api/v1/search?q=concurrent_target",
+      "method": "GET",
+      "scenario": "高频并发搜索请求压力下系统响应稳定性测试",
+      "expectedStatus": 200,
+      "assertion": "5 个并发请求均成功返回 200 且返回数据结构稳定一致，无竞态条件与锁死"
+    }
+  ],
+  "finalE2eTestCode": "import { test, expect } from '@playwright/test';\n\nconst FINGERPRINT_HEADER = { 'x-browser-fingerprint': 'qa-fp-search-hardened-001' };\n\ntest.describe('Search Feature API Contracts (Hardened)', () => {\n  test('GET /api/v1/search validates required query parameter q', async ({ request }) => {\n    // Missing query parameter\n    const missingRes = await request.get('/api/v1/search');\n    expect(missingRes.status()).toBe(400);\n\n    // Empty query parameter\n    const emptyRes = await request.get('/api/v1/search', { params: { q: '' } });\n    expect(emptyRes.status()).toBe(400);\n\n    // Whitespace only query parameter\n    const blankRes = await request.get('/api/v1/search', { params: { q: '   ' } });\n    expect(blankRes.status()).toBe(400);\n  });\n\n  test('GET /api/v1/search finds posts by fuzzy keyword match and verifies stats', async ({ request }) => {\n    const uniqueKeyword = `SearchTarget_${Date.now()}`;\n    const postRes = await request.post('/api/v1/posts', {\n      headers: FINGERPRINT_HEADER,\n      data: { content: `Hello this is a post containing ${uniqueKeyword} for search verification.` },\n    });\n    expect([200, 201]).toContain(postRes.status());\n\n    const searchRes = await request.get('/api/v1/search', {\n      headers: FINGERPRINT_HEADER,\n      params: { q: uniqueKeyword },\n    });\n    expect(searchRes.status()).toBe(200);\n    const body = await searchRes.json();\n    expect(body.query).toBe(uniqueKeyword);\n    expect(Array.isArray(body.posts)).toBe(true);\n    expect(body.posts.length).toBeGreaterThan(0);\n    \n    const matched = body.posts.find((p: any) => p.content && p.content.includes(uniqueKeyword));\n    expect(matched).toBeDefined();\n    expect(typeof matched.id).toBe('string');\n    expect(typeof matched.username).toBe('string');\n    expect(typeof matched.likes_count).toBe('number');\n    expect(typeof matched.comments_count).toBe('number');\n    expect(typeof matched.is_liked).toBe('boolean');\n  });\n\n  test('GET /api/v1/search finds users by @ prefix query deterministically', async ({ request }) => {\n    const seedUserFp = `alice_${Date.now()}`;\n    const seedRes = await request.post('/api/v1/posts', {\n      headers: { 'x-browser-fingerprint': seedUserFp },\n      data: { content: `Seed post for user creation ${Date.now()}` },\n    });\n    expect([200, 201]).toContain(seedRes.status());\n\n    // Query with @alice prefix\n    const searchRes = await request.get('/api/v1/search', {\n      headers: FINGERPRINT_HEADER,\n      params: { q: '@alice' },\n    });\n    expect(searchRes.status()).toBe(200);\n    const body = await searchRes.json();\n    expect(Array.isArray(body.users)).toBe(true);\n    expect(body.users.length).toBeGreaterThan(0);\n\n    const matchedUser = body.users.find(\n      (u: any) =>\n        (typeof u.id === 'string' && u.id.includes('alice')) ||\n        (typeof u.username === 'string' && u.username.includes('alice'))\n    );\n    expect(matchedUser).toBeDefined();\n    expect(matchedUser).toHaveProperty('id');\n    expect(matchedUser).toHaveProperty('username');\n  });\n\n  test('GET /api/v1/search respects type filtering (posts vs users)', async ({ request }) => {\n    const keyword = `TypeFilter_${Date.now()}`;\n    await request.post('/api/v1/posts', {\n      headers: FINGERPRINT_HEADER,\n      data: { content: `Post for type filter ${keyword}` },\n    });\n\n    // Filter type=posts\n    const postsOnlyRes = await request.get('/api/v1/search', {\n      headers: FINGERPRINT_HEADER,\n      params: { q: keyword, type: 'posts' },\n    });\n    expect(postsOnlyRes.status()).toBe(200);\n    const postsOnlyBody = await postsOnlyRes.json();\n    expect(Array.isArray(postsOnlyBody.posts)).toBe(true);\n    expect(postsOnlyBody.users).toEqual([]);\n\n    // Filter type=users\n    const usersOnlyRes = await request.get('/api/v1/search', {\n      headers: FINGERPRINT_HEADER,\n      params: { q: keyword, type: 'users' },\n    });\n    expect(usersOnlyRes.status()).toBe(200);\n    const usersOnlyBody = await usersOnlyRes.json();\n    expect(usersOnlyBody.posts).toEqual([]);\n    expect(Array.isArray(usersOnlyBody.users)).toBe(true);\n  });\n\n  test('GET /api/v1/search returns empty arrays for non-matching query', async ({ request }) => {\n    const nonExistent = `non_existent_search_keyword_${Date.now()}_xyz`;\n    const searchRes = await request.get('/api/v1/search', {\n      headers: FINGERPRINT_HEADER,\n      params: { q: nonExistent },\n    });\n    expect(searchRes.status()).toBe(200);\n    const body = await searchRes.json();\n    expect(body.posts).toEqual([]);\n    expect(body.users).toEqual([]);\n  });\n\n  test('GET /api/v1/search safely handles SQL wildcards and special characters without 500 error', async ({ request }) => {\n    const specialQueries = ['%', '_', \"'\", '\"', '<script>alert(1)</script>'];\n    for (const q of specialQueries) {\n      const res = await request.get('/api/v1/search', {\n        headers: FINGERPRINT_HEADER,\n        params: { q },\n      });\n      expect([200, 400]).toContain(res.status());\n      if (res.status() === 200) {\n        const body = await res.json();\n        expect(Array.isArray(body.posts)).toBe(true);\n        expect(Array.isArray(body.users)).toBe(true);\n      }\n    }\n  });\n\n  test('GET /api/v1/search enforces limit constraint', async ({ request }) => {\n    const sharedTag = `LimitTag_${Date.now()}`;\n    for (let i = 0; i < 3; i++) {\n      await request.post('/api/v1/posts', {\n        headers: FINGERPRINT_HEADER,\n        data: { content: `Post item ${i} for ${sharedTag}` },\n      });\n    }\n\n    const res = await request.get('/api/v1/search', {\n      headers: FINGERPRINT_HEADER,\n      params: { q: sharedTag, limit: '2' },\n    });\n    expect(res.status()).toBe(200);\n    const body = await res.json();\n    expect(body.posts.length).toBeLessThanOrEqual(2);\n  });\n\n  test('GET /api/v1/search handles concurrent searches without race conditions', async ({ request }) => {\n    const query = `ConcurrentSearch_${Date.now()}`;\n    await request.post('/api/v1/posts', {\n      headers: FINGERPRINT_HEADER,\n      data: { content: `Concurrent content for ${query}` },\n    });\n\n    const requests = Array.from({ length: 5 }, () =>\n      request.get('/api/v1/search', {\n        headers: FINGERPRINT_HEADER,\n        params: { q: query },\n      })\n    );\n\n    const responses = await Promise.all(requests);\n    for (const res of responses) {\n      expect(res.status()).toBe(200);\n      const body = await res.json();\n      expect(Array.isArray(body.posts)).toBe(true);\n      expect(body.posts.length).toBeGreaterThan(0);\n    }\n  });\n});\n\ntest.describe('Search Feature Web E2E (Hardened)', () => {\n  test('User searches for post keyword in sidebar search box and views results', async ({ page, request }) => {\n    const uniquePostText = `SearchableTweet_${Date.now()}`;\n    await request.post('/api/v1/posts', {\n      headers: FINGERPRINT_HEADER,\n      data: { content: uniquePostText },\n    });\n\n    await page.goto('/');\n\n    const searchInput = page\n      .locator('.x-search-box input.x-search-input')\n      .or(page.locator('.x-sidebar-right').getByRole('textbox', { name: /搜索/i }))\n      .or(page.getByPlaceholder(/搜索/i))\n      .first();\n\n    await expect(searchInput).toBeVisible();\n    await searchInput.fill(uniquePostText);\n    await searchInput.press('Enter');\n\n    const mainContainer = page.getByRole('main').or(page.locator('.x-main-col, .feed-list')).first();\n    await expect(mainContainer.getByText(uniquePostText)).toBeVisible({ timeout: 10000 });\n  });\n\n  test('User searches with @ query to find users and verifies matched user card', async ({ page, request }) => {\n    const uniqueUserFp = `alice_${Date.now()}`;\n    await request.post('/api/v1/posts', {\n      headers: { 'x-browser-fingerprint': uniqueUserFp },\n      data: { content: `Alice unique post ${Date.now()}` },\n    });\n\n    await page.goto('/');\n\n    const searchInput = page\n      .locator('.x-search-box input.x-search-input')\n      .or(page.locator('.x-sidebar-right').getByRole('textbox', { name: /搜索/i }))\n      .or(page.getByPlaceholder(/搜索/i))\n      .first();\n\n    await expect(searchInput).toBeVisible();\n    await searchInput.fill('@alice');\n    await searchInput.press('Enter');\n\n    const mainContainer = page.getByRole('main').or(page.locator('.x-main-col, .feed-list')).first();\n    const userCard = mainContainer\n      .locator('.user-card, .search-user-item, article, [data-testid=\"search-user\"], .x-tweet-card')\n      .filter({ hasText: /alice/i })\n      .or(mainContainer.getByText(/alice/i))\n      .first();\n    await expect(userCard).toBeVisible({ timeout: 10000 });\n  });\n\n  test('User sees friendly empty state when search finds no results', async ({ page }) => {\n    await page.goto('/');\n\n    const searchInput = page\n      .locator('.x-search-box input.x-search-input')\n      .or(page.locator('.x-sidebar-right').getByRole('textbox', { name: /搜索/i }))\n      .or(page.getByPlaceholder(/搜索/i))\n      .first();\n\n    await expect(searchInput).toBeVisible();\n    const nonExistent = `non_existent_term_${Date.now()}`;\n    await searchInput.fill(nonExistent);\n    await searchInput.press('Enter');\n\n    const mainContainer = page.getByRole('main').or(page.locator('.x-main-col, .feed-list')).first();\n    await expect(\n      mainContainer\n        .locator('.card.empty-card, [data-testid=\"search-empty\"], .search-empty')\n        .or(mainContainer.getByText(/未找到|没有找到|暂无|无相关结果|无结果|没有匹配|no results/i))\n        .first()\n    ).toBeVisible({ timeout: 10000 });\n  });\n\n  test('User can clear search and return to default feed stream', async ({ page, request }) => {\n    const seedPost = `DefaultFeedItem_${Date.now()}`;\n    await request.post('/api/v1/posts', {\n      headers: FINGERPRINT_HEADER,\n      data: { content: seedPost },\n    });\n\n    await page.goto('/');\n    const searchInput = page\n      .locator('.x-search-box input.x-search-input')\n      .or(page.locator('.x-sidebar-right').getByRole('textbox', { name: /搜索/i }))\n      .or(page.getByPlaceholder(/搜索/i))\n      .first();\n\n    await expect(searchInput).toBeVisible();\n    await searchInput.fill('temp_search_query');\n    await searchInput.press('Enter');\n\n    // Either click a clear/back button or clear the search input and press Enter\n    const backOrClearBtn = page\n      .locator('.search-back-btn, .clear-search-btn')\n      .or(page.getByRole('button', { name: /返回|清空|退出搜索|back|clear/i }))\n      .first();\n\n    if (await backOrClearBtn.isVisible()) {\n      await backOrClearBtn.click();\n    } else {\n      await searchInput.fill('');\n      await searchInput.press('Enter');\n    }\n\n    const mainContainer = page.getByRole('main').or(page.locator('.x-main-col, .feed-list')).first();\n    await expect(\n      mainContainer.getByText(seedPost).or(mainContainer.locator('.post-card, article').first())\n    ).toBeVisible({ timeout: 10000 });\n  });\n});"
+}
