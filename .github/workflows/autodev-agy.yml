@@ -92,10 +92,13 @@ jobs:
 
           Requirements:
           1. Implement all atomic tasks and API contracts defined in docs/spec.json in clean, modular, production-ready code.
-          2. STRICT READ-ONLY CONTRACT: Do NOT modify, weaken, or delete tests/e2e.spec.ts or docs/spec.json.
-          3. Install required dependencies, verify TypeScript/build passes, and run automated checks against your implementation.
-          4. Keep git working tree clean of temporary logs or build artifacts (update .gitignore as needed).
-          5. Output a concise summary of implemented files and verification results.
+          2. Cloudflare Deployment Standard (when targeting Cloudflare Workers):
+             - Provide a valid wrangler.toml (or wrangler.jsonc) with Workers Static Assets (`[assets]` directory = "./dist", not_found_handling = "single-page-application"), Hono TypeScript API entry, and D1 SQL migrations in `migrations/` if relational storage is used.
+             - Ensure `package.json` has working `build` and `deploy` (`wrangler deploy`) scripts.
+          3. STRICT READ-ONLY CONTRACT: Do NOT modify, weaken, or delete tests/e2e.spec.ts or docs/spec.json.
+          4. Install required dependencies, verify TypeScript/build passes, and run automated checks against your implementation.
+          5. Keep git working tree clean of temporary logs or build artifacts (update .gitignore as needed).
+          6. Output a concise summary of implemented files and verification results.
           EOF
           )
           agy \
