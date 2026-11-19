@@ -291,7 +291,10 @@ jobs:
              - NEVER modify or overwrite already-applied migration files in migrations/. Always append new sequentially numbered migration files (e.g. 0002_xxx.sql) using IF NOT EXISTS / safe ALTER statements where appropriate.
              - Ensure package.json has working build and deploy (wrangler deploy) scripts.
           5. STRICT READ-ONLY CONTRACT: Do NOT modify, weaken, or delete docs/spec.json, tests/e2e.spec.ts, or ANY file inside tests/e2e/.
-          6. Install required dependencies, verify TypeScript/build passes, and run automated checks against your implementation.
+          6. FOREGROUND-ONLY VERIFICATION (NO BACKGROUND TASKS):
+             - NEVER start dev servers, watch processes, or Playwright runs as async background tasks or detached daemons (doing so leaves AGY idle waiting 20m for background tasks until DEADLINE_EXCEEDED / print_timeout).
+             - Always run build/typecheck and Playwright strictly in the FOREGROUND with finite timeouts, e.g. `timeout 180s npx playwright test --reporter=line` (relying on Playwright's own webServer lifecycle so processes terminate cleanly).
+             - Before finishing your turn, verify zero background tasks/servers remain running; the CI pipeline automatically executes a dedicated post-coding verification step right after you exit.
           7. Keep git working tree clean of temporary logs or build artifacts (update .gitignore as needed).
           8. Output a concise summary in Chinese of implemented/modified files and verification results.
           EOF
