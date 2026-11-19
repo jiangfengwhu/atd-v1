@@ -12,17 +12,10 @@ on:
         required: false
         default: 'main'
         type: string
-      issue_number:
-        description: 'Tracking issue number for plan artifacts'
-        required: true
-        type: string
-      input_comment_id:
-        description: 'Comment ID containing serialized PRD input payload'
-        required: true
-        type: string
-      state_comment_id:
-        description: 'Comment ID to PATCH with real-time 3-stage planning state'
-        required: true
+      channel_branch:
+        description: 'Dedicated orphan branch for plan JSON artifacts (default: autodev-plan-channel)'
+        required: false
+        default: 'autodev-plan-channel'
         type: string
       agy_model:
         description: 'AGY model ID configured on the VPS'
@@ -36,10 +29,9 @@ on:
           - claude-opus-4-6-thinking
           - gpt-oss-120b-medium
 
-# Read-only repository permissions: planning stages must never push commits to the repo
+# Writes ONLY to dedicated orphan branch autodev-plan-channel via REST API; never modifies base_branch/main
 permissions:
-  contents: read
-  issues: write
+  contents: write
 
 # Shares the single-task repository-wide serial queue with AGY coding runs
 concurrency:
@@ -66,9 +58,7 @@ jobs:
           PLAN_RUN_ID: ${{ github.run_id }}
           PLAN_JOB_ID: ${{ inputs.job_id }}
           PLAN_BASE_BRANCH: ${{ inputs.base_branch || 'main' }}
-          PLAN_ISSUE_NUMBER: ${{ inputs.issue_number }}
-          PLAN_INPUT_COMMENT_ID: ${{ inputs.input_comment_id }}
-          PLAN_STATE_COMMENT_ID: ${{ inputs.state_comment_id }}
+          PLAN_CHANNEL_BRANCH: ${{ inputs.channel_branch || 'autodev-plan-channel' }}
           PLAN_MODEL: ${{ inputs.agy_model || 'gemini-3.8-flash-high' }}
         shell: bash
         run: |
@@ -86,14 +76,17 @@ jobs:
           const repo = process.env.PLAN_REPO;
           const actionsRunId = Number(process.env.PLAN_RUN_ID || 0);
           const jobId = process.env.PLAN_JOB_ID;
+          const safeJobId = String(jobId || 'unknown').replace(/[^a-zA-Z0-9._-]/g, '_');
           const baseBranch = process.env.PLAN_BASE_BRANCH || 'main';
-          const issueNumber = Number(process.env.PLAN_ISSUE_NUMBER || 0);
-          const inputCommentId = Number(process.env.PLAN_INPUT_COMMENT_ID || 0);
-          const stateCommentId = Number(process.env.PLAN_STATE_COMMENT_ID || 0);
+          const channelBranch = process.env.PLAN_CHANNEL_BRANCH || 'autodev-plan-channel';
           const model = process.env.PLAN_MODEL || 'gemini-3.8-flash-high';
           const actionsUrl = 'https://github.com/' + repo + '/actions/runs/' + actionsRunId;
 
-          const tmpDir = '/tmp/autodev-plan-' + jobId;
+          if (!channelBranch || channelBranch === baseBranch || channelBranch === 'main' || channelBranch === 'master') {
+            throw new Error('Refusing to write plan artifacts to protected branch: ' + channelBranch);
+          }
+
+          const tmpDir = '/tmp/autodev-plan-' + safeJobId;
           fs.mkdirSync(tmpDir, { recursive: true });
           const wsOutDir = path.join(process.cwd(), '.autodev-plan-output');
 
@@ -113,21 +106,67 @@ jobs:
             const res = await fetch('https://api.github.com' + apiPath, { ...options, headers });
             const text = await res.text();
             if (!res.ok) {
-              throw new Error('GitHub API ' + res.status + ' on ' + apiPath + ': ' + text.slice(0, 300));
+              const err = new Error('GitHub API ' + res.status + ' on ' + apiPath + ': ' + text.slice(0, 300));
+              err.status = res.status;
+              throw err;
             }
             return text ? JSON.parse(text) : null;
           }
 
-          function sanitizeFence(str) {
-            return String(str).replace(/~~~~/g, '----');
+          function encodeRepoPath(filePath) {
+            return filePath.split('/').map((s) => encodeURIComponent(s)).join('/');
           }
 
-          function extractFencedJson(body) {
-            const m1 = body.match(/~~~~json\s*\n([\s\S]*?)\n~~~~/);
-            if (m1) return m1[1].trim();
-            const m2 = body.match(/```json\s*\n([\s\S]*?)\n```/);
-            if (m2) return m2[1].trim();
-            return null;
+          function artifactPath(fileName) {
+            return '.autodev-plans/' + safeJobId + '/' + fileName;
+          }
+
+          async function readChannelFile(filePath) {
+            const encoded = encodeRepoPath(filePath);
+            const res = await gh(
+              '/repos/' + repo + '/contents/' + encoded + '?ref=' + encodeURIComponent(channelBranch)
+            );
+            const rawText = res.encoding === 'base64'
+              ? Buffer.from(String(res.content || '').replace(/\n/g, ''), 'base64').toString('utf8')
+              : String(res.content || '');
+            return { sha: res.sha, data: JSON.parse(rawText) };
+          }
+
+          async function writeChannelFile(filePath, data, commitMsg, knownSha) {
+            const encoded = encodeRepoPath(filePath);
+            const contentB64 = Buffer.from(JSON.stringify(data, null, 2), 'utf8').toString('base64');
+
+            let sha = knownSha;
+            for (let attempt = 1; attempt <= 2; attempt++) {
+              if (!sha && attempt === 2) {
+                try {
+                  const existing = await gh(
+                    '/repos/' + repo + '/contents/' + encoded + '?ref=' + encodeURIComponent(channelBranch)
+                  );
+                  sha = existing?.sha;
+                } catch {}
+              }
+              const payload = {
+                message: commitMsg,
+                content: contentB64,
+                branch: channelBranch,
+              };
+              if (sha) payload.sha = sha;
+              try {
+                const updated = await gh('/repos/' + repo + '/contents/' + encoded, {
+                  method: 'PUT',
+                  body: JSON.stringify(payload),
+                });
+                return updated?.content?.sha || sha;
+              } catch (err) {
+                if ((err.status === 409 || err.status === 422) && attempt === 1) {
+                  sha = undefined;
+                  continue;
+                }
+                throw err;
+              }
+            }
+            return sha;
           }
 
           function extractJsonLoose(text) {
@@ -170,43 +209,37 @@ jobs:
               qa_spec: { status: 'idle' },
               qa_critic: { status: 'idle' },
             },
-            outputCommentIds: {},
+            outputFiles: {},
           };
+
+          let stateFileSha;
+          const stateFilePath = artifactPath('state.json');
 
           async function syncState() {
             state.updatedAt = new Date().toISOString();
-            const body = [
-              '<!-- AUTODEV-PLAN-STATE:' + jobId + ' -->',
-              '### AutoDev AGY Plan State (' + jobId + ')',
-              '- Status: `' + state.status + '`',
-              '- Model: `' + model + '`',
-              '- Commit: `' + (headSha ? headSha.slice(0, 7) : 'empty') + '`',
-              '- Updated: ' + state.updatedAt,
-              '',
-              '~~~~json',
-              sanitizeFence(JSON.stringify(state, null, 2)),
-              '~~~~',
-            ].join('\n');
-            await gh('/repos/' + repo + '/issues/comments/' + stateCommentId, {
-              method: 'PATCH',
-              body: JSON.stringify({ body }),
-            });
+            if (!stateFileSha) {
+              try {
+                const existing = await readChannelFile(stateFilePath);
+                stateFileSha = existing.sha;
+              } catch {}
+            }
+            stateFileSha = await writeChannelFile(
+              stateFilePath,
+              state,
+              'chore(autodev-plan): update state for ' + safeJobId + ' (' + state.status + ')',
+              stateFileSha
+            );
           }
 
           async function postStageOutput(stage, data) {
-            const body = [
-              '<!-- AUTODEV-PLAN-OUTPUT:' + jobId + ':' + stage + ' -->',
-              '### AutoDev Plan Stage Output: ' + stage + ' (' + jobId + ')',
-              '',
-              '~~~~json',
-              sanitizeFence(JSON.stringify(data)),
-              '~~~~',
-            ].join('\n');
-            const created = await gh('/repos/' + repo + '/issues/' + issueNumber + '/comments', {
-              method: 'POST',
-              body: JSON.stringify({ body }),
-            });
-            return created.id;
+            const outFilePath = artifactPath(stage + '.json');
+            await writeChannelFile(
+              outFilePath,
+              data,
+              'chore(autodev-plan): save ' + stage + ' output for ' + safeJobId,
+              undefined
+            );
+            return outFilePath;
           }
 
           function validateStage(stage, raw) {
@@ -331,9 +364,9 @@ jobs:
                 const check = validateStage(stage, parsed);
                 if (check.ok) {
                   fs.writeFileSync(tmpOutPath, JSON.stringify(check.data, null, 2), 'utf8');
-                  const commentId = await postStageOutput(stage, check.data);
+                  const outPath = await postStageOutput(stage, check.data);
                   const durationMs = Date.now() - startedMs;
-                  state.outputCommentIds[stage] = commentId;
+                  state.outputFiles[stage] = outPath;
                   state.steps[stage] = {
                     status: 'completed',
                     startedAt: state.steps[stage].startedAt,
@@ -364,12 +397,10 @@ jobs:
           }
 
           async function main() {
-            const inputComment = await gh('/repos/' + repo + '/issues/comments/' + inputCommentId);
-            const rawInput = extractFencedJson(inputComment.body || '');
-            if (!rawInput) {
-              throw new Error('Failed to parse input payload from comment #' + inputCommentId);
+            const { data: input } = await readChannelFile(artifactPath('input.json'));
+            if (!input || typeof input.prdTitle !== 'string') {
+              throw new Error('Failed to load valid input.json from channel branch ' + channelBranch);
             }
-            const input = JSON.parse(rawInput);
 
             const stackNote = input.isDefaultCloudflare
               ? 'Default Cloudflare Workers + Hono + D1 + KV + React/Vite stack. Inspect existing wrangler.toml, migrations/, src/, and client/ first!'
@@ -483,4 +514,4 @@ jobs:
           node /tmp/autodev-plan-runner.mjs
           EXIT_CODE=$?
           rm -f /tmp/autodev-plan-runner.mjs
-          exit "${EXIT_CODE}"
+          exit $EXIT_CODE
