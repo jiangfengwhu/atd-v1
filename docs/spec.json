@@ -1,0 +1,334 @@
+{
+  "schemaVersion": "1.0",
+  "generatedBy": "AutoDev Studio",
+  "runId": "run-4c6584df",
+  "createdAt": "2026-11-19T06:07:51.522Z",
+  "repository": "jiangfengwhu/atd-v1",
+  "baseBranch": "main",
+  "prdTitle": "用户社区",
+  "architecture": {
+    "summary": "A serverless social platform using Hono on Cloudflare Workers. Frontend is built with Vite, utilizing Cloudflare Static Assets for global delivery. Data persistence via Cloudflare D1 (SQL-based relational storage) handles Users, Posts, Comments, and DMs. Cloudflare KV serves as a session/fingerprint cache and global rate limiter to prevent spam.",
+    "techDecisions": [
+      "Use Hono's Zod Validator for type-safe request parsing.",
+      "Implement D1 for relational database operations; run migrations via 'wrangler d1 migrations apply'.",
+      "Use Browser Fingerprint (via hash of user agent + screen resolution) stored in KV for ephemeral session identification.",
+      "Adopt Cursor-based pagination (using timestamp or ID) for efficient Feed and DM queries.",
+      "Frontend SPA architecture with React Query for efficient data fetching and caching."
+    ]
+  },
+  "ambiguities": [
+    {
+      "id": "AMB-01",
+      "severity": "high",
+      "title": "Auth Mechanism Definition",
+      "detail": "Browser fingerprinting is insufficient for persistence if the browser clears storage or cache, and it lacks security against spoofing.",
+      "clarificationSuggestion": "Use browser fingerprint as a session identity (deviceId) but implement JWT signed by Workers to track user context; clarify if user accounts require persistent identity."
+    },
+    {
+      "id": "AMB-02",
+      "severity": "medium",
+      "title": "Feed Flow Ordering and Pagination",
+      "detail": "No specification on feed ordering (chronological vs. algorithmic) or pagination strategy (cursor vs. offset).",
+      "clarificationSuggestion": "Assume reverse chronological order and cursor-based pagination for performance."
+    },
+    {
+      "id": "AMB-03",
+      "severity": "high",
+      "title": "Direct Message Scope",
+      "detail": "Direct messages imply a P2P or multi-user chat feature, which requires a relational schema for message threads.",
+      "clarificationSuggestion": "Define if it is 1-on-1 private messaging or public-reply-based threads."
+    }
+  ],
+  "apiContracts": [
+    {
+      "id": "API-01",
+      "method": "POST",
+      "path": "/api/v1/posts",
+      "summary": "Publish new content",
+      "requestSchema": "{ content: string }",
+      "responseSchema": "{ id: string, created_at: string }",
+      "errorCodes": [
+        "400_INVALID_CONTENT",
+        "401_UNAUTHORIZED"
+      ]
+    },
+    {
+      "id": "API-02",
+      "method": "GET",
+      "path": "/api/v1/feed",
+      "summary": "Fetch post stream",
+      "requestSchema": "{ cursor?: string, limit?: number }",
+      "responseSchema": "{ posts: Array<{id: string, content: string, user_id: string}>, next_cursor: string }",
+      "errorCodes": [
+        "500_DB_ERROR"
+      ]
+    },
+    {
+      "id": "API-03",
+      "method": "POST",
+      "path": "/api/v1/messages",
+      "summary": "Send private message",
+      "requestSchema": "{ recipient_id: string, content: string }",
+      "responseSchema": "{ message_id: string }",
+      "errorCodes": [
+        "404_USER_NOT_FOUND"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-01",
+      "title": "Setup Project Structure",
+      "module": "Infrastructure",
+      "description": "Initialize Hono project with wrangler.toml and D1 schema definition.",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "wrangler.toml configured",
+        "D1 schema.sql created",
+        "Project build success"
+      ],
+      "estimatedComplexity": "S"
+    },
+    {
+      "id": "T-02",
+      "title": "Implement Fingerprint Middleware",
+      "module": "Auth",
+      "description": "Develop Hono middleware to extract/set user identity via browser headers.",
+      "dependsOn": [
+        "T-01"
+      ],
+      "acceptanceCriteria": [
+        "Middleware identifies requests",
+        "Identity stored in context"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-03",
+      "title": "Develop Feed Service",
+      "module": "Backend",
+      "description": "CRUD operations for posts using D1.",
+      "dependsOn": [
+        "T-02"
+      ],
+      "acceptanceCriteria": [
+        "Posts stored in SQLite",
+        "Feed retrieval works"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-04",
+      "title": "Implement Comment System",
+      "module": "Backend",
+      "description": "Add reply functionality to existing posts.",
+      "dependsOn": [
+        "T-03"
+      ],
+      "acceptanceCriteria": [
+        "Comments linked to post IDs",
+        "Nested display possible"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-05",
+      "title": "Direct Messaging Logic",
+      "module": "Backend",
+      "description": "Implement D1 table for 1-on-1 private messages.",
+      "dependsOn": [
+        "T-02"
+      ],
+      "acceptanceCriteria": [
+        "Messages sent and retrieved per user pairs"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-06",
+      "title": "Frontend Integration",
+      "module": "Frontend",
+      "description": "Build UI components in React to consume API routes.",
+      "dependsOn": [
+        "T-03",
+        "T-04",
+        "T-05"
+      ],
+      "acceptanceCriteria": [
+        "Feed rendering",
+        "Post form interaction",
+        "Message UI functional"
+      ],
+      "estimatedComplexity": "L"
+    },
+    {
+      "id": "T-07",
+      "title": "Production Deployment",
+      "module": "CI/CD",
+      "description": "Configure wrangler for static assets and final deployment.",
+      "dependsOn": [
+        "T-06"
+      ],
+      "acceptanceCriteria": [
+        "npm run build passes",
+        "wrangler deploy succeeds",
+        "Live URL accessible"
+      ],
+      "estimatedComplexity": "S"
+    }
+  ],
+  "qaSpec": {
+    "coverageNotes": [
+      "接口测试覆盖全部 3 个公开契约端点（POST /api/v1/posts、GET /api/v1/feed、POST /api/v1/messages）的正常流及已定义异常码（400_INVALID_CONTENT、401_UNAUTHORIZED、404_USER_NOT_FOUND）。",
+      "E2E 测试覆盖浏览器指纹无感登录场景下的核心用户路径：首页 Feed 流加载、发布文字动态并实时回显、以及站内信交互入口可达性验证。",
+      "契约边界说明：500_DB_ERROR 需在数据库故障注入或 Mock 环境下验证；当前公开契约未包含独立的评论（Comments）接口定义，待补充评论 API 契约后可进一步扩展评论接口与持久化断言。"
+    ],
+    "initialApiTestCount": 8
+  },
+  "qaCritic": {
+    "reviewSummary": "初版测试集覆盖了基础正向路径与部分契约错误码，但存在明显盲区：1）缺少空白字符、超长文本及非法分页等边界校验；2）私信 API 正向用例强依赖已有 Feed 数据，空库时会静默跳过；3）完全缺失 XSS 注入与伪造/空指纹头安全测试；4）UI 测试中私信流程未执行真实提交与报错断言，且缺少双击防重、空输入拦截、500 异常恢复及刷新会话保持；5）缺少并发发帖竞态测试。本次加固已将上述盲区全部补齐并转化为可执行断言。",
+    "findings": [
+      {
+        "id": "CRIT-01",
+        "category": "invalid_input",
+        "severity": "high",
+        "issue": "POST /api/v1/posts 与 POST /api/v1/messages 缺少纯空白字符串、缺字段及超长文本校验，且私信接口未覆盖未认证(401)与空消息体(400)场景。",
+        "recommendation": "补充空白字符、缺失字段、超长载荷测试用例，并在私信接口中显式校验无指纹返回 401 及空内容返回 400。"
+      },
+      {
+        "id": "CRIT-02",
+        "category": "boundary",
+        "severity": "medium",
+        "issue": "POST /api/v1/messages 正向用例在 Feed 为空时会直接跳过，导致核心链路漏测；GET /api/v1/feed 缺少极限 limit 分页边界与空结果游标测试。",
+        "recommendation": "在私信测试前先通过发帖接口造数确保存在合法 user_id，并增加 limit=1 最小分页与超界 cursor 校验。"
+      },
+      {
+        "id": "CRIT-03",
+        "category": "security",
+        "severity": "high",
+        "issue": "未覆盖社区高频的 XSS 脚本注入风险（发帖与私信内容包含 script 或 onerror 事件载荷），且未测试空字符串/纯空白浏览器指纹头。",
+        "recommendation": "增加 XSS 载荷端到端测试，监听 dialog 事件并校验 DOM 未执行恶意脚本；同时测试空指纹头返回 401。"
+      },
+      {
+        "id": "CRIT-04",
+        "category": "ui_interaction",
+        "severity": "high",
+        "issue": "UI 私信测试仅检查表单元素可见而未实际提交；同时缺失双击防重/加载态校验、空输入拦截、500 接口异常恢复及页面刷新后指纹持久化验证。",
+        "recommendation": "补全私信表单提交与错误提示断言，利用路由拦截模拟 500_DB_ERROR 验证 UI 降级恢复，并校验发帖防重与刷新持久化。"
+      },
+      {
+        "id": "CRIT-05",
+        "category": "concurrency",
+        "severity": "medium",
+        "issue": "缺少同一浏览器指纹并发发帖测试，无法暴露高并发下的 ID 冲突、数据覆盖或数据库锁异常。",
+        "recommendation": "使用 Promise.all 并发发起 5 个发帖请求，断言全部成功且返回的 post id 互不重复。"
+      }
+    ],
+    "finalApiTestChecklist": [
+      {
+        "id": "TC-API-01",
+        "endpoint": "/api/v1/posts",
+        "method": "POST",
+        "scenario": "携带有效浏览器指纹与非空 content 发布文字动态",
+        "expectedStatus": 201,
+        "assertion": "响应体包含非空字符串字段 id 与 created_at"
+      },
+      {
+        "id": "TC-API-02",
+        "endpoint": "/api/v1/posts",
+        "method": "POST",
+        "scenario": "content 为空字符串或缺失时发布动态",
+        "expectedStatus": 400,
+        "assertion": "响应返回错误码 400_INVALID_CONTENT"
+      },
+      {
+        "id": "TC-API-03",
+        "endpoint": "/api/v1/posts",
+        "method": "POST",
+        "scenario": "缺少浏览器指纹认证标识时发布动态",
+        "expectedStatus": 401,
+        "assertion": "响应返回错误码 401_UNAUTHORIZED"
+      },
+      {
+        "id": "TC-API-04",
+        "endpoint": "/api/v1/feed",
+        "method": "GET",
+        "scenario": "不传分页参数获取默认 Feed 流",
+        "expectedStatus": 200,
+        "assertion": "响应体包含 posts 数组（每项含 id、content、user_id）及 next_cursor 字符串"
+      },
+      {
+        "id": "TC-API-05",
+        "endpoint": "/api/v1/feed",
+        "method": "GET",
+        "scenario": "携带 cursor 与 limit 参数分页拉取 Feed 流",
+        "expectedStatus": 200,
+        "assertion": "返回的 posts 数量不超过 limit，且数据结构符合契约"
+      },
+      {
+        "id": "TC-API-06",
+        "endpoint": "/api/v1/feed",
+        "method": "GET",
+        "scenario": "数据库服务异常时请求 Feed 流",
+        "expectedStatus": 500,
+        "assertion": "响应返回错误码 500_DB_ERROR"
+      },
+      {
+        "id": "TC-API-07",
+        "endpoint": "/api/v1/messages",
+        "method": "POST",
+        "scenario": "向存在的 recipient_id 发送非空站内信",
+        "expectedStatus": 201,
+        "assertion": "响应体包含非空字符串字段 message_id"
+      },
+      {
+        "id": "TC-API-08",
+        "endpoint": "/api/v1/messages",
+        "method": "POST",
+        "scenario": "向不存在的 recipient_id 发送站内信",
+        "expectedStatus": 404,
+        "assertion": "响应返回错误码 404_USER_NOT_FOUND"
+      },
+      {
+        "id": "TC-API-09",
+        "endpoint": "/api/v1/posts",
+        "method": "POST",
+        "scenario": "content 为纯空白字符串或缺失字段时发布动态",
+        "expectedStatus": 400,
+        "assertion": "响应返回错误码 400_INVALID_CONTENT"
+      },
+      {
+        "id": "TC-API-10",
+        "endpoint": "/api/v1/posts",
+        "method": "POST",
+        "scenario": "携带空字符串或纯空白浏览器指纹头发布动态",
+        "expectedStatus": 401,
+        "assertion": "响应返回错误码 401_UNAUTHORIZED"
+      },
+      {
+        "id": "TC-API-11",
+        "endpoint": "/api/v1/messages",
+        "method": "POST",
+        "scenario": "未携带浏览器指纹或 content 为空时发送站内信",
+        "expectedStatus": 400,
+        "assertion": "未认证返回 401_UNAUTHORIZED，空内容返回 400"
+      },
+      {
+        "id": "TC-API-12",
+        "endpoint": "/api/v1/feed",
+        "method": "GET",
+        "scenario": "携带最小边界 limit=1 拉取 Feed 流并验证游标递进",
+        "expectedStatus": 200,
+        "assertion": "posts 长度小于等于 1，且后续游标请求不返回重复的首条数据"
+      },
+      {
+        "id": "TC-API-13",
+        "endpoint": "/api/v1/posts",
+        "method": "POST",
+        "scenario": "同一指纹并发发起 5 次发帖请求",
+        "expectedStatus": 201,
+        "assertion": "所有请求均成功返回且生成的 5 个 id 互不重复"
+      }
+    ]
+  }
+}
