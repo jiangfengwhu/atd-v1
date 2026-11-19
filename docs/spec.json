@@ -1,333 +1,293 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "generatedBy": "AutoDev Studio",
-  "runId": "run-4c6584df",
-  "createdAt": "2026-11-19T06:07:51.522Z",
+  "runId": "run-f734f054",
+  "createdAt": "2026-11-19T09:46:30.142Z",
   "repository": "jiangfengwhu/atd-v1",
   "baseBranch": "main",
-  "prdTitle": "用户社区",
+  "baseCommitSha": "e6253f2ab012609d4e4b814b01b8d25f4b0221e8",
+  "e2eTestPath": "tests/e2e/run-f734f054.spec.ts",
+  "archivedSpecPath": "docs/iterations/run-f734f054-spec.json",
+  "prdTitle": "UI优化",
   "architecture": {
-    "summary": "A serverless social platform using Hono on Cloudflare Workers. Frontend is built with Vite, utilizing Cloudflare Static Assets for global delivery. Data persistence via Cloudflare D1 (SQL-based relational storage) handles Users, Posts, Comments, and DMs. Cloudflare KV serves as a session/fingerprint cache and global rate limiter to prevent spam.",
+    "summary": "本项目基于 React 19 + Vite 构建前端单页应用，后端运行于 Cloudflare Workers (Hono) 框架。当前前端已具备动态发布、游标分页 Feed、评论交互与站内私信等完备业务链路，但界面为居中单列的传统极简卡片风格。本次架构升级以 X.com（原 Twitter）视觉与交互规范为基准，实施端到端增量优化：重塑 client/styles.css 为 X 主题设计系统（采用纯黑/暗夜/亮白高精度色彩系统、细边框流式分割线及 Awwwards 级交互动效），重组 client/App.tsx 布局体系为 X 经典三栏自适应网格，升级 Feed、Comments 与 Messages 组件为 X 风格推文卡片、操作栏、头像微标识与平滑动画反馈，同时严格兼容并保留现有 Playwright E2E 测试所需的各类角色属性、无障碍标签与文案契约。",
     "techDecisions": [
-      "Use Hono's Zod Validator for type-safe request parsing.",
-      "Implement D1 for relational database operations; run migrations via 'wrangler d1 migrations apply'.",
-      "Use Browser Fingerprint (via hash of user agent + screen resolution) stored in KV for ephemeral session identification.",
-      "Adopt Cursor-based pagination (using timestamp or ID) for efficient Feed and DM queries.",
-      "Frontend SPA architecture with React Query for efficient data fetching and caching."
+      "采用 X.com 经典自适应三栏布局规范（左侧导航条、中栏沉浸流、右侧小部件栏），在保持现有状态管理与路由逻辑不变的前提下完成视觉与结构重构",
+      "基于原生现代 CSS 构建 Awwwards 级别的微动效系统（包含弹簧缓动曲线、按钮 Ripple/Scale 反馈、骨架屏微光渐变、动态列表平滑入场过渡），实现零额外依赖的高性能动画体验",
+      "采用设计令牌（CSS Design Tokens）完整映射 X 官方设计语言，统一圆角（全圆角胶囊按钮）、无边框列表分割线、毛玻璃吸顶头（backdrop-filter: blur(12px)）及高对比度排版",
+      "严格遵守增量保护原则，保留全部现有 E2E 测试依赖的 aria-label、role、data-testid 及表单验证错误文案，确保自动化测试 100% 绿色通过"
     ]
   },
   "ambiguities": [
     {
-      "id": "AMB-01",
-      "severity": "high",
-      "title": "Auth Mechanism Definition",
-      "detail": "Browser fingerprinting is insufficient for persistence if the browser clears storage or cache, and it lacks security against spoofing.",
-      "clarificationSuggestion": "Use browser fingerprint as a session identity (deviceId) but implement JWT signed by Workers to track user context; clarify if user accounts require persistent identity."
-    },
-    {
-      "id": "AMB-02",
+      "id": "AMB-1",
       "severity": "medium",
-      "title": "Feed Flow Ordering and Pagination",
-      "detail": "No specification on feed ordering (chronological vs. algorithmic) or pagination strategy (cursor vs. offset).",
-      "clarificationSuggestion": "Assume reverse chronological order and cursor-based pagination for performance."
+      "title": "X.com 三栏式布局在多设备分辨率下的响应式适配策略",
+      "detail": "需求提出 1:1 还原 x.com，原版桌面端为标准的左侧全局导航栏、中间主信息流、右侧搜索与推荐趋势栏的三栏布局，而移动端为底部导航加单列信息流。需明确不同断点下的具体降级呈现方式。",
+      "clarificationSuggestion": "桌面端（>=1024px）采用经典三栏布局（左侧导航含 X 品牌徽标与指纹名片、中栏主 Feed/私信区、右侧模拟与社区趋势挂件）；中等屏幕收起右栏为双栏；移动端（<768px）优雅转为顶部吸顶+底部浮动 Tab 栏，并确保所有 E2E 选择器稳定可用。"
     },
     {
-      "id": "AMB-03",
-      "severity": "high",
-      "title": "Direct Message Scope",
-      "detail": "Direct messages imply a P2P or multi-user chat feature, which requires a relational schema for message threads.",
-      "clarificationSuggestion": "Define if it is 1-on-1 private messaging or public-reply-based threads."
+      "id": "AMB-2",
+      "severity": "low",
+      "title": "Awwwards 级别交互动效的技术实现选型与包体积约束",
+      "detail": "当前项目为轻量级 Cloudflare Workers + React 19 SPA，引入大型第三方动画运行时（如 Framer Motion / GSAP）可能导致包体积膨胀及潜在的 React 19 兼容性问题。",
+      "clarificationSuggestion": "采用纯现代 CSS 硬件加速方案配合定制弹簧曲线（cubic-bezier）、骨架屏 Shimmer 动效、按钮微回弹与平滑折叠过渡，达成 60fps 顶级视觉体验且零额外包体积依赖。"
     }
   ],
   "apiContracts": [
     {
-      "id": "API-01",
-      "method": "POST",
-      "path": "/api/v1/posts",
-      "summary": "Publish new content",
-      "requestSchema": "{ content: string }",
-      "responseSchema": "{ id: string, created_at: string }",
-      "errorCodes": [
-        "400_INVALID_CONTENT",
-        "401_UNAUTHORIZED"
-      ]
-    },
-    {
-      "id": "API-02",
+      "id": "API-1",
       "method": "GET",
       "path": "/api/v1/feed",
-      "summary": "Fetch post stream",
-      "requestSchema": "{ cursor?: string, limit?: number }",
-      "responseSchema": "{ posts: Array<{id: string, content: string, user_id: string}>, next_cursor: string }",
+      "summary": "获取社区公开动态信息流列表，支持游标分页",
+      "requestSchema": "Query: { cursor?: string, limit?: number }",
+      "responseSchema": "{ posts: Array<{ id: string, user_id: string, content: string, created_at: string }>, next_cursor: string }",
       "errorCodes": [
-        "500_DB_ERROR"
+        "400",
+        "500"
       ]
     },
     {
-      "id": "API-03",
+      "id": "API-2",
+      "method": "POST",
+      "path": "/api/v1/posts",
+      "summary": "发布新动态内容，使用浏览器指纹鉴权",
+      "requestSchema": "Headers: { 'x-browser-fingerprint': string }, Body: { content: string }",
+      "responseSchema": "{ id: string, user_id: string, content: string, created_at: string }",
+      "errorCodes": [
+        "400",
+        "401",
+        "500"
+      ]
+    },
+    {
+      "id": "API-3",
+      "method": "GET",
+      "path": "/api/v1/comments",
+      "summary": "获取指定动态的评论列表",
+      "requestSchema": "Query: { post_id: string }",
+      "responseSchema": "{ comments: Array<{ id: string, post_id: string, user_id: string, content: string, created_at: string }> }",
+      "errorCodes": [
+        "400",
+        "500"
+      ]
+    },
+    {
+      "id": "API-4",
+      "method": "POST",
+      "path": "/api/v1/comments",
+      "summary": "发表动态评论",
+      "requestSchema": "Headers: { 'x-browser-fingerprint': string }, Body: { post_id: string, content: string }",
+      "responseSchema": "{ id: string, post_id: string, user_id: string, content: string, created_at: string }",
+      "errorCodes": [
+        "400",
+        "401",
+        "404",
+        "500"
+      ]
+    },
+    {
+      "id": "API-5",
       "method": "POST",
       "path": "/api/v1/messages",
-      "summary": "Send private message",
-      "requestSchema": "{ recipient_id: string, content: string }",
-      "responseSchema": "{ message_id: string }",
+      "summary": "发送站内私信给指定用户",
+      "requestSchema": "Headers: { 'x-browser-fingerprint': string }, Body: { recipient_id: string, content: string }",
+      "responseSchema": "{ message_id: string, sender_id: string, recipient_id: string, content: string, created_at: string }",
       "errorCodes": [
-        "404_USER_NOT_FOUND"
+        "400",
+        "401",
+        "404",
+        "500"
       ]
     }
   ],
   "tasks": [
     {
       "id": "T-01",
-      "title": "Setup Project Structure",
-      "module": "Infrastructure",
-      "description": "Initialize Hono project with wrangler.toml and D1 schema definition.",
+      "title": "重构全局样式与 Awwwards 级交互动效库",
+      "module": "client/styles.css",
+      "description": "全面升级设计变量系统，引入 X 官方经典色彩方案（暗黑深色/极简纯白、细灰分割线 #2f3336/rgb(239,243,244)）、全圆角组件、毛玻璃导航。建立高阶 CSS Keyframes 动效库，包括弹簧入场 (cubic-bezier(0.16, 1, 0.3, 1))、微光骨架屏脉冲动画 (shimmer)、按钮点击微缩放与涟漪微动效。",
       "dependsOn": [],
       "acceptanceCriteria": [
-        "wrangler.toml configured",
-        "D1 schema.sql created",
-        "Project build success"
+        "定义完备的 X.com 设计变量（颜色、字体、边框、阴影、圆角与动画缓动曲线）",
+        "实现高质量的微交互动效类（.x-btn-active、.x-fade-in-up、.x-shimmer 等）并在 60fps 下流畅运行",
+        "支持暗色模式与亮色模式的无缝平滑自适应过渡"
       ],
-      "estimatedComplexity": "S"
+      "estimatedComplexity": "M"
     },
     {
       "id": "T-02",
-      "title": "Implement Fingerprint Middleware",
-      "module": "Auth",
-      "description": "Develop Hono middleware to extract/set user identity via browser headers.",
+      "title": "重构应用顶层为 X.com 三栏响应式架构与导航交互",
+      "module": "client/App.tsx",
+      "description": "将 App.tsx 升级为 X 经典三栏布局：左侧导航栏（含 X 矢量图标、动态/私信侧边导航项、当前用户头像与指纹身份卡片）；中间为主视窗（保留毛玻璃吸顶头与状态切换）；右侧为趋势与指纹快捷切换挂件。移动端自动折叠为标准底部 Tab 栏，同时保持既有测试所需全部按钮文本与选择器。",
       "dependsOn": [
         "T-01"
       ],
       "acceptanceCriteria": [
-        "Middleware identifies requests",
-        "Identity stored in context"
+        "桌面端呈现标准的左侧固态导航、中栏核心内容、右侧辅助信息的 X 风格自适应布局",
+        "左侧导航按钮与右上角指纹名片支持 hover 悬浮发光与平滑点击缩放效果",
+        "Playwright 测试中的站内信导航链接/按钮 (getByRole('button', { name: /站内信|私信|messages/i })) 保持可见可点击"
       ],
       "estimatedComplexity": "M"
     },
     {
       "id": "T-03",
-      "title": "Develop Feed Service",
-      "module": "Backend",
-      "description": "CRUD operations for posts using D1.",
+      "title": "1:1 还原推特风格发帖区与动态流卡片微交互",
+      "module": "client/components/Feed.tsx",
+      "description": "将 Feed 组件重构为推特发帖框（带用户虚拟头像、自动伸缩输入区、胶囊形'发帖/发布'按钮及字数/表情辅助图标栏），推文列表转换为经典推文样式（头像、昵称、@指纹ID、时间戳、内容、互动按钮组：回复、转推、点赞、浏览量动效图标）。新增发帖成功淡入动画与加载骨架屏。",
       "dependsOn": [
+        "T-01",
         "T-02"
       ],
       "acceptanceCriteria": [
-        "Posts stored in SQLite",
-        "Feed retrieval works"
+        "发帖框和推文列表具有 1:1 的 X.com 视觉质感与微动效（点击、悬停、发布入场动画）",
+        "保留 data-testid=\"feed-list\" 容器及发布按钮防重复提交的禁用与加载态反馈",
+        "输入框支持空内容即时校验提示，XSS 攻击脚本安全转义输出",
+        "加载中状态呈现推特风格骨架屏微光渐变动画，异常状态提供重试按钮"
       ],
-      "estimatedComplexity": "M"
+      "estimatedComplexity": "L"
     },
     {
       "id": "T-04",
-      "title": "Implement Comment System",
-      "module": "Backend",
-      "description": "Add reply functionality to existing posts.",
+      "title": "升级评论列表为推特回复对话流与抽屉微动效",
+      "module": "client/components/Comments.tsx",
+      "description": "将 Comments 组件重塑为 X 风格的推文回复对话流（垂直虚线连接线、嵌套回复头像、轻量回复发布栏），配备丝滑的展开/折叠高度过渡动画与点赞/互动动效反馈。",
       "dependsOn": [
+        "T-01",
         "T-03"
       ],
       "acceptanceCriteria": [
-        "Comments linked to post IDs",
-        "Nested display possible"
+        "评论区域展现推特对话树（Thread）视觉风格与平滑展开交互",
+        "评论提交与列表加载具有平滑过渡微动效，防止界面突变跳跃",
+        "支持空内容与未登录状态的精确提示与平滑消除"
       ],
       "estimatedComplexity": "M"
     },
     {
       "id": "T-05",
-      "title": "Direct Messaging Logic",
-      "module": "Backend",
-      "description": "Implement D1 table for 1-on-1 private messages.",
+      "title": "升级站内信界面为 X.com 私信对话视窗",
+      "module": "client/components/Messages.tsx",
+      "description": "将 Messages 组件重塑为 X 风格私信中心：对话列表采用气泡流设计（区分己方发出与对方发送的视觉气泡、圆角与发送状态），底部输入栏采用胶囊圆角发送条，保留精准的收件人表单关联与反馈机制。",
       "dependsOn": [
+        "T-01",
         "T-02"
       ],
       "acceptanceCriteria": [
-        "Messages sent and retrieved per user pairs"
+        "私信页面具备 X.com 私信视窗的视觉布局与气泡消息流动效",
+        "精确保留 getByLabel(/收件人|recipient/i) 与 getByLabel(/私信内容|消息内容|message/i) 表单关联属性",
+        "未找到用户、空内容与发送成功的消息提示具有平滑淡入浮层动画"
       ],
       "estimatedComplexity": "M"
-    },
-    {
-      "id": "T-06",
-      "title": "Frontend Integration",
-      "module": "Frontend",
-      "description": "Build UI components in React to consume API routes.",
-      "dependsOn": [
-        "T-03",
-        "T-04",
-        "T-05"
-      ],
-      "acceptanceCriteria": [
-        "Feed rendering",
-        "Post form interaction",
-        "Message UI functional"
-      ],
-      "estimatedComplexity": "L"
-    },
-    {
-      "id": "T-07",
-      "title": "Production Deployment",
-      "module": "CI/CD",
-      "description": "Configure wrangler for static assets and final deployment.",
-      "dependsOn": [
-        "T-06"
-      ],
-      "acceptanceCriteria": [
-        "npm run build passes",
-        "wrangler deploy succeeds",
-        "Live URL accessible"
-      ],
-      "estimatedComplexity": "S"
     }
   ],
   "qaSpec": {
     "coverageNotes": [
-      "接口测试覆盖全部 3 个公开契约端点（POST /api/v1/posts、GET /api/v1/feed、POST /api/v1/messages）的正常流及已定义异常码（400_INVALID_CONTENT、401_UNAUTHORIZED、404_USER_NOT_FOUND）。",
-      "E2E 测试覆盖浏览器指纹无感登录场景下的核心用户路径：首页 Feed 流加载、发布文字动态并实时回显、以及站内信交互入口可达性验证。",
-      "契约边界说明：500_DB_ERROR 需在数据库故障注入或 Mock 环境下验证；当前公开契约未包含独立的评论（Comments）接口定义，待补充评论 API 契约后可进一步扩展评论接口与持久化断言。"
+      "完整保留全部 8 个既有回归测试用例（4 个 API 契约测试与 4 个 E2E 端到端测试），未篡改断言，保障系统历史稳定性。",
+      "新增评论系统 API 自动化校验（POST/GET /api/v1/posts/:postId/comments），覆盖未鉴权、空内容、目标动态不存在与正常发表全链路。",
+      "覆盖 T-01 与 T-02：校验 X.com 经典三栏自适应架构与导航栏交互切换，确保导航按钮具备活跃态切换、指纹标识展示与可访问性。",
+      "覆盖 T-03：校验发帖区域具有 X 风格交互、字数计数提示、防连续重复提交拦截、XSS 安全过滤及发帖后自动刷新展示。",
+      "覆盖 T-04：校验推特风格评论对话流（Thread）微交互，测试点击展开评论区、输入回复内容、成功提交并渲染到评论列表。",
+      "覆盖 T-05：校验 X 风格私信视窗微交互，确保 getByLabel 收件人与消息内容表单控件完备，覆盖收件人校验失败提示与发送成功反馈。",
+      "覆盖 Awwwards 级交互动效与视觉类规范：校验核心交互元素具备现代过渡动画、圆角设计与微交互响应类名。"
     ],
-    "initialApiTestCount": 8
+    "initialApiTestCount": 6
   },
   "qaCritic": {
-    "reviewSummary": "初版测试集覆盖了基础正向路径与部分契约错误码，但存在明显盲区：1）缺少空白字符、超长文本及非法分页等边界校验；2）私信 API 正向用例强依赖已有 Feed 数据，空库时会静默跳过；3）完全缺失 XSS 注入与伪造/空指纹头安全测试；4）UI 测试中私信流程未执行真实提交与报错断言，且缺少双击防重、空输入拦截、500 异常恢复及刷新会话保持；5）缺少并发发帖竞态测试。本次加固已将上述盲区全部补齐并转化为可执行断言。",
+    "reviewSummary": "Stage 2 QA Spec 整体架构设计严密，准确识别并适配了真实仓库中评论系统以 /api/v1/posts/:postId/comments 挂载的实际路由，完整保留了既有 8 个端到端与契约测试基线。经 QA Critic 深度走查真实客户端组件与后端路由，针对评论操作的选择器隔离性、父级评论边界追溯、X.com 风格活跃态交互（如导航 Tab 激活高亮与平滑过渡）进行了全方位加固，消除潜在的选择器竞争与偶发 Flaky 风险，确保满足 Awwwards 级微交互规范与高质量交付标准。",
     "findings": [
       {
         "id": "CRIT-01",
-        "category": "invalid_input",
-        "severity": "high",
-        "issue": "POST /api/v1/posts 与 POST /api/v1/messages 缺少纯空白字符串、缺字段及超长文本校验，且私信接口未覆盖未认证(401)与空消息体(400)场景。",
-        "recommendation": "补充空白字符、缺失字段、超长载荷测试用例，并在私信接口中显式校验无指纹返回 401 及空内容返回 400。"
+        "category": "ui_interaction",
+        "severity": "medium",
+        "issue": "在评论提交的端到端用例中，直接使用页面全局层级的 .last() 定位回复按钮，若页面存在多条动态或多个表单时可能造成选择器漂移或误触。",
+        "recommendation": "将评论输入框与提交按钮严格限定在对应动态的 postCard 容器与 .comment-form 内部进行链式查找，确保高并发与复杂列表下的元素定位确定性。"
       },
       {
         "id": "CRIT-02",
-        "category": "boundary",
+        "category": "invalid_input",
         "severity": "medium",
-        "issue": "POST /api/v1/messages 正向用例在 Feed 为空时会直接跳过，导致核心链路漏测；GET /api/v1/feed 缺少极限 limit 分页边界与空结果游标测试。",
-        "recommendation": "在私信测试前先通过发帖接口造数确保存在合法 user_id，并增加 limit=1 最小分页与超界 cursor 校验。"
+        "issue": "评论 API 虽然校验了空内容与动态不存在，但未覆盖包含嵌套父级回复 parent_id 的场景，以及对私信消息列表 GET /api/v1/messages 的鉴权与数据结构校验。",
+        "recommendation": "在 API 测试清单与 E2E 测试集中补齐 parent_id 楼中楼回复校验，以及补充 GET /api/v1/messages 接口的鉴权和返回格式断言。"
       },
       {
         "id": "CRIT-03",
-        "category": "security",
-        "severity": "high",
-        "issue": "未覆盖社区高频的 XSS 脚本注入风险（发帖与私信内容包含 script 或 onerror 事件载荷），且未测试空字符串/纯空白浏览器指纹头。",
-        "recommendation": "增加 XSS 载荷端到端测试，监听 dialog 事件并校验 DOM 未执行恶意脚本；同时测试空指纹头返回 401。"
+        "category": "ui_interaction",
+        "severity": "low",
+        "issue": "PRD 要求 1:1 模仿 X.com 并达到 Awwwards 级交互水准，原测试对导航栏 Tab 切换激活态（active class）及按钮 CSS 过渡动画（transition）缺乏明确验证。",
+        "recommendation": "加固导航切换测试，断言点击不同 Tab 时 .active 状态类的切换逻辑，并在全局样式校验中验证核心可交互控件包含平滑 transition 动画属性。"
       },
       {
         "id": "CRIT-04",
-        "category": "ui_interaction",
-        "severity": "high",
-        "issue": "UI 私信测试仅检查表单元素可见而未实际提交；同时缺失双击防重/加载态校验、空输入拦截、500 接口异常恢复及页面刷新后指纹持久化验证。",
-        "recommendation": "补全私信表单提交与错误提示断言，利用路由拦截模拟 500_DB_ERROR 验证 UI 降级恢复，并校验发帖防重与刷新持久化。"
-      },
-      {
-        "id": "CRIT-05",
-        "category": "concurrency",
-        "severity": "medium",
-        "issue": "缺少同一浏览器指纹并发发帖测试，无法暴露高并发下的 ID 冲突、数据覆盖或数据库锁异常。",
-        "recommendation": "使用 Promise.all 并发发起 5 个发帖请求，断言全部成功且返回的 post id 互不重复。"
+        "category": "boundary",
+        "severity": "low",
+        "issue": "Feed 流在空游标或极端分页参数下的边界行为需确保具备确定性的向后兼容表现，避免客户端陷入死循环请求。",
+        "recommendation": "在 API 校验中确保分页拉取到末尾时 next_cursor 为空字符串且后续拉取安全降级，前端具备明确的加载更多或末尾状态提示。"
       }
     ],
     "finalApiTestChecklist": [
       {
-        "id": "TC-API-01",
+        "id": "TC-01",
         "endpoint": "/api/v1/posts",
         "method": "POST",
-        "scenario": "携带有效浏览器指纹与非空 content 发布文字动态",
+        "scenario": "发布动态鉴权与入参校验，包括空指纹头、空白内容拦截与合法动态创建",
         "expectedStatus": 201,
-        "assertion": "响应体包含非空字符串字段 id 与 created_at"
+        "assertion": "未提供或空白指纹返回 401_UNAUTHORIZED；空白内容返回 400_INVALID_CONTENT；合法内容返回 200/201 且包含非空 id 和 created_at"
       },
       {
-        "id": "TC-API-02",
-        "endpoint": "/api/v1/posts",
-        "method": "POST",
-        "scenario": "content 为空字符串或缺失时发布动态",
-        "expectedStatus": 400,
-        "assertion": "响应返回错误码 400_INVALID_CONTENT"
-      },
-      {
-        "id": "TC-API-03",
-        "endpoint": "/api/v1/posts",
-        "method": "POST",
-        "scenario": "缺少浏览器指纹认证标识时发布动态",
-        "expectedStatus": 401,
-        "assertion": "响应返回错误码 401_UNAUTHORIZED"
-      },
-      {
-        "id": "TC-API-04",
+        "id": "TC-02",
         "endpoint": "/api/v1/feed",
         "method": "GET",
-        "scenario": "不传分页参数获取默认 Feed 流",
+        "scenario": "获取动态信息流列表并校验游标分页边界与数据不重复",
         "expectedStatus": 200,
-        "assertion": "响应体包含 posts 数组（每项含 id、content、user_id）及 next_cursor 字符串"
+        "assertion": "返回状态码 200，body 包含 posts 数组和 next_cursor 字符串，基于游标拉取下一页时不包含上一页的 post id"
       },
       {
-        "id": "TC-API-05",
-        "endpoint": "/api/v1/feed",
+        "id": "TC-03",
+        "endpoint": "/api/v1/posts/:postId/comments",
+        "method": "POST",
+        "scenario": "发表动态评论，校验未登录拦截、空内容拦截、目标动态不存在与正常评论创建",
+        "expectedStatus": 201,
+        "assertion": "未提供指纹返回 401；空白内容返回 400；动态不存在返回 404；正常评论返回 201 且包含 comment id、post_id、user_id 与 content"
+      },
+      {
+        "id": "TC-04",
+        "endpoint": "/api/v1/posts/:postId/comments",
         "method": "GET",
-        "scenario": "携带 cursor 与 limit 参数分页拉取 Feed 流",
+        "scenario": "获取指定动态的评论列表",
         "expectedStatus": 200,
-        "assertion": "返回的 posts 数量不超过 limit，且数据结构符合契约"
+        "assertion": "返回状态码 200，comments 为数组，每项包含 id, post_id, user_id, parent_id, content 与 created_at"
       },
       {
-        "id": "TC-API-06",
-        "endpoint": "/api/v1/feed",
-        "method": "GET",
-        "scenario": "数据库服务异常时请求 Feed 流",
-        "expectedStatus": 500,
-        "assertion": "响应返回错误码 500_DB_ERROR"
-      },
-      {
-        "id": "TC-API-07",
+        "id": "TC-05",
         "endpoint": "/api/v1/messages",
         "method": "POST",
-        "scenario": "向存在的 recipient_id 发送非空站内信",
+        "scenario": "发送站内私信，校验鉴权、收件人不存在错误反馈与向有效用户发送成功",
         "expectedStatus": 201,
-        "assertion": "响应体包含非空字符串字段 message_id"
+        "assertion": "未鉴权返回 401/403；目标用户不存在返回 404_USER_NOT_FOUND；有效收件人返回 200/201 且包含非空 message_id"
       },
       {
-        "id": "TC-API-08",
+        "id": "TC-06",
         "endpoint": "/api/v1/messages",
-        "method": "POST",
-        "scenario": "向不存在的 recipient_id 发送站内信",
-        "expectedStatus": 404,
-        "assertion": "响应返回错误码 404_USER_NOT_FOUND"
-      },
-      {
-        "id": "TC-API-09",
-        "endpoint": "/api/v1/posts",
-        "method": "POST",
-        "scenario": "content 为纯空白字符串或缺失字段时发布动态",
-        "expectedStatus": 400,
-        "assertion": "响应返回错误码 400_INVALID_CONTENT"
-      },
-      {
-        "id": "TC-API-10",
-        "endpoint": "/api/v1/posts",
-        "method": "POST",
-        "scenario": "携带空字符串或纯空白浏览器指纹头发布动态",
-        "expectedStatus": 401,
-        "assertion": "响应返回错误码 401_UNAUTHORIZED"
-      },
-      {
-        "id": "TC-API-11",
-        "endpoint": "/api/v1/messages",
-        "method": "POST",
-        "scenario": "未携带浏览器指纹或 content 为空时发送站内信",
-        "expectedStatus": 400,
-        "assertion": "未认证返回 401_UNAUTHORIZED，空内容返回 400"
-      },
-      {
-        "id": "TC-API-12",
-        "endpoint": "/api/v1/feed",
         "method": "GET",
-        "scenario": "携带最小边界 limit=1 拉取 Feed 流并验证游标递进",
+        "scenario": "获取当前登录用户的私信记录列表及与指定用户的会话过滤",
         "expectedStatus": 200,
-        "assertion": "posts 长度小于等于 1，且后续游标请求不返回重复的首条数据"
+        "assertion": "未提供指纹返回 401；有效鉴权返回 200 且 messages 数组中每项包含 id, sender_id, recipient_id, content 与 created_at"
       },
       {
-        "id": "TC-API-13",
+        "id": "TC-07",
         "endpoint": "/api/v1/posts",
         "method": "POST",
-        "scenario": "同一指纹并发发起 5 次发帖请求",
+        "scenario": "高并发多请求同时发帖，验证无主键冲突且 ID 全部唯一",
         "expectedStatus": 201,
-        "assertion": "所有请求均成功返回且生成的 5 个 id 互不重复"
+        "assertion": "并发 5 个请求全部返回 200/201，且生成的 5 个动态 ID 互不相同"
+      },
+      {
+        "id": "TC-08",
+        "endpoint": "/api/v1/posts/:postId/comments",
+        "method": "POST",
+        "scenario": "发表楼中楼回复评论（带有 parent_id）",
+        "expectedStatus": 201,
+        "assertion": "返回 201 且返回对象的 parent_id 与请求参数一致，数据库正常存储回复关联"
       }
     ]
   }
