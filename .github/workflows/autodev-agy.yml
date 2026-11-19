@@ -312,8 +312,19 @@ jobs:
         shell: bash
         run: |
           if [ "${{ steps.push.outputs.changed }}" = "true" ]; then
-            BODY="### AutoDev VPS AGY 执行完成\n- Model: `${{ steps.target.outputs.model }}`\n- Commit: `${{ steps.push.outputs.commit_sha }}`\n- 只读测试契约 `tests/e2e.spec.ts` 完整性校验通过。"
+            cat > /tmp/autodev-pr-summary.md <<'COMMENT_EOF'
+          ### AutoDev VPS AGY 执行完成
+          - Model: `${{ steps.target.outputs.model }}`
+          - Commit: `${{ steps.push.outputs.commit_sha }}`
+          - 只读测试契约 `tests/e2e.spec.ts` 完整性校验通过。
+          - 请前往 AutoDev Studio「4. 验收与上线审批」点击「一键部署并生成验收网址」进行在线验收。
+          COMMENT_EOF
           else
-            BODY="### AutoDev VPS AGY 执行结束\n- Model: `${{ steps.target.outputs.model }}`\n- 本次执行未产生新的文件变更，请查看 Actions 日志。"
+            cat > /tmp/autodev-pr-summary.md <<'COMMENT_EOF'
+          ### AutoDev VPS AGY 执行结束
+          - Model: `${{ steps.target.outputs.model }}`
+          - 本次执行未产生新的文件变更，请查看 Actions 日志。
+          COMMENT_EOF
           fi
-          gh pr comment "${{ steps.target.outputs.pr_number }}" --body "$(printf '%b' "${BODY}")" || true
+          gh pr comment "${{ steps.target.outputs.pr_number }}" --body-file /tmp/autodev-pr-summary.md || true
+          rm -f /tmp/autodev-pr-summary.md
