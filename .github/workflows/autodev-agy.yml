@@ -1,0 +1,151 @@
+name: AutoDev AGY Coding Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_branch:
+        description: 'Target Draft PR branch containing docs/spec.json and tests/e2e.spec.ts'
+        required: true
+        type: string
+      pr_number:
+        description: 'Draft PR number (optional, used for status comment)'
+        required: false
+        default: ''
+        type: string
+      run_id:
+        description: 'AutoDev Studio Run ID'
+        required: false
+        default: ''
+        type: string
+      agy_model:
+        description: 'AGY model ID configured on the VPS'
+        required: false
+        default: 'gemini-3.8-flash-high'
+        type: choice
+        options:
+          - gemini-3.8-flash-high
+          - gemini-3.8-flash-medium
+          - claude-sonnet-4-6
+          - claude-opus-4-6-thinking
+          - gpt-oss-120b-medium
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: autodev-agy-${{ inputs.pr_branch || github.head_ref }}
+  cancel-in-progress: false
+
+jobs:
+  agy-implement:
+    # Security guard: only allow repo owner to trigger execution on the VPS self-hosted runner
+    if: >-
+      github.actor == 'jiangfengwhu' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' && github.event.label.name == 'autodev:run'))
+    runs-on: [self-hosted, linux, x64, vps-agy]
+    timeout-minutes: 30
+
+    steps:
+      - name: Resolve Target Branch
+        id: target
+        shell: bash
+        run: |
+          BRANCH="${{ inputs.pr_branch || github.head_ref }}"
+          MODEL="${{ inputs.agy_model || 'gemini-3.8-flash-high' }}"
+          PR_NUM="${{ inputs.pr_number || github.event.pull_request.number || '' }}"
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "model=${MODEL}" >> "$GITHUB_OUTPUT"
+          echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout PR Branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.target.outputs.branch }}
+          fetch-depth: 0
+
+      - name: Verify VPS AGY CLI & Lock Read-Only E2E Contract
+        id: lock
+        shell: bash
+        run: |
+          export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+          which agy
+          agy --version
+          if [ -f "tests/e2e.spec.ts" ]; then
+            HASH=$(sha256sum tests/e2e.spec.ts | awk '{print $1}')
+            echo "e2e_hash=${HASH}" >> "$GITHUB_OUTPUT"
+            echo "Locked tests/e2e.spec.ts SHA-256: ${HASH}"
+          else
+            echo "e2e_hash=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Execute AGY Coding Agent on VPS
+        shell: bash
+        run: |
+          export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+          PROMPT=$(cat <<'EOF'
+          You are executing inside an AutoDev Studio automated engineering pipeline on branch ${{ steps.target.outputs.branch }}.
+          Read docs/prd.md, docs/spec.json, and tests/e2e.spec.ts thoroughly.
+
+          Requirements:
+          1. Implement all atomic tasks and API contracts defined in docs/spec.json in clean, modular, production-ready code.
+          2. STRICT READ-ONLY CONTRACT: Do NOT modify, weaken, or delete tests/e2e.spec.ts or docs/spec.json.
+          3. Install required dependencies, verify TypeScript/build passes, and run automated checks against your implementation.
+          4. Keep git working tree clean of temporary logs or build artifacts (update .gitignore as needed).
+          5. Output a concise summary of implemented files and verification results.
+          EOF
+          )
+          agy --print \
+            --mode auto \
+            --dangerously-skip-permissions \
+            --model "${{ steps.target.outputs.model }}" \
+            --print-timeout 20m \
+            "${PROMPT}"
+
+      - name: Enforce Read-Only E2E Test Contract Integrity
+        shell: bash
+        run: |
+          EXPECTED="${{ steps.lock.outputs.e2e_hash }}"
+          if [ -n "${EXPECTED}" ] && [ -f "tests/e2e.spec.ts" ]; then
+            ACTUAL=$(sha256sum tests/e2e.spec.ts | awk '{print $1}')
+            if [ "${EXPECTED}" != "${ACTUAL}" ]; then
+              echo "::error::tests/e2e.spec.ts was modified by coding agent! Reverting and failing gate."
+              git checkout -- tests/e2e.spec.ts
+              exit 1
+            fi
+            echo "Read-only contract verified: tests/e2e.spec.ts unchanged."
+          fi
+
+      - name: Commit & Push Implementation to Draft PR Branch
+        id: push
+        shell: bash
+        run: |
+          git config user.name "AutoDev AGY Runner"
+          git config user.email "autodev-runner@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No file changes produced by AGY."
+          else
+            git commit -m "feat(autodev): implement spec via VPS AGY (${{ steps.target.outputs.model }})"
+            git push origin "HEAD:${{ steps.target.outputs.branch }}"
+            SHA=$(git rev-parse --short HEAD)
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "commit_sha=${SHA}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post Summary Comment on Draft PR
+        if: steps.target.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          if [ "${{ steps.push.outputs.changed }}" = "true" ]; then
+            BODY="### AutoDev VPS AGY 执行完成\n- Model: `${{ steps.target.outputs.model }}`\n- Commit: `${{ steps.push.outputs.commit_sha }}`\n- 只读测试契约 `tests/e2e.spec.ts` 完整性校验通过。"
+          else
+            BODY="### AutoDev VPS AGY 执行结束\n- Model: `${{ steps.target.outputs.model }}`\n- 本次执行未产生新的文件变更，请查看 Actions 日志。"
+          fi
+          gh pr comment "${{ steps.target.outputs.pr_number }}" --body "$(printf '%b' "${BODY}")" || true
