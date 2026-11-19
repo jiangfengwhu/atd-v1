@@ -1,7 +1,7 @@
 {
   "jobId": "job-da40bc4e",
-  "status": "running",
-  "updatedAt": "2026-11-19T09:11:24.516Z",
+  "status": "error",
+  "updatedAt": "2026-11-19T09:19:28.426Z",
   "headSha": "8dc40849d45e8be61cdf2da1ff2c3747be17ca1d",
   "actionsRunId": 44494086802,
   "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44494086802",
@@ -19,5 +19,6 @@
       "status": "idle"
     }
   },
-  "outputFiles": {}
+  "outputFiles": {},
+  "error": "fetch failed"
 }
