@@ -1,0 +1,486 @@
+name: AutoDev AGY Plan Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: 'AutoDev Studio Analysis Job ID'
+        required: true
+        type: string
+      base_branch:
+        description: 'Base branch to inspect (default: main)'
+        required: false
+        default: 'main'
+        type: string
+      issue_number:
+        description: 'Tracking issue number for plan artifacts'
+        required: true
+        type: string
+      input_comment_id:
+        description: 'Comment ID containing serialized PRD input payload'
+        required: true
+        type: string
+      state_comment_id:
+        description: 'Comment ID to PATCH with real-time 3-stage planning state'
+        required: true
+        type: string
+      agy_model:
+        description: 'AGY model ID configured on the VPS'
+        required: false
+        default: 'gemini-3.8-flash-high'
+        type: choice
+        options:
+          - gemini-3.8-flash-high
+          - gemini-3.8-flash-medium
+          - claude-sonnet-4-6
+          - claude-opus-4-6-thinking
+          - gpt-oss-120b-medium
+
+# Read-only repository permissions: planning stages must never push commits to the repo
+permissions:
+  contents: read
+  issues: write
+
+# Shares the single-task repository-wide serial queue with AGY coding runs
+concurrency:
+  group: autodev-agy-single-queue
+  cancel-in-progress: false
+
+jobs:
+  agy-plan:
+    if: github.actor == 'jiangfengwhu'
+    runs-on: [self-hosted, linux, x64, vps-agy]
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout Latest Base Branch (Full Codebase Context)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.base_branch || 'main' }}
+          fetch-depth: 0
+
+      - name: Run 3-Stage Instabox AGY Planning (Architect -> QA Spec -> QA Critic)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PLAN_REPO: ${{ github.repository }}
+          PLAN_RUN_ID: ${{ github.run_id }}
+          PLAN_JOB_ID: ${{ inputs.job_id }}
+          PLAN_BASE_BRANCH: ${{ inputs.base_branch || 'main' }}
+          PLAN_ISSUE_NUMBER: ${{ inputs.issue_number }}
+          PLAN_INPUT_COMMENT_ID: ${{ inputs.input_comment_id }}
+          PLAN_STATE_COMMENT_ID: ${{ inputs.state_comment_id }}
+          PLAN_MODEL: ${{ inputs.agy_model || 'gemini-3.8-flash-high' }}
+        shell: bash
+        run: |
+          export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+          echo "Workspace CWD: $(pwd)"
+          which agy
+          agy --version
+
+          cat > /tmp/autodev-plan-runner.mjs <<'PLAN_RUNNER_EOF'
+          import fs from 'fs';
+          import path from 'path';
+          import { execSync, spawnSync } from 'child_process';
+
+          const token = process.env.GH_TOKEN;
+          const repo = process.env.PLAN_REPO;
+          const actionsRunId = Number(process.env.PLAN_RUN_ID || 0);
+          const jobId = process.env.PLAN_JOB_ID;
+          const baseBranch = process.env.PLAN_BASE_BRANCH || 'main';
+          const issueNumber = Number(process.env.PLAN_ISSUE_NUMBER || 0);
+          const inputCommentId = Number(process.env.PLAN_INPUT_COMMENT_ID || 0);
+          const stateCommentId = Number(process.env.PLAN_STATE_COMMENT_ID || 0);
+          const model = process.env.PLAN_MODEL || 'gemini-3.8-flash-high';
+          const actionsUrl = 'https://github.com/' + repo + '/actions/runs/' + actionsRunId;
+
+          const tmpDir = '/tmp/autodev-plan-' + jobId;
+          fs.mkdirSync(tmpDir, { recursive: true });
+          const wsOutDir = path.join(process.cwd(), '.autodev-plan-output');
+
+          let headSha = '';
+          try {
+            headSha = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+          } catch {}
+
+          const headers = {
+            Authorization: 'Bearer ' + token,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            'Content-Type': 'application/json',
+          };
+
+          async function gh(apiPath, options = {}) {
+            const res = await fetch('https://api.github.com' + apiPath, { ...options, headers });
+            const text = await res.text();
+            if (!res.ok) {
+              throw new Error('GitHub API ' + res.status + ' on ' + apiPath + ': ' + text.slice(0, 300));
+            }
+            return text ? JSON.parse(text) : null;
+          }
+
+          function sanitizeFence(str) {
+            return String(str).replace(/~~~~/g, '----');
+          }
+
+          function extractFencedJson(body) {
+            const m1 = body.match(/~~~~json\s*\n([\s\S]*?)\n~~~~/);
+            if (m1) return m1[1].trim();
+            const m2 = body.match(/```json\s*\n([\s\S]*?)\n```/);
+            if (m2) return m2[1].trim();
+            return null;
+          }
+
+          function extractJsonLoose(text) {
+            const trimmed = (text || '').trim();
+            if (!trimmed) throw new Error('Empty output');
+            try {
+              return JSON.parse(trimmed);
+            } catch {}
+            const fenced = trimmed.match(/```(?:json)?\s*\n([\s\S]*?)\n```/i);
+            if (fenced) {
+              return JSON.parse(fenced[1].trim());
+            }
+            const first = trimmed.indexOf('{');
+            const last = trimmed.lastIndexOf('}');
+            if (first !== -1 && last > first) {
+              return JSON.parse(trimmed.slice(first, last + 1));
+            }
+            throw new Error('No valid JSON object found in output');
+          }
+
+          function resetWorkspaceClean() {
+            try {
+              fs.rmSync(wsOutDir, { recursive: true, force: true });
+            } catch {}
+            try {
+              execSync('git checkout -- . && git clean -fd', { stdio: 'ignore' });
+            } catch {}
+          }
+
+          const state = {
+            jobId,
+            status: 'running',
+            updatedAt: new Date().toISOString(),
+            headSha,
+            actionsRunId,
+            actionsUrl,
+            model,
+            steps: {
+              architect: { status: 'idle' },
+              qa_spec: { status: 'idle' },
+              qa_critic: { status: 'idle' },
+            },
+            outputCommentIds: {},
+          };
+
+          async function syncState() {
+            state.updatedAt = new Date().toISOString();
+            const body = [
+              '<!-- AUTODEV-PLAN-STATE:' + jobId + ' -->',
+              '### AutoDev AGY Plan State (' + jobId + ')',
+              '- Status: `' + state.status + '`',
+              '- Model: `' + model + '`',
+              '- Commit: `' + (headSha ? headSha.slice(0, 7) : 'empty') + '`',
+              '- Updated: ' + state.updatedAt,
+              '',
+              '~~~~json',
+              sanitizeFence(JSON.stringify(state, null, 2)),
+              '~~~~',
+            ].join('\n');
+            await gh('/repos/' + repo + '/issues/comments/' + stateCommentId, {
+              method: 'PATCH',
+              body: JSON.stringify({ body }),
+            });
+          }
+
+          async function postStageOutput(stage, data) {
+            const body = [
+              '<!-- AUTODEV-PLAN-OUTPUT:' + jobId + ':' + stage + ' -->',
+              '### AutoDev Plan Stage Output: ' + stage + ' (' + jobId + ')',
+              '',
+              '~~~~json',
+              sanitizeFence(JSON.stringify(data)),
+              '~~~~',
+            ].join('\n');
+            const created = await gh('/repos/' + repo + '/issues/' + issueNumber + '/comments', {
+              method: 'POST',
+              body: JSON.stringify({ body }),
+            });
+            return created.id;
+          }
+
+          function validateStage(stage, raw) {
+            if (!raw || typeof raw !== 'object') {
+              return { ok: false, error: 'Root value must be a JSON object' };
+            }
+            if (stage === 'architect') {
+              if (typeof raw.architectureSummary !== 'string' || !raw.architectureSummary.trim()) {
+                return { ok: false, error: 'Missing non-empty string "architectureSummary"' };
+              }
+              if (!Array.isArray(raw.ambiguities)) return { ok: false, error: '"ambiguities" must be an array' };
+              if (!Array.isArray(raw.techDecisions)) return { ok: false, error: '"techDecisions" must be an array' };
+              if (!Array.isArray(raw.apiContracts)) return { ok: false, error: '"apiContracts" must be an array' };
+              if (!Array.isArray(raw.tasks) || raw.tasks.length === 0) {
+                return { ok: false, error: '"tasks" must be a non-empty array' };
+              }
+              return { ok: true, data: raw };
+            }
+            if (stage === 'qa_spec') {
+              if (typeof raw.e2eTestCode !== 'string' || !raw.e2eTestCode.trim()) {
+                return { ok: false, error: 'Missing non-empty string "e2eTestCode"' };
+              }
+              if (!Array.isArray(raw.apiTestChecklist)) {
+                return { ok: false, error: '"apiTestChecklist" must be an array' };
+              }
+              if (!Array.isArray(raw.coverageNotes)) raw.coverageNotes = [];
+              return { ok: true, data: raw };
+            }
+            if (stage === 'qa_critic') {
+              if (typeof raw.reviewSummary !== 'string' || !raw.reviewSummary.trim()) {
+                return { ok: false, error: 'Missing non-empty string "reviewSummary"' };
+              }
+              if (typeof raw.finalE2eTestCode !== 'string' || !raw.finalE2eTestCode.trim()) {
+                return { ok: false, error: 'Missing non-empty string "finalE2eTestCode"' };
+              }
+              if (!Array.isArray(raw.findings)) return { ok: false, error: '"findings" must be an array' };
+              if (!Array.isArray(raw.finalApiTestChecklist)) {
+                return { ok: false, error: '"finalApiTestChecklist" must be an array' };
+              }
+              return { ok: true, data: raw };
+            }
+            return { ok: false, error: 'Unknown stage: ' + stage };
+          }
+
+          function invokeAgy(promptText, timeoutStr = '8m') {
+            const res = spawnSync(
+              'agy',
+              [
+                '--dangerously-skip-permissions',
+                '--model',
+                model,
+                '--print-timeout',
+                timeoutStr,
+                '--print=' + promptText,
+              ],
+              {
+                cwd: process.cwd(),
+                encoding: 'utf8',
+                maxBuffer: 25 * 1024 * 1024,
+              }
+            );
+            if (res.stdout) process.stdout.write(res.stdout.slice(-4000) + '\n');
+            if (res.stderr) process.stderr.write(res.stderr.slice(-2000) + '\n');
+            return {
+              status: res.status ?? 1,
+              stdout: res.stdout || '',
+              stderr: res.stderr || '',
+            };
+          }
+
+          async function runStage(stage, basePrompt, summaryFn) {
+            const startedMs = Date.now();
+            const relOutPath = '.autodev-plan-output/' + stage + '.json';
+            const absOutPath = path.join(process.cwd(), relOutPath);
+            const tmpOutPath = path.join(tmpDir, stage + '.json');
+
+            state.steps[stage] = {
+              status: 'running',
+              startedAt: new Date().toISOString(),
+              message:
+                stage === 'architect'
+                  ? 'Instabox AGY 正在阅读当前仓库真实代码并拆解增量架构与任务树…'
+                  : stage === 'qa_spec'
+                    ? 'Instabox AGY 正在结合现有页面与历史测试生成独立 Playwright E2E 测试集…'
+                    : 'Instabox AGY 正在评审边界异常并锁定终版只读回归测试集…',
+            };
+            await syncState();
+
+            let lastErr = '';
+            for (let attempt = 1; attempt <= 2; attempt++) {
+              fs.mkdirSync(wsOutDir, { recursive: true });
+              const prompt =
+                attempt === 1
+                  ? basePrompt
+                  : basePrompt +
+                    '\n\n[RETRY CORRECTION] Your previous attempt failed validation with error: ' +
+                    lastErr +
+                    '. Write ONLY valid JSON matching the exact required schema to ' +
+                    relOutPath +
+                    ' (do not modify any other repository files).';
+
+              console.log('=== Running stage:', stage, 'attempt:', attempt, '===');
+              const execRes = invokeAgy(prompt, '8m');
+
+              let parsed = null;
+              try {
+                if (fs.existsSync(absOutPath)) {
+                  const fileContent = fs.readFileSync(absOutPath, 'utf8');
+                  parsed = extractJsonLoose(fileContent);
+                } else {
+                  parsed = extractJsonLoose(execRes.stdout);
+                }
+              } catch (parseErr) {
+                lastErr = 'JSON parse error: ' + (parseErr instanceof Error ? parseErr.message : String(parseErr));
+                parsed = null;
+              }
+
+              // Always reset repository working tree immediately after AGY finishes
+              resetWorkspaceClean();
+
+              if (parsed) {
+                const check = validateStage(stage, parsed);
+                if (check.ok) {
+                  fs.writeFileSync(tmpOutPath, JSON.stringify(check.data, null, 2), 'utf8');
+                  const commentId = await postStageOutput(stage, check.data);
+                  const durationMs = Date.now() - startedMs;
+                  state.outputCommentIds[stage] = commentId;
+                  state.steps[stage] = {
+                    status: 'completed',
+                    startedAt: state.steps[stage].startedAt,
+                    completedAt: new Date().toISOString(),
+                    durationMs,
+                    message: summaryFn(check.data),
+                  };
+                  await syncState();
+                  return check.data;
+                } else {
+                  lastErr = check.error;
+                }
+              } else if (execRes.status !== 0 && !lastErr) {
+                lastErr = 'AGY exited with code ' + execRes.status;
+              }
+            }
+
+            const finalErr = 'Stage ' + stage + ' failed after retry: ' + (lastErr || 'unknown error');
+            state.steps[stage] = {
+              ...state.steps[stage],
+              status: 'error',
+              message: finalErr,
+            };
+            state.status = 'error';
+            state.error = finalErr;
+            await syncState();
+            throw new Error(finalErr);
+          }
+
+          async function main() {
+            const inputComment = await gh('/repos/' + repo + '/issues/comments/' + inputCommentId);
+            const rawInput = extractFencedJson(inputComment.body || '');
+            if (!rawInput) {
+              throw new Error('Failed to parse input payload from comment #' + inputCommentId);
+            }
+            const input = JSON.parse(rawInput);
+
+            const stackNote = input.isDefaultCloudflare
+              ? 'Default Cloudflare Workers + Hono + D1 + KV + React/Vite stack. Inspect existing wrangler.toml, migrations/, src/, and client/ first!'
+              : 'User specified tech stack: ' + input.effectiveTechStack;
+
+            // Stage 1: Architect Agent
+            const architectPrompt = [
+              'You are Step 1 (Architect Agent) in AutoDev Studio running directly inside the real repository on branch ' + baseBranch + ' (HEAD ' + headSha.slice(0, 7) + ').',
+              'STRICT READ-ONLY RULE: Do NOT modify, create, or delete any repository source files, package.json, migrations, or tests. ONLY write your final JSON result to .autodev-plan-output/architect.json.',
+              'IMPORTANT: Inspect the existing repository files first (directory structure, package.json, wrangler.toml, migrations/*.sql, existing src/ routes, client/ components, tests/e2e/).',
+              'INCREMENTAL ITERATION RULE: If the repository already has working code, design INCREMENTAL changes on top of the existing architecture. NEVER delete or rewrite working unrelated modules or already-applied migrations (append sequentially numbered SQL migrations only when schema changes are genuinely needed).',
+              'LANGUAGE: All Chinese text fields (titles, descriptions, summaries, ambiguity details, acceptanceCriteria) MUST be written in concise, professional Simplified Chinese.',
+              '',
+              'Target Repo: ' + input.repoFullName + ' (' + baseBranch + ')',
+              'Tech Stack Guideline: ' + stackNote,
+              'PRD Title: ' + input.prdTitle,
+              'PRD Content:',
+              input.prdContent,
+              '',
+              'Write ONLY a valid JSON object to .autodev-plan-output/architect.json with this EXACT schema:',
+              '{',
+              '  "ambiguities": [{ "id": "AMB-1", "severity": "high|medium|low", "title": "...", "detail": "...", "clarificationSuggestion": "..." }],',
+              '  "architectureSummary": "Concise Chinese technical architecture summary grounded in the real codebase",',
+              '  "techDecisions": ["Decision 1", "Decision 2"],',
+              '  "apiContracts": [{ "id": "API-1", "method": "GET|POST|PUT|PATCH|DELETE", "path": "/api/...", "summary": "...", "requestSchema": "...", "responseSchema": "...", "errorCodes": ["400", "404"] }],',
+              '  "tasks": [{ "id": "T-01", "title": "...", "module": "...", "description": "...", "dependsOn": [], "acceptanceCriteria": ["..."], "estimatedComplexity": "S|M|L" }]',
+              '}',
+              'Keep tasks focused, atomic, and strictly scoped to the PRD (typically 3-6 tasks for incremental features).',
+            ].join('\n');
+
+            const architectData = await runStage('architect', architectPrompt, (d) =>
+              '完成 · 识别 ' + d.ambiguities.length + ' 项歧义、' + d.tasks.length + ' 项增量任务'
+            );
+
+            // Stage 2: QA Spec Agent
+            const qaSpecPrompt = [
+              'You are Step 2 (QA Spec Agent) in AutoDev Studio running in the real repository on branch ' + baseBranch + '.',
+              'STRICT READ-ONLY RULE: Do NOT modify any repository files. ONLY write your final JSON result to .autodev-plan-output/qa_spec.json.',
+              'Inspect existing tests/e2e/ (and tests/e2e.spec.ts if present), playwright config, and current frontend routes/selectors so your new Playwright E2E test suite aligns with the real app structure and does NOT duplicate or break historical regression tests.',
+              'LANGUAGE: All Chinese scenario descriptions, assertions, and coverageNotes MUST be in Simplified Chinese.',
+              '',
+              'PRD Title: ' + input.prdTitle,
+              'PRD Content:',
+              input.prdContent,
+              '',
+              'Architect API Contracts & Tasks (from Stage 1):',
+              JSON.stringify({ apiContracts: architectData.apiContracts, tasks: architectData.tasks }, null, 2),
+              '',
+              'Write ONLY a valid JSON object to .autodev-plan-output/qa_spec.json with this EXACT schema:',
+              '{',
+              '  "apiTestChecklist": [{ "id": "TC-01", "endpoint": "/api/...", "method": "GET|POST|...", "scenario": "...", "expectedStatus": 200, "assertion": "..." }],',
+              '  "e2eTestCode": "Complete runnable TypeScript Playwright test file importing test and expect from @playwright/test",',
+              '  "coverageNotes": ["Coverage note 1"]',
+              '}',
+            ].join('\n');
+
+            const qaSpecData = await runStage('qa_spec', qaSpecPrompt, (d) =>
+              '完成 · 生成 ' + d.apiTestChecklist.length + ' 条接口用例与初版 E2E 测试'
+            );
+
+            // Stage 3: QA Critic Agent
+            const qaCriticPrompt = [
+              'You are Step 3 (QA Critic Agent) in AutoDev Studio running in the real repository on branch ' + baseBranch + '.',
+              'STRICT READ-ONLY RULE: Do NOT modify any repository files. ONLY write your final JSON result to .autodev-plan-output/qa_critic.json.',
+              'Critically review the Stage 2 QA Spec output against the PRD, real repository routes/layout, boundary conditions, invalid inputs, UI interactions, security, and concurrency.',
+              'Produce a hardened, deterministic final Playwright E2E test suite (finalE2eTestCode) and final API checklist (finalApiTestChecklist) that is realistic, fast, and aligned with the real app.',
+              'LANGUAGE: All reviewSummary, finding issues, recommendations, and checklist text MUST be in Simplified Chinese.',
+              '',
+              'PRD Title: ' + input.prdTitle,
+              'PRD Content:',
+              input.prdContent,
+              '',
+              'Stage 1 API Contracts:',
+              JSON.stringify(architectData.apiContracts, null, 2),
+              '',
+              'Stage 2 Draft QA Spec:',
+              JSON.stringify(qaSpecData, null, 2),
+              '',
+              'Write ONLY a valid JSON object to .autodev-plan-output/qa_critic.json with this EXACT schema:',
+              '{',
+              '  "reviewSummary": "Concise Chinese critic review conclusion",',
+              '  "findings": [{ "id": "CRIT-01", "category": "boundary|invalid_input|ui_interaction|security|concurrency", "severity": "high|medium|low", "issue": "...", "recommendation": "..." }],',
+              '  "finalApiTestChecklist": [{ "id": "TC-01", "endpoint": "/api/...", "method": "GET|POST|...", "scenario": "...", "expectedStatus": 200, "assertion": "..." }],',
+              '  "finalE2eTestCode": "Complete hardened TypeScript Playwright test code"',
+              '}',
+            ].join('\n');
+
+            await runStage('qa_critic', qaCriticPrompt, (d) =>
+              '完成 · 提出 ' + d.findings.length + ' 项加固意见并锁定终版只读测试'
+            );
+
+            state.status = 'completed';
+            await syncState();
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+            console.log('=== All 3 Instabox AGY planning stages completed successfully ===');
+          }
+
+          main().catch(async (err) => {
+            console.error(err);
+            state.status = 'error';
+            state.error = err instanceof Error ? err.message : String(err);
+            try {
+              await syncState();
+            } catch {}
+            resetWorkspaceClean();
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+            process.exit(1);
+          });
+          PLAN_RUNNER_EOF
+
+          node /tmp/autodev-plan-runner.mjs
+          EXIT_CODE=$?
+          rm -f /tmp/autodev-plan-runner.mjs
+          exit "${EXIT_CODE}"
