@@ -279,20 +279,21 @@ jobs:
           PROMPT=$(cat <<EOF
           You are executing inside an AutoDev Studio automated engineering pipeline on branch ${LIVE_BRANCH}.
           Current working directory is the root of this repository.
-          Read docs/prd.md, docs/spec.json, any docs/revision-feedback.md, and all read-only Playwright E2E tests under tests/e2e/ (and tests/e2e.spec.ts if present) thoroughly.
+          Read docs/prd.md, docs/spec.json, docs/rsi-guidelines.md (if present), any docs/revision-feedback.md, and all read-only Playwright E2E tests under tests/e2e/ (and tests/e2e.spec.ts if present) thoroughly.
           ${REVISION_SECTION}
 
           Requirements:
           1. INCREMENTAL ITERATION RULE: Inspect the existing codebase first. Preserve all previously working features, existing API contracts, and historical regression tests under tests/e2e/. Do NOT rewrite unrelated working modules from scratch unless strictly required by docs/spec.json.
-          2. Implement all atomic tasks and API contracts defined in docs/spec.json in clean, modular, production-ready code.
-          3. Cloudflare Deployment & D1 Migration Standard (when targeting Cloudflare Workers):
+          2. RSI GUARDRAILS: If docs/rsi-guidelines.md exists, treat every rule inside it as a hard engineering guardrail learned from past failures and acceptance rejections.
+          3. Implement all atomic tasks and API contracts defined in docs/spec.json in clean, modular, production-ready code.
+          4. Cloudflare Deployment & D1 Migration Standard (when targeting Cloudflare Workers):
              - Maintain a valid wrangler.toml (or wrangler.jsonc) with Workers Static Assets ([assets] directory = "./dist", not_found_handling = "single-page-application"), Hono TypeScript API entry, and D1 SQL migrations in migrations/.
              - NEVER modify or overwrite already-applied migration files in migrations/. Always append new sequentially numbered migration files (e.g. 0002_xxx.sql) using IF NOT EXISTS / safe ALTER statements where appropriate.
              - Ensure package.json has working build and deploy (wrangler deploy) scripts.
-          4. STRICT READ-ONLY CONTRACT: Do NOT modify, weaken, or delete docs/spec.json, tests/e2e.spec.ts, or ANY file inside tests/e2e/.
-          5. Install required dependencies, verify TypeScript/build passes, and run automated checks against your implementation.
-          6. Keep git working tree clean of temporary logs or build artifacts (update .gitignore as needed).
-          7. Output a concise summary in Chinese of implemented/modified files and verification results.
+          5. STRICT READ-ONLY CONTRACT: Do NOT modify, weaken, or delete docs/spec.json, tests/e2e.spec.ts, or ANY file inside tests/e2e/.
+          6. Install required dependencies, verify TypeScript/build passes, and run automated checks against your implementation.
+          7. Keep git working tree clean of temporary logs or build artifacts (update .gitignore as needed).
+          8. Output a concise summary in Chinese of implemented/modified files and verification results.
           EOF
           )
 
@@ -336,6 +337,172 @@ jobs:
           fi
           rm -f "${LOCK_MANIFEST}"
 
+      - name: Run Automated Test Verification & Publish Structured Report
+        id: verify
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPORT_REPO: ${{ github.repository }}
+          REPORT_RUN_ID: ${{ github.run_id }}
+          REPORT_BRANCH: ${{ steps.target.outputs.branch }}
+          REPORT_PR_NUM: ${{ steps.target.outputs.pr_number }}
+          REPORT_PIPELINE_ID: ${{ inputs.run_id }}
+          REPORT_CHANNEL_BRANCH: 'autodev-plan-channel'
+        shell: bash
+        run: |
+          cat > /tmp/autodev-test-verifier.mjs <<'VERIFY_EOF'
+          import fs from 'fs';
+          import { spawnSync } from 'child_process';
+
+          const token = process.env.GH_TOKEN;
+          const repo = process.env.REPORT_REPO;
+          const actionsRunId = Number(process.env.REPORT_RUN_ID || 0);
+          const branch = process.env.REPORT_BRANCH || 'main';
+          const prNumber = process.env.REPORT_PR_NUM ? Number(process.env.REPORT_PR_NUM) : undefined;
+          const pipelineRunId = process.env.REPORT_PIPELINE_ID || undefined;
+          const channelBranch = process.env.REPORT_CHANNEL_BRANCH || 'autodev-plan-channel';
+
+          const cases = [];
+          const startedAll = Date.now();
+          let kind = 'build_check';
+          let rawLog = '';
+
+          function runCheck(id, title, cmd, args) {
+            const t0 = Date.now();
+            const res = spawnSync(cmd, args, { encoding: 'utf8', timeout: 240000 });
+            const durationMs = Date.now() - t0;
+            const output = ((res.stdout || '') + '\n' + (res.stderr || '')).trim();
+            rawLog += '\n=== ' + title + ' ===\n' + output.slice(-2000) + '\n';
+            const passed = res.status === 0;
+            cases.push({
+              id,
+              title,
+              status: passed ? 'passed' : 'failed',
+              durationMs,
+              ...(passed ? {} : { error: output.slice(-400) || ('Exit code ' + res.status) }),
+            });
+            return { passed, output };
+          }
+
+          let pkg = null;
+          try {
+            if (fs.existsSync('package.json')) {
+              pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            }
+          } catch {}
+
+          if (pkg && pkg.scripts) {
+            if (pkg.scripts.typecheck || pkg.scripts.lint) {
+              const sName = pkg.scripts.typecheck ? 'typecheck' : 'lint';
+              runCheck('check-type', 'TypeScript / Lint 静态检查 (' + sName + ')', 'npm', ['run', sName]);
+            }
+            if (pkg.scripts.build) {
+              runCheck('check-build', '生产构建检查 (npm run build)', 'npm', ['run', 'build']);
+            }
+            if (pkg.scripts.test && !String(pkg.scripts.test).includes('no test specified')) {
+              kind = 'unit';
+              runCheck('check-unit', '自动化单元测试 (npm test)', 'npm', ['test']);
+            }
+          }
+
+          if (fs.existsSync('playwright.config.ts') || fs.existsSync('playwright.config.js')) {
+            kind = 'e2e';
+            const t0 = Date.now();
+            const pw = spawnSync('npx', ['playwright', 'test', '--reporter=json'], {
+              encoding: 'utf8',
+              timeout: 300000,
+            });
+            const durationMs = Date.now() - t0;
+            rawLog += '\n=== Playwright E2E ===\n' + ((pw.stderr || '') + '\n' + (pw.stdout || '')).slice(-2000);
+            let parsedPw = null;
+            try {
+              const firstBrace = (pw.stdout || '').indexOf('{');
+              if (firstBrace !== -1) parsedPw = JSON.parse(pw.stdout.slice(firstBrace));
+            } catch {}
+            if (parsedPw && Array.isArray(parsedPw.suites)) {
+              const walk = (suite, prefix = '') => {
+                const label = prefix ? prefix + ' › ' + (suite.title || '') : (suite.title || '');
+                for (const spec of suite.specs || []) {
+                  const testObj = (spec.tests || [])[0];
+                  const lastResult = testObj && testObj.results ? testObj.results[testObj.results.length - 1] : null;
+                  const st = lastResult?.status === 'passed' ? 'passed' : lastResult?.status === 'skipped' ? 'skipped' : 'failed';
+                  cases.push({
+                    id: 'pw-' + cases.length,
+                    title: (label ? label + ' › ' : '') + (spec.title || 'E2E Case'),
+                    file: spec.file,
+                    status: st,
+                    durationMs: Number(lastResult?.duration || 0),
+                    ...(st === 'failed' ? { error: String(lastResult?.error?.message || 'Assertion failed').slice(0, 400) } : {}),
+                  });
+                }
+                for (const child of suite.suites || []) walk(child, label);
+              };
+              for (const s of parsedPw.suites) walk(s);
+            } else {
+              cases.push({
+                id: 'pw-suite',
+                title: 'Playwright E2E 测试套件',
+                status: pw.status === 0 ? 'passed' : 'failed',
+                durationMs,
+                ...(pw.status === 0 ? {} : { error: ((pw.stderr || '') + (pw.stdout || '')).slice(-400) }),
+              });
+            }
+          }
+
+          const passed = cases.filter((c) => c.status === 'passed').length;
+          const failed = cases.filter((c) => c.status === 'failed').length;
+          const skipped = cases.filter((c) => c.status === 'skipped').length;
+          const total = cases.length;
+          const status = failed > 0 && passed > 0 ? 'partial' : failed > 0 ? 'failed' : passed > 0 ? 'passed' : 'skipped';
+
+          const report = {
+            runId: pipelineRunId,
+            actionsRunId,
+            actionsUrl: 'https://github.com/' + repo + '/actions/runs/' + actionsRunId,
+            workflowName: 'AutoDev AGY Coding Runner',
+            branch,
+            prNumber,
+            kind,
+            status,
+            total,
+            passed,
+            failed,
+            skipped,
+            durationMs: Date.now() - startedAll,
+            executedAt: new Date().toISOString(),
+            summary: '自动验证：' + passed + ' 通过 / ' + failed + ' 失败 / ' + skipped + ' 跳过',
+            cases,
+            rawLogExcerpt: rawLog.slice(-3000),
+          };
+
+          console.log('Structured test report summary:', report.summary);
+
+          if (token && repo && total > 0) {
+            const headers = {
+              Authorization: 'Bearer ' + token,
+              Accept: 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+              'Content-Type': 'application/json',
+              Connection: 'close',
+            };
+            const targetPath = '.autodev-test-reports/' + actionsRunId + '.json';
+            const encoded = targetPath.split('/').map(encodeURIComponent).join('/');
+            const contentB64 = Buffer.from(JSON.stringify(report, null, 2), 'utf8').toString('base64');
+            await fetch('https://api.github.com/repos/' + repo + '/contents/' + encoded, {
+              method: 'PUT',
+              headers,
+              body: JSON.stringify({
+                message: 'chore(autodev-test): publish structured test report for run ' + actionsRunId,
+                content: contentB64,
+                branch: channelBranch,
+              }),
+            }).catch((err) => console.warn('Failed to upload structured test report:', err));
+          }
+          VERIFY_EOF
+
+          node /tmp/autodev-test-verifier.mjs || true
+          rm -f /tmp/autodev-test-verifier.mjs
+
       - name: Commit & Push Implementation to Draft PR Branch
         id: push
         shell: bash
@@ -365,8 +532,8 @@ jobs:
           ### AutoDev VPS AGY 执行完成
           - Model: `${{ steps.target.outputs.model }}`
           - Commit: `${{ steps.push.outputs.commit_sha }}`
-          - 全量只读测试契约（含历次回归测试）完整性校验通过。
-          - 请前往 AutoDev Studio「4. 验收与上线审批」点击「一键部署隔离预览环境」进行在线验收。
+          - 全量只读测试契约（含历次回归测试）完整性校验通过，结构化测试报告已同步至控制面。
+          - 请前往 AutoDev Studio「4. 验收与上线审批」或「5. 质量与自进化 (RSI)」查看测试结果并验收。
           COMMENT_EOF
           else
             cat > /tmp/autodev-pr-summary.md <<'COMMENT_EOF'
