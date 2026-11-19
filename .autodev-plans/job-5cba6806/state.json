@@ -1,7 +1,7 @@
 {
   "jobId": "job-5cba6806",
   "status": "running",
-  "updatedAt": "2026-11-19T09:35:13.262Z",
+  "updatedAt": "2026-11-19T09:39:40.928Z",
   "headSha": "e6253f2ab012609d4e4b814b01b8d25f4b0221e8",
   "actionsRunId": 44497301782,
   "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44497301782",
@@ -15,15 +15,18 @@
       "message": "完成 · 识别 2 项歧义、5 项增量任务"
     },
     "qa_spec": {
-      "status": "running",
+      "status": "completed",
       "startedAt": "2026-11-19T09:35:13.262Z",
-      "message": "Instabox AGY 正在结合现有页面与历史测试生成独立 Playwright E2E 测试集…"
+      "completedAt": "2026-11-19T09:39:40.927Z",
+      "durationMs": 267665,
+      "message": "完成 · 生成 6 条接口用例与初版 E2E 测试"
     },
     "qa_critic": {
       "status": "idle"
     }
   },
   "outputFiles": {
-    "architect": ".autodev-plans/job-5cba6806/architect.json"
+    "architect": ".autodev-plans/job-5cba6806/architect.json",
+    "qa_spec": ".autodev-plans/job-5cba6806/qa_spec.json"
   }
 }
