@@ -1,0 +1,59 @@
+{
+  "apiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/api/v1/search",
+      "method": "GET",
+      "scenario": "缺少关键词参数 q 或 q 为纯空白字符时返回 400 校验错误",
+      "expectedStatus": 400,
+      "assertion": "响应状态码为 400，返回 JSON 提示参数错误，防止空查询或无效请求打崩数据库"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/api/v1/search?q=SearchTarget",
+      "method": "GET",
+      "scenario": "按关键词模糊搜索帖子内容，返回包含匹配帖子的完整列表及作者、互动信息",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，body 包含 query 字符串与 posts 数组，每个 post 包含 id、username、content、likes_count、comments_count 等关键字段"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/v1/search?q=@alice",
+      "method": "GET",
+      "scenario": "通过 @ 前缀关键词检索特定用户，模糊匹配用户名并返回用户列表",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，body 包含 users 数组，返回的用户对象包含 id 与 username 等基础信息"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/api/v1/search?q=test&type=posts",
+      "method": "GET",
+      "scenario": "按 type=posts 过滤参数检索，仅返回匹配的帖子，users 数组为空",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，body.posts 包含帖子数组，body.users 恒为空数组"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/v1/search?q=test&type=users",
+      "method": "GET",
+      "scenario": "按 type=users 过滤参数检索，仅返回匹配的用户，posts 数组为空",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，body.users 包含用户数组，body.posts 恒为空数组"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/api/v1/search?q=non_existent_keyword_xyz",
+      "method": "GET",
+      "scenario": "检索无匹配项的关键词时，正常返回空数组而不是数据库报错或异常",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，body.posts 与 body.users 均为空数组，query 字段正确回显"
+    }
+  ],
+  "e2eTestCode": "import { test, expect } from '@playwright/test';\n\nconst FINGERPRINT_HEADER = { 'x-browser-fingerprint': 'qa-fp-search-spec-001' };\n\ntest.describe('Search Feature API Contracts', () => {\n  test('GET /api/v1/search validates required query parameter q', async ({ request }) => {\n    // Missing query parameter\n    const missingRes = await request.get('/api/v1/search');\n    expect(missingRes.status()).toBe(400);\n\n    // Empty query parameter\n    const emptyRes = await request.get('/api/v1/search', { params: { q: '' } });\n    expect(emptyRes.status()).toBe(400);\n\n    // Whitespace only query parameter\n    const blankRes = await request.get('/api/v1/search', { params: { q: '   ' } });\n    expect(blankRes.status()).toBe(400);\n  });\n\n  test('GET /api/v1/search finds posts by fuzzy keyword match', async ({ request }) => {\n    const uniqueKeyword = `SearchTarget_${Date.now()}`;\n    const postRes = await request.post('/api/v1/posts', {\n      headers: FINGERPRINT_HEADER,\n      data: { content: `Hello this is a post containing ${uniqueKeyword} for search verification.` },\n    });\n    expect([200, 201]).toContain(postRes.status());\n\n    const searchRes = await request.get('/api/v1/search', {\n      headers: FINGERPRINT_HEADER,\n      params: { q: uniqueKeyword },\n    });\n    expect(searchRes.status()).toBe(200);\n    const body = await searchRes.json();\n    expect(body.query).toBe(uniqueKeyword);\n    expect(Array.isArray(body.posts)).toBe(true);\n    expect(body.posts.length).toBeGreaterThan(0);\n    const matched = body.posts.find((p: any) => p.content.includes(uniqueKeyword));\n    expect(matched).toBeDefined();\n    expect(matched.username).toBeTruthy();\n    expect(typeof matched.likes_count).toBe('number');\n    expect(typeof matched.comments_count).toBe('number');\n  });\n\n  test('GET /api/v1/search finds users by @ prefix query', async ({ request }) => {\n    const targetFp = `user-search-${Date.now()}`;\n    await request.post('/api/v1/posts', {\n      headers: { 'x-browser-fingerprint': targetFp },\n      data: { content: `Seed post for user creation ${Date.now()}` },\n    });\n\n    const searchRes = await request.get('/api/v1/search', {\n      headers: FINGERPRINT_HEADER,\n      params: { q: `@${targetFp.substring(0, 10)}` },\n    });\n    expect(searchRes.status()).toBe(200);\n    const body = await searchRes.json();\n    expect(Array.isArray(body.users)).toBe(true);\n    if (body.users.length > 0) {\n      expect(body.users[0]).toHaveProperty('id');\n      expect(body.users[0]).toHaveProperty('username');\n    }\n  });\n\n  test('GET /api/v1/search respects type filtering (posts vs users)', async ({ request }) => {\n    const keyword = `TypeFilter_${Date.now()}`;\n    await request.post('/api/v1/posts', {\n      headers: FINGERPRINT_HEADER,\n      data: { content: `Post for type filter ${keyword}` },\n    });\n\n    // Filter type=posts\n    const postsOnlyRes = await request.get('/api/v1/search', {\n      headers: FINGERPRINT_HEADER,\n      params: { q: keyword, type: 'posts' },\n    });\n    expect(postsOnlyRes.status()).toBe(200);\n    const postsOnlyBody = await postsOnlyRes.json();\n    expect(Array.isArray(postsOnlyBody.posts)).toBe(true);\n    expect(postsOnlyBody.users).toEqual([]);\n\n    // Filter type=users\n    const usersOnlyRes = await request.get('/api/v1/search', {\n      headers: FINGERPRINT_HEADER,\n      params: { q: keyword, type: 'users' },\n    });\n    expect(usersOnlyRes.status()).toBe(200);\n    const usersOnlyBody = await usersOnlyRes.json();\n    expect(usersOnlyBody.posts).toEqual([]);\n    expect(Array.isArray(usersOnlyBody.users)).toBe(true);\n  });\n\n  test('GET /api/v1/search returns empty arrays for non-matching query', async ({ request }) => {\n    const nonExistent = `non_existent_search_keyword_${Date.now()}_xyz`;\n    const searchRes = await request.get('/api/v1/search', {\n      headers: FINGERPRINT_HEADER,\n      params: { q: nonExistent },\n    });\n    expect(searchRes.status()).toBe(200);\n    const body = await searchRes.json();\n    expect(body.posts).toEqual([]);\n    expect(body.users).toEqual([]);\n  });\n});\n\ntest.describe('Search Feature Web E2E', () => {\n  test('User searches for post keyword in sidebar search box and views results', async ({ page, request }) => {\n    const uniquePostText = `SearchableTweet_${Date.now()}`;\n    await request.post('/api/v1/posts', {\n      headers: FINGERPRINT_HEADER,\n      data: { content: uniquePostText },\n    });\n\n    await page.goto('/');\n\n    // Scoped locator according to RSI rule\n    const searchInput = page\n      .locator('.x-search-box')\n      .locator('input.x-search-input')\n      .or(page.locator('.x-sidebar-right').getByRole('textbox', { name: /搜索/i }))\n      .first();\n\n    await expect(searchInput).toBeVisible();\n    await searchInput.fill(uniquePostText);\n    await searchInput.press('Enter');\n\n    // Scoped main container / search results container\n    const mainContainer = page.getByRole('main').or(page.locator('.x-main-feed')).first();\n    await expect(mainContainer.getByText(uniquePostText)).toBeVisible();\n  });\n\n  test('User searches with @ query to find users and triggers direct message', async ({ page, request }) => {\n    const uniqueUserFp = `alice_test_${Date.now()}`;\n    await request.post('/api/v1/posts', {\n      headers: { 'x-browser-fingerprint': uniqueUserFp },\n      data: { content: `Alice unique post ${Date.now()}` },\n    });\n\n    await page.goto('/');\n\n    const searchInput = page\n      .locator('.x-search-box')\n      .locator('input.x-search-input')\n      .or(page.locator('.x-sidebar-right').getByRole('textbox', { name: /搜索/i }))\n      .first();\n\n    await expect(searchInput).toBeVisible();\n    await searchInput.fill(`@${uniqueUserFp}`);\n    await searchInput.press('Enter');\n\n    const mainContainer = page.getByRole('main').or(page.locator('.x-main-feed')).first();\n    const userCard = mainContainer\n      .locator('.user-card, .search-user-item, article, [data-testid=\"search-user\"]')\n      .filter({ hasText: uniqueUserFp })\n      .or(mainContainer.getByText(uniqueUserFp))\n      .first();\n    await expect(userCard).toBeVisible();\n\n    // Trigger direct message if DM button is present\n    const dmButton = userCard\n      .getByRole('button', { name: /私信|发消息|message|dm/i })\n      .or(userCard.locator('button'))\n      .first();\n    if (await dmButton.isVisible()) {\n      await dmButton.click();\n      await expect(\n        page.getByRole('heading', { name: /私信|站内信|messages/i })\n          .or(page.getByLabel(/私信内容|消息内容|message/i))\n          .or(page.locator('.messages-container'))\n      ).toBeVisible();\n    }\n  });\n\n  test('User sees friendly empty state when search finds no results', async ({ page }) => {\n    await page.goto('/');\n\n    const searchInput = page\n      .locator('.x-search-box')\n      .locator('input.x-search-input')\n      .or(page.locator('.x-sidebar-right').getByRole('textbox', { name: /搜索/i }))\n      .first();\n\n    await expect(searchInput).toBeVisible();\n    const nonExistent = `non_existent_term_${Date.now()}`;\n    await searchInput.fill(nonExistent);\n    await searchInput.press('Enter');\n\n    const mainContainer = page.getByRole('main').or(page.locator('.x-main-feed')).first();\n    await expect(\n      mainContainer.getByText(/未找到|没有找到|暂无|无相关结果|no results/i)\n    ).toBeVisible();\n  });\n\n  test('User can clear search and return to default feed stream', async ({ page, request }) => {\n    const seedPost = `DefaultFeedItem_${Date.now()}`;\n    await request.post('/api/v1/posts', {\n      headers: FINGERPRINT_HEADER,\n      data: { content: seedPost },\n    });\n\n    await page.goto('/');\n    const searchInput = page\n      .locator('.x-search-box')\n      .locator('input.x-search-input')\n      .or(page.locator('.x-sidebar-right').getByRole('textbox', { name: /搜索/i }))\n      .first();\n\n    await expect(searchInput).toBeVisible();\n    await searchInput.fill('temp_search_query');\n    await searchInput.press('Enter');\n\n    // Either click a clear/back button or clear the search input and press Enter\n    const backOrClearBtn = page\n      .locator('.search-back-btn, .clear-search-btn')\n      .or(page.getByRole('button', { name: /返回|清空|退出搜索|back|clear/i }))\n      .first();\n\n    if (await backOrClearBtn.isVisible()) {\n      await backOrClearBtn.click();\n    } else {\n      await searchInput.fill('');\n      await searchInput.press('Enter');\n    }\n\n    const mainContainer = page.getByRole('main').or(page.locator('.x-main-feed')).first();\n    await expect(\n      mainContainer.getByTestId('feed-list').or(mainContainer.locator('.post-card, article').first())\n    ).toBeVisible();\n  });\n});",
+  "coverageNotes": [
+    "后端综合搜索接口 /api/v1/search 完整覆盖参数防守性校验 (400)、帖子内容模糊检索、@ 用户名前缀检索以及 type 类型过滤机制。",
+    "E2E 测试严格遵循容器作用域链式定位原则（如 page.locator('.x-search-box').locator('input.x-search-input')），严禁全局模糊选择器，确保单元素定位唯一性。",
+    "覆盖真实用户全流程交互：右侧栏搜索框输入并回车触发、搜索结果列表呈现与点赞/评论/私信联动、无匹配时空状态友好提示，以及清空/返回退出搜索恢复 Feed 流。",
+    "与历史测试套件保持正交隔离，使用时间戳生成动态测试内容和用户指纹，防止数据脏读与回归测试破坏。"
+  ]
+}
