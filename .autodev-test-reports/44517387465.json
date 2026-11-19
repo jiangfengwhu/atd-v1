@@ -1,0 +1,186 @@
+{
+  "runId": "run-f734f054",
+  "actionsRunId": 44517387465,
+  "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44517387465",
+  "workflowName": "AutoDev AGY Coding Runner",
+  "branch": "autodev/feat-20261119-095231",
+  "prNumber": 5,
+  "kind": "e2e",
+  "status": "passed",
+  "total": 24,
+  "passed": 24,
+  "failed": 0,
+  "skipped": 0,
+  "durationMs": 22677,
+  "executedAt": "2026-11-19T12:04:19.098Z",
+  "summary": "自动验证：24 通过 / 0 失败 / 0 跳过",
+  "cases": [
+    {
+      "id": "check-build",
+      "title": "生产构建检查 (npm run build)",
+      "status": "passed",
+      "durationMs": 2851
+    },
+    {
+      "id": "check-unit",
+      "title": "自动化单元测试 (npm test)",
+      "status": "passed",
+      "durationMs": 9594
+    },
+    {
+      "id": "pw-2",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts validates auth, whitespace, missing fields, and publishes content",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 50
+    },
+    {
+      "id": "pw-3",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › GET /api/v1/feed enforces pagination boundaries and cursor consistency",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 45
+    },
+    {
+      "id": "pw-4",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST /api/v1/messages guarantees target user via seed and rejects invalid/missing recipients",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 27
+    },
+    {
+      "id": "pw-5",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › GET /api/v1/messages retrieves user direct message history with authentication",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 12
+    },
+    {
+      "id": "pw-6",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts handles concurrent requests without ID collisions",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 34
+    },
+    {
+      "id": "pw-7",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST and GET /api/v1/posts/:postId/comments validates auth, empty content, and retrieves comments thread including parent_id replies",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 26
+    },
+    {
+      "id": "pw-8",
+      "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › User publishes post with whitespace guard, double-click prevention, and reload persistence",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 1803
+    },
+    {
+      "id": "pw-9",
+      "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › XSS payloads in post content are rendered safely without script execution",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 201
+    },
+    {
+      "id": "pw-10",
+      "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › User submits private message and sees error feedback for missing recipient",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 924
+    },
+    {
+      "id": "pw-11",
+      "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › UI displays graceful error state and recovers when feed API returns 500_DB_ERROR",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 525
+    },
+    {
+      "id": "pw-12",
+      "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › X.com responsive navigation preserves view switching, active state indicators, and identity status",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 258
+    },
+    {
+      "id": "pw-13",
+      "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › User can expand tweet comments thread and post a reply smoothly with scoped selectors",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 997
+    },
+    {
+      "id": "pw-14",
+      "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › Direct message compose form handles validation and interactive feedback",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 572
+    },
+    {
+      "id": "pw-15",
+      "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › Global layout and interactive controls apply modern responsive design and smooth transition attributes",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 168
+    },
+    {
+      "id": "pw-16",
+      "title": "e2e.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts validates auth, whitespace, missing fields, and publishes content",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 19
+    },
+    {
+      "id": "pw-17",
+      "title": "e2e.spec.ts › Community API Contracts (Hardened) › GET /api/v1/feed enforces pagination boundaries and cursor consistency",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 17
+    },
+    {
+      "id": "pw-18",
+      "title": "e2e.spec.ts › Community API Contracts (Hardened) › POST /api/v1/messages guarantees target user via seed and rejects invalid/missing recipients",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 18
+    },
+    {
+      "id": "pw-19",
+      "title": "e2e.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts handles concurrent requests without ID collisions",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 26
+    },
+    {
+      "id": "pw-20",
+      "title": "e2e.spec.ts › Community Web E2E (Hardened) › User publishes post with whitespace guard, double-click prevention, and reload persistence",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 1284
+    },
+    {
+      "id": "pw-21",
+      "title": "e2e.spec.ts › Community Web E2E (Hardened) › XSS payloads in post content are rendered safely without script execution",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 215
+    },
+    {
+      "id": "pw-22",
+      "title": "e2e.spec.ts › Community Web E2E (Hardened) › User submits private message and sees error feedback for missing recipient",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 928
+    },
+    {
+      "id": "pw-23",
+      "title": "e2e.spec.ts › Community Web E2E (Hardened) › UI displays graceful error state and recovers when feed API returns 500_DB_ERROR",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 535
+    }
+  ],
+  "rawLogExcerpt": "\n=== 生产构建检查 (npm run build) ===\n> atd-v1@1.0.0 build\n> vite build && tsc --noEmit\n\n\u001b[36mvite v6.4.6 \u001b[32mbuilding for production...\u001b[36m\u001b[39m\ntransforming...\n\u001b[32m✓\u001b[39m 34 modules transformed.\nrendering chunks...\ncomputing gzip size...\n\u001b[2mdist/\u001b[22m\u001b[32mindex.html                 \u001b[39m\u001b[1m\u001b[2m  0.57 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:  0.41 kB\u001b[22m\n\u001b[2mdist/\u001b[22m\u001b[2massets/\u001b[22m\u001b[35mindex-C8hEvOMV.css  \u001b[39m\u001b[1m\u001b[2m 26.54 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:  5.16 kB\u001b[22m\n\u001b[2mdist/\u001b[22m\u001b[2massets/\u001b[22m\u001b[36mindex-CMvdGaAl.js   \u001b[39m\u001b[1m\u001b[2m249.66 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip: 77.55 kB\u001b[22m\n\u001b[32m✓ built in 830ms\u001b[39m\n\n=== 自动化单元测试 (npm test) ===\n> atd-v1@1.0.0 test\n> playwright test\n\n\nRunning 22 tests using 1 worker\n······················\n  22 passed (9.1s)\n\n[WebServer] (node:728396) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)\n\n=== Playwright E2E ===\n             \"errors\": [],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-19T12:04:17.497Z\",\n                      \"annotations\": [],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"b1c7859d981cc20c96be-3100a1f292e71522a9b9\",\n              \"file\": \"e2e.spec.ts\",\n              \"line\": 11,\n              \"column\": 6854\n            },\n            {\n              \"title\": \"UI displays graceful error state and recovers when feed API returns 500_DB_ERROR\",\n              \"ok\": true,\n              \"tags\": [],\n              \"tests\": [\n                {\n                  \"timeout\": 30000,\n                  \"annotations\": [],\n                  \"expectedStatus\": \"passed\",\n                  \"projectId\": \"chromium\",\n                  \"projectName\": \"chromium\",\n                  \"results\": [\n                    {\n                      \"workerIndex\": 0,\n                      \"parallelIndex\": 0,\n                      \"status\": \"passed\",\n                      \"duration\": 535,\n                      \"errors\": [],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-19T12:04:18.432Z\",\n                      \"annotations\": [],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"b1c7859d981cc20c96be-b6d913637e19927031ed\",\n              \"file\": \"e2e.spec.ts\",\n              \"line\": 11,\n              \"column\": 8156\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"errors\": [],\n  \"stats\": {\n    \"startTime\": \"2026-11-19T12:04:09.378Z\",\n    \"duration\": 9686.816,\n    \"expected\": 22,\n    \"skipped\": 0,\n    \"unexpected\": 0,\n    \"flaky\": 0\n  }\n}\n"
+}
