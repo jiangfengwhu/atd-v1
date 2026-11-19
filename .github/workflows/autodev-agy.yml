@@ -62,7 +62,7 @@ jobs:
           echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout PR Branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ steps.target.outputs.branch }}
           fetch-depth: 0
@@ -98,12 +98,12 @@ jobs:
           5. Output a concise summary of implemented files and verification results.
           EOF
           )
-          agy --print \
+          agy \
             --mode auto \
             --dangerously-skip-permissions \
             --model "${{ steps.target.outputs.model }}" \
             --print-timeout 20m \
-            "${PROMPT}"
+            --print="${PROMPT}"
 
       - name: Enforce Read-Only E2E Test Contract Integrity
         shell: bash
