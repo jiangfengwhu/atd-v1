@@ -1,0 +1,109 @@
+{
+  "ambiguities": [
+    {
+      "id": "AMB-1",
+      "severity": "medium",
+      "title": "搜索指令解析与多类型结果聚合策略",
+      "detail": "需求提出“帖子搜索，支持模糊搜索，包括帖子内容，@支持搜索用户”。需明确在用户输入时：若输入包含 '@' 前缀（如 '@admin'）是否仅检索用户，还是统一返回帖子与用户的综合搜索结果；以及是否需要在前端提供分类标签（全部/帖子/用户）筛选。",
+      "clarificationSuggestion": "采用综合搜索加智能识别方案：API 提供统一检索端点 GET /api/v1/search?q={query}&type={all|posts|users}。当 query 以 '@' 开头或包含 '@' 时，自动提取用户名进行用户表模糊匹配；常规检索默认同时在帖子内容（posts.content）与用户名（users.username）中进行模糊匹配并分段聚合返回，前端默认呈现聚合结果并支持快速筛选。"
+    },
+    {
+      "id": "AMB-2",
+      "severity": "low",
+      "title": "SQLite / Cloudflare D1 模糊搜索性能与大小写敏感度",
+      "detail": "当前后端持久层采用 Cloudflare D1 / SQLite。LIKE 模糊匹配（'%kw%'）无法利用普通 B-Tree 索引，且 SQLite 默认 LIKE 仅对 ASCII 字符不区分大小写，可能影响多语言匹配效果。",
+      "clarificationSuggestion": "鉴于当前社区规模与轻量化架构，无需引入外部搜索引擎或复杂的全文检索分词插件。后端采用标准的参数化 WHERE content LIKE ? 与 WHERE username LIKE ?，并强制附加 LIMIT 20 与按 created_at DESC 排序，确保边缘执行时间在微秒级；未来如有大规模全文需求再平滑迁移 FTS5。"
+    },
+    {
+      "id": "AMB-3",
+      "severity": "low",
+      "title": "右侧栏搜索框与主信息流区展示联动方式",
+      "detail": "当前 UI 在右侧挂件栏已有 .x-search-input 输入框占位，但尚未挂载搜索状态及结果展现容器。需明确搜索结果是浮层下拉展示，还是在中间主视口区域替换 Feed 信息流呈现。",
+      "clarificationSuggestion": "采用 X.com 经典模式：在右侧输入框敲击回车或点击搜索后，中间主视口切换为搜索结果流（展示匹配帖子与用户匹配栏），同时提供返回原信息流及一键清空按钮；右侧输入框聚焦时展示实时匹配建议，确保交互流畅自然。"
+    }
+  ],
+  "architectureSummary": "本项目基于 Cloudflare Workers (Hono) + SQLite/D1 后端与 React 19 + Vite 前端。针对搜索功能需求，架构遵循纯增量扩展原则：在后端新增 src/routes/search.ts 并在 /api/v1/search 挂载综合搜索端点，利用参数化 SQL 对 posts.content 与 users.username 执行安全模糊查询，支持 '@' 前缀用户提取及推文统计关联；在前端 client/api.ts 补充搜索请求封装，激活 client/App.tsx 中已有的右侧搜索栏，在主视图区无缝切换展现帖子搜索结果卡片与用户匹配卡片，保持既有数据模型、迁移与 E2E 测试百分之百向后兼容。",
+  "techDecisions": [
+    "后端路由采用解耦的专用路由模块 src/routes/search.ts 并挂载于 /api/v1/search，避免侵入既有的 posts.ts 与 users.ts 业务逻辑",
+    "模糊匹配采用 D1 / SQLite 原生参数化 LIKE 查询配合 LIMIT 20 与时间倒序索引，实现零第三方依赖的轻量级边缘响应",
+    "智能语法解析：服务端自动检测 '@' 前缀，自动分流或聚合用户（users 表）与帖子（posts 表）检索结果，提供结构化的 posts 与 users 返回体",
+    "前端复用现有的 X.com 三栏式布局中的右侧搜索输入框，通过主内容区状态切换展现搜索结果列表，复用现有推文卡片与私信跳转交互"
+  ],
+  "apiContracts": [
+    {
+      "id": "API-1",
+      "method": "GET",
+      "path": "/api/v1/search",
+      "summary": "综合模糊搜索接口，支持按帖子内容与 @ 用户名检索",
+      "requestSchema": "Query Parameters: { q: string (required, 关键词), type?: 'all' | 'posts' | 'users' (default 'all'), limit?: number (default 20) }",
+      "responseSchema": "{ query: string, posts: Array<{ id: string, user_id: string, username: string, content: string, created_at: string, likes_count: number, comments_count: number, is_liked: boolean }>, users: Array<{ id: string, username: string, created_at: string }> }",
+      "errorCodes": [
+        "400",
+        "500"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-01",
+      "title": "实现后端综合模糊搜索路由与数据查询",
+      "module": "后端 API (src/routes/search.ts & src/index.ts)",
+      "description": "新建 src/routes/search.ts 模块并挂载到 src/index.ts 的 /api/v1 下。实现 GET /api/v1/search 接口，支持参数 q、type 与 limit。对 q 进行防守性校验与空值过滤；支持解析带有 '@' 前缀的用户查询（如 '@alice'）；使用参数化 SQL 分别对 posts.content LIKE ? 及 users.username LIKE ? 进行模糊匹配，帖子查询需关联点赞、评论数及当前用户的点赞状态。",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "调用 GET /api/v1/search?q=abc 返回 posts 数组中包含所有 content 包含 abc 的帖子及作者信息",
+        "调用 GET /api/v1/search?q=@admin 或带有 @ 关键词时能正确匹配 users 表并返回相关用户列表",
+        "q 参数为空或缺失时返回 400 状态码及错误信息",
+        "全量 SQL 均采用 bind 参数化查询，防止 SQL 注入"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-02",
+      "title": "封装前端搜索 API 及全局搜索状态联动",
+      "module": "前端通信与状态 (client/api.ts & client/App.tsx)",
+      "description": "在 client/api.ts 中封装 searchContent(q: string, type?: string) 方法，自动携带当前浏览器指纹请求 /api/v1/search。在 client/App.tsx 中建立搜索状态管理（searchQuery、searchResults、isSearching、searchLoading），将右侧栏已有的 .x-search-input 绑定输入变更与回车提交事件。",
+      "dependsOn": [
+        "T-01"
+      ],
+      "acceptanceCriteria": [
+        "client/api.ts 导出 searchContent 并正确处理返回的 posts 与 users 结构",
+        "用户在右侧搜索框输入内容并回车触发搜索请求，展示加载反馈",
+        "支持清空输入框或点击返回按钮退出搜索状态，恢复之前的 Feed 流"
+      ],
+      "estimatedComplexity": "S"
+    },
+    {
+      "id": "T-03",
+      "title": "构建前端搜索结果展示组件与交互",
+      "module": "前端 UI (client/components/SearchResults.tsx)",
+      "description": "新增 SearchResults.tsx 组件并在 client/App.tsx 主视口中渲染。当处于搜索状态时，呈现搜索结果视图：包含“搜索结果”头部、分类标签（全部/帖子/用户）、匹配的用户卡片列表（支持点击直接发起私信）和匹配的帖子列表（复用点赞、展开评论交互）；若无匹配结果展示友好的空状态。",
+      "dependsOn": [
+        "T-02"
+      ],
+      "acceptanceCriteria": [
+        "主内容区在搜索激活时无缝渲染搜索结果视图，保持与 X.com 整体设计语言一致",
+        "匹配的用户列表中点击用户可触发 onSelectUserForDm 快捷进入私信对话",
+        "匹配的帖子列表支持完整的点赞与查看评论操作",
+        "无搜索结果时展示空状态提示文案（如‘未找到相关结果’）"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-04",
+      "title": "编写搜索功能端到端 E2E 自动化测试",
+      "module": "自动化测试 (tests/e2e/search.spec.ts)",
+      "description": "基于 Playwright 编写端到端测试用例：覆盖发布测试帖子后通过关键词模糊检索确认命中、输入 '@' 关键词检索特定用户、以及无匹配项的空状态与退出搜索交互验证，确保与已有测试套件共同 100% 绿色通过。",
+      "dependsOn": [
+        "T-03"
+      ],
+      "acceptanceCriteria": [
+        "测试用例验证在搜索框输入关键词并回车后能正确渲染包含该关键词的帖子",
+        "测试用例验证输入 @ 关键词后用户匹配项出现并可交互",
+        "测试用例验证清空搜索后恢复默认 Feed 列表",
+        "运行 npx playwright test 无破坏性失败"
+      ],
+      "estimatedComplexity": "S"
+    }
+  ]
+}
