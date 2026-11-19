@@ -1,12 +1,16 @@
 {
   "jobId": "job-ac932b40",
-  "status": "queued",
-  "updatedAt": "2026-11-19T14:01:47.482Z",
+  "status": "running",
+  "updatedAt": "2026-11-19T14:02:04.465Z",
+  "headSha": "b22ca6aa22e8a484c213b879f157f08e29f22cc9",
+  "actionsRunId": 44539376937,
+  "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44539376937",
   "model": "gemini-3.8-flash-high",
   "steps": {
     "architect": {
       "status": "running",
-      "message": "已入队，等待 Instabox AGY Runner 接单并检出最新代码…"
+      "startedAt": "2026-11-19T14:02:04.465Z",
+      "message": "Instabox AGY 正在阅读当前仓库真实代码并拆解增量架构与任务树…"
     },
     "qa_spec": {
       "status": "idle"
