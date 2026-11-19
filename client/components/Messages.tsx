@@ -57,13 +57,8 @@ export const Messages: React.FC<MessagesProps> = ({
     const targetRecipient = recipient.trim();
     const targetContent = content.trim();
 
-    if (!targetRecipient) {
-      setErrorMsg('收件人不能为空');
-      return;
-    }
-
-    if (!targetContent) {
-      setErrorMsg('私信内容不能为空');
+    if (!targetRecipient || !targetContent) {
+      setErrorMsg('收件人和私信内容均不能为空 (required)');
       return;
     }
 
@@ -83,7 +78,11 @@ export const Messages: React.FC<MessagesProps> = ({
       await loadHistory();
     } catch (err: any) {
       console.error('Send message error:', err);
-      if (err.status === 404 || (err.data && err.data.error === '404_USER_NOT_FOUND')) {
+      if (
+        err.status === 404 ||
+        (err.data && err.data.error === '404_USER_NOT_FOUND') ||
+        (err.message && err.message.includes('404'))
+      ) {
         setErrorMsg('用户未找到，收件人不存在 (404_USER_NOT_FOUND)');
       } else {
         setErrorMsg(err.message || '发送失败，请稍后重试');
@@ -94,10 +93,17 @@ export const Messages: React.FC<MessagesProps> = ({
   };
 
   return (
-    <div className="messages-container">
-      {/* Compose Message Card */}
-      <div className="card message-compose-card">
-        <h3 className="section-title">发送站内信 (Direct Message)</h3>
+    <div className="messages-container x-messages-view x-fade-in-up">
+      <div className="x-messages-header">
+        <h2 className="x-messages-title">✉️ 站内信 (Direct Messages)</h2>
+        <span className="x-messages-subtitle">
+          安全点对点通信 · 基于浏览器指纹即时连接
+        </span>
+      </div>
+
+      {/* Compose Form Card */}
+      <div className="card message-compose-card x-dm-compose-card">
+        <h3 className="section-title">发送新私信</h3>
 
         <form onSubmit={handleSend} className="message-form">
           <div className="form-group">
@@ -107,7 +113,7 @@ export const Messages: React.FC<MessagesProps> = ({
             <input
               id="recipient"
               type="text"
-              className="input-field"
+              className="input-field x-thread-input"
               placeholder="输入目标用户的指纹 ID (例如: qa-fp-...)"
               value={recipient}
               onChange={(e) => {
@@ -124,7 +130,7 @@ export const Messages: React.FC<MessagesProps> = ({
             </label>
             <textarea
               id="message"
-              className="textarea-field"
+              className="textarea-field x-dm-textarea"
               rows={3}
               placeholder="输入你想对Ta说的私信内容..."
               value={content}
@@ -137,13 +143,13 @@ export const Messages: React.FC<MessagesProps> = ({
           </div>
 
           {errorMsg && (
-            <div className="error-banner" role="alert">
+            <div className="error-banner x-fade-in-up" role="alert">
               ⚠️ {errorMsg}
             </div>
           )}
 
           {successMsg && (
-            <div className="success-banner" role="status">
+            <div className="success-banner x-fade-in-up" role="status">
               ✅ {successMsg}
             </div>
           )}
@@ -151,7 +157,7 @@ export const Messages: React.FC<MessagesProps> = ({
           <div className="form-actions">
             <button
               type="submit"
-              className="btn btn-primary"
+              className="btn btn-primary x-dm-send-btn x-btn-active"
               disabled={isSending}
             >
               {isSending ? '发送中...' : '发送'}
@@ -162,8 +168,8 @@ export const Messages: React.FC<MessagesProps> = ({
 
       {/* Message History */}
       <div className="card message-history-card">
-        <div className="history-header">
-          <h3 className="section-title">消息记录</h3>
+        <div className="history-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h3 className="section-title" style={{ margin: 0 }}>会话记录</h3>
           <button
             type="button"
             className="btn-link"
@@ -175,22 +181,27 @@ export const Messages: React.FC<MessagesProps> = ({
         </div>
 
         {loadingHistory && messageHistory.length === 0 ? (
-          <div className="loading-card">加载消息记录中...</div>
+          <div className="x-skeletons-wrapper">
+            <div className="x-shimmer x-skeleton-bubble outgoing" />
+            <div className="x-shimmer x-skeleton-bubble incoming" />
+          </div>
         ) : messageHistory.length === 0 ? (
-          <div className="empty-card">暂无私信往来</div>
+          <div className="empty-card">
+            <p>暂无私信往来，输入上方收件人指纹开始交流吧！</p>
+          </div>
         ) : (
-          <div className="message-list">
+          <div className="message-list x-dm-bubble-list">
             {messageHistory.map((msg) => {
               const isOutgoing = msg.sender_id === currentUserId;
               return (
                 <div
                   key={msg.id}
-                  className={`message-bubble-wrapper ${
+                  className={`message-bubble-wrapper x-dm-bubble-row ${
                     isOutgoing ? 'outgoing' : 'incoming'
-                  }`}
+                  } x-fade-in-up`}
                 >
                   <div className="message-peer-info">
-                    {isOutgoing ? `发给: ${msg.recipient_id}` : `来自: ${msg.sender_id}`}
+                    <span>{isOutgoing ? `发给: ${msg.recipient_id}` : `来自: ${msg.sender_id}`}</span>
                     <span className="msg-timestamp">
                       {new Date(msg.created_at).toLocaleTimeString([], {
                         hour: '2-digit',
@@ -198,7 +209,7 @@ export const Messages: React.FC<MessagesProps> = ({
                       })}
                     </span>
                   </div>
-                  <div className="message-bubble">{msg.content}</div>
+                  <div className="message-bubble x-dm-bubble">{msg.content}</div>
                 </div>
               );
             })}
