@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       pr_branch:
-        description: 'Target Draft PR branch containing docs/spec.json and tests/e2e.spec.ts'
+        description: 'Target Draft PR branch containing docs/spec.json and read-only E2E test suite'
         required: true
         type: string
       pr_number:
@@ -14,6 +14,16 @@ on:
         type: string
       run_id:
         description: 'AutoDev Studio Run ID'
+        required: false
+        default: ''
+        type: string
+      e2e_test_path:
+        description: 'Read-only E2E test path for this iteration (defaults to spec.json or tests/e2e.spec.ts)'
+        required: false
+        default: ''
+        type: string
+      revision_note:
+        description: 'Optional approval rework instructions when re-running after changes_requested'
         required: false
         default: ''
         type: string
@@ -36,8 +46,9 @@ permissions:
   pull-requests: write
   issues: write
 
+# Single-task repository-wide serial queue to guarantee fresh context across iterations
 concurrency:
-  group: autodev-agy-${{ inputs.pr_branch || github.head_ref }}
+  group: autodev-agy-single-queue
   cancel-in-progress: false
 
 jobs:
@@ -58,9 +69,11 @@ jobs:
           BRANCH="${{ inputs.pr_branch || github.head_ref }}"
           MODEL="${{ inputs.agy_model || 'gemini-3.8-flash-high' }}"
           PR_NUM="${{ inputs.pr_number || github.event.pull_request.number || '' }}"
+          E2E_PATH="${{ inputs.e2e_test_path || '' }}"
           echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
           echo "model=${MODEL}" >> "$GITHUB_OUTPUT"
           echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
+          echo "e2e_test_path=${E2E_PATH}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout PR Branch
         uses: actions/checkout@v7
@@ -68,7 +81,7 @@ jobs:
           ref: ${{ steps.target.outputs.branch }}
           fetch-depth: 0
 
-      - name: Verify VPS AGY CLI, Workspace Directory & Lock Read-Only E2E Contract
+      - name: Verify VPS AGY CLI, Workspace Directory & Lock All Read-Only E2E Contracts
         id: lock
         shell: bash
         run: |
@@ -77,21 +90,33 @@ jobs:
           ls -la
           which agy
           agy --version
-          if [ -f "tests/e2e.spec.ts" ]; then
-            HASH=$(sha256sum tests/e2e.spec.ts | awk '{print $1}')
-            echo "e2e_hash=${HASH}" >> "$GITHUB_OUTPUT"
-            echo "Locked tests/e2e.spec.ts SHA-256: ${HASH}"
-          else
-            echo "e2e_hash=" >> "$GITHUB_OUTPUT"
-          fi
 
-      - name: Execute AGY Coding Agent on VPS (with Live Log Stream)
+          LOCK_MANIFEST="/tmp/autodev-e2e-lock-${{ github.run_id }}.sha256"
+          : > "${LOCK_MANIFEST}"
+          if [ -f "tests/e2e.spec.ts" ]; then
+            sha256sum "tests/e2e.spec.ts" >> "${LOCK_MANIFEST}"
+          fi
+          if [ -d "tests/e2e" ]; then
+            find tests/e2e -type f -name '*.spec.ts' | sort | while read -r f; do
+              sha256sum "${f}" >> "${LOCK_MANIFEST}"
+            done
+          fi
+          if [ -f "docs/spec.json" ]; then
+            sha256sum "docs/spec.json" >> "${LOCK_MANIFEST}"
+          fi
+          echo "lock_manifest=${LOCK_MANIFEST}" >> "$GITHUB_OUTPUT"
+          echo "Locked read-only contract files:"
+          cat "${LOCK_MANIFEST}" || true
+
+      - name: Execute AGY Coding Agent on VPS (Incremental Iteration + Live Log Stream)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LIVE_REPO: ${{ github.repository }}
           LIVE_RUN_ID: ${{ github.run_id }}
           LIVE_BRANCH: ${{ steps.target.outputs.branch }}
           LIVE_MODEL: ${{ steps.target.outputs.model }}
+          REVISION_NOTE: ${{ inputs.revision_note }}
+          ACTIVE_E2E_PATH: ${{ steps.target.outputs.e2e_test_path }}
         shell: bash
         run: |
           export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
@@ -112,6 +137,7 @@ jobs:
           const marker = '<!-- AUTODEV-LIVE-LOG:' + runId + ' -->';
           const startedAt = Date.now();
           let issueNumber = null;
+          let issueCommentCount = 0;
           let commentId = null;
 
           const headers = {
@@ -134,6 +160,7 @@ jobs:
               const found = issues.find((i) => !i.pull_request && i.title === issueTitle);
               if (found) {
                 issueNumber = found.number;
+                issueCommentCount = Number(found.comments || 0);
                 return issueNumber;
               }
             }
@@ -144,7 +171,10 @@ jobs:
                 body: 'AutoDev Studio 实时 AGY 执行日志流（系统自动维护，请勿手动删除）。',
               }),
             });
-            if (created && created.number) issueNumber = created.number;
+            if (created && created.number) {
+              issueNumber = created.number;
+              issueCommentCount = 0;
+            }
             return issueNumber;
           }
 
@@ -164,7 +194,7 @@ jobs:
               logText = clean.split('\n').slice(-100).join('\n').slice(-24000);
             } catch {}
             const filesSection = (gitStatus || '(尚未产生文件变更，AGY 正在阅读需求并规划实现…)').replace(/~~~~/g, '----');
-            const outputSection = logText.trim() || '(AGY 已启动，正在分析 docs/prd.md、docs/spec.json 与 tests/e2e.spec.ts…)';
+            const outputSection = logText.trim() || '(AGY 已启动，正在分析现有仓库代码、docs/prd.md、docs/spec.json 与只读测试集…)';
             return [
               marker,
               '### AutoDev VPS AGY Live Stream',
@@ -194,10 +224,17 @@ jobs:
             if (!num) return;
             const body = buildBody(stateLabel);
             if (!commentId) {
-              const comments = await gh('/repos/' + repo + '/issues/' + num + '/comments?per_page=100');
-              if (Array.isArray(comments)) {
-                const existing = comments.find((c) => typeof c.body === 'string' && c.body.includes(marker));
-                if (existing) commentId = existing.id;
+              const lastPage = Math.max(1, Math.ceil((issueCommentCount || 1) / 100));
+              const pagesToCheck = lastPage > 1 ? [lastPage, lastPage - 1] : [1];
+              for (const page of pagesToCheck) {
+                const comments = await gh('/repos/' + repo + '/issues/' + num + '/comments?per_page=100&page=' + page);
+                if (Array.isArray(comments)) {
+                  const existing = comments.find((c) => typeof c.body === 'string' && c.body.includes(marker));
+                  if (existing) {
+                    commentId = existing.id;
+                    break;
+                  }
+                }
               }
             }
             if (commentId) {
@@ -210,7 +247,10 @@ jobs:
                 method: 'POST',
                 body: JSON.stringify({ body }),
               });
-              if (created && created.id) commentId = created.id;
+              if (created && created.id) {
+                commentId = created.id;
+                issueCommentCount += 1;
+              }
             }
           }
 
@@ -231,20 +271,28 @@ jobs:
           node /tmp/autodev-live-reporter.mjs &
           REPORTER_PID=$!
 
-          PROMPT=$(cat <<'EOF'
-          You are executing inside an AutoDev Studio automated engineering pipeline on branch ${{ steps.target.outputs.branch }}.
+          REVISION_SECTION=""
+          if [ -f "docs/revision-feedback.md" ] || [ -n "${REVISION_NOTE}" ]; then
+            REVISION_SECTION="CRITICAL REWORK MODE: This PR was returned with review feedback. Read docs/revision-feedback.md thoroughly (if present) and prioritize resolving EVERY requested fix below before finishing: ${REVISION_NOTE}"
+          fi
+
+          PROMPT=$(cat <<EOF
+          You are executing inside an AutoDev Studio automated engineering pipeline on branch ${LIVE_BRANCH}.
           Current working directory is the root of this repository.
-          Read docs/prd.md, docs/spec.json, and tests/e2e.spec.ts thoroughly.
+          Read docs/prd.md, docs/spec.json, any docs/revision-feedback.md, and all read-only Playwright E2E tests under tests/e2e/ (and tests/e2e.spec.ts if present) thoroughly.
+          ${REVISION_SECTION}
 
           Requirements:
-          1. Implement all atomic tasks and API contracts defined in docs/spec.json in clean, modular, production-ready code.
-          2. Cloudflare Deployment Standard (when targeting Cloudflare Workers):
-             - Provide a valid wrangler.toml (or wrangler.jsonc) with Workers Static Assets (`[assets]` directory = "./dist", not_found_handling = "single-page-application"), Hono TypeScript API entry, and D1 SQL migrations in `migrations/` if relational storage is used.
-             - Ensure `package.json` has working `build` and `deploy` (`wrangler deploy`) scripts.
-          3. STRICT READ-ONLY CONTRACT: Do NOT modify, weaken, or delete tests/e2e.spec.ts or docs/spec.json.
-          4. Install required dependencies, verify TypeScript/build passes, and run automated checks against your implementation.
-          5. Keep git working tree clean of temporary logs or build artifacts (update .gitignore as needed).
-          6. Output a concise summary of implemented files and verification results.
+          1. INCREMENTAL ITERATION RULE: Inspect the existing codebase first. Preserve all previously working features, existing API contracts, and historical regression tests under tests/e2e/. Do NOT rewrite unrelated working modules from scratch unless strictly required by docs/spec.json.
+          2. Implement all atomic tasks and API contracts defined in docs/spec.json in clean, modular, production-ready code.
+          3. Cloudflare Deployment & D1 Migration Standard (when targeting Cloudflare Workers):
+             - Maintain a valid wrangler.toml (or wrangler.jsonc) with Workers Static Assets ([assets] directory = "./dist", not_found_handling = "single-page-application"), Hono TypeScript API entry, and D1 SQL migrations in migrations/.
+             - NEVER modify or overwrite already-applied migration files in migrations/. Always append new sequentially numbered migration files (e.g. 0002_xxx.sql) using IF NOT EXISTS / safe ALTER statements where appropriate.
+             - Ensure package.json has working build and deploy (wrangler deploy) scripts.
+          4. STRICT READ-ONLY CONTRACT: Do NOT modify, weaken, or delete docs/spec.json, tests/e2e.spec.ts, or ANY file inside tests/e2e/.
+          5. Install required dependencies, verify TypeScript/build passes, and run automated checks against your implementation.
+          6. Keep git working tree clean of temporary logs or build artifacts (update .gitignore as needed).
+          7. Output a concise summary in Chinese of implemented/modified files and verification results.
           EOF
           )
 
@@ -253,7 +301,7 @@ jobs:
             stdbuf -oL -eL agy \
               --mode auto \
               --dangerously-skip-permissions \
-              --model "${{ steps.target.outputs.model }}" \
+              --model "${LIVE_MODEL}" \
               --print-timeout 20m \
               --print="${PROMPT}" 2>&1 | tee "${LOG_FILE}"
             AGY_EXIT=${PIPESTATUS[0]}
@@ -261,7 +309,7 @@ jobs:
             agy \
               --mode auto \
               --dangerously-skip-permissions \
-              --model "${{ steps.target.outputs.model }}" \
+              --model "${LIVE_MODEL}" \
               --print-timeout 20m \
               --print="${PROMPT}" 2>&1 | tee "${LOG_FILE}"
             AGY_EXIT=${PIPESTATUS[0]}
@@ -273,19 +321,20 @@ jobs:
           rm -f /tmp/autodev-live-reporter.mjs "${LOG_FILE}"
           exit "${AGY_EXIT}"
 
-      - name: Enforce Read-Only E2E Test Contract Integrity
+      - name: Enforce Read-Only E2E Test & Spec Contract Integrity
         shell: bash
         run: |
-          EXPECTED="${{ steps.lock.outputs.e2e_hash }}"
-          if [ -n "${EXPECTED}" ] && [ -f "tests/e2e.spec.ts" ]; then
-            ACTUAL=$(sha256sum tests/e2e.spec.ts | awk '{print $1}')
-            if [ "${EXPECTED}" != "${ACTUAL}" ]; then
-              echo "::error::tests/e2e.spec.ts was modified by coding agent! Reverting and failing gate."
-              git checkout -- tests/e2e.spec.ts
+          LOCK_MANIFEST="${{ steps.lock.outputs.lock_manifest }}"
+          if [ -s "${LOCK_MANIFEST}" ]; then
+            if ! sha256sum -c "${LOCK_MANIFEST}"; then
+              echo "::error::One or more read-only test/spec contract files were modified or deleted by coding agent! Reverting and failing gate."
+              git checkout -- docs/spec.json tests/e2e.spec.ts tests/e2e 2>/dev/null || true
+              rm -f "${LOCK_MANIFEST}"
               exit 1
             fi
-            echo "Read-only contract verified: tests/e2e.spec.ts unchanged."
+            echo "Read-only contract verified: all locked E2E tests and docs/spec.json are unchanged."
           fi
+          rm -f "${LOCK_MANIFEST}"
 
       - name: Commit & Push Implementation to Draft PR Branch
         id: push
@@ -316,8 +365,8 @@ jobs:
           ### AutoDev VPS AGY 执行完成
           - Model: `${{ steps.target.outputs.model }}`
           - Commit: `${{ steps.push.outputs.commit_sha }}`
-          - 只读测试契约 `tests/e2e.spec.ts` 完整性校验通过。
-          - 请前往 AutoDev Studio「4. 验收与上线审批」点击「一键部署并生成验收网址」进行在线验收。
+          - 全量只读测试契约（含历次回归测试）完整性校验通过。
+          - 请前往 AutoDev Studio「4. 验收与上线审批」点击「一键部署隔离预览环境」进行在线验收。
           COMMENT_EOF
           else
             cat > /tmp/autodev-pr-summary.md <<'COMMENT_EOF'
