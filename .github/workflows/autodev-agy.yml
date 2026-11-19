@@ -38,6 +38,16 @@ on:
           - claude-sonnet-4-6
           - claude-opus-4-6-thinking
           - gpt-oss-120b-medium
+      session_mode:
+        description: 'Conditional AGY session policy: fresh or resume'
+        required: false
+        default: 'fresh'
+        type: string
+      resume_session_id:
+        description: 'Optional previous clean AGY session ID to resume on rework'
+        required: false
+        default: ''
+        type: string
   pull_request:
     types: [labeled]
 
@@ -109,6 +119,7 @@ jobs:
           cat "${LOCK_MANIFEST}" || true
 
       - name: Execute AGY Coding Agent on VPS (Incremental Iteration + Live Log Stream)
+        id: agy
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LIVE_REPO: ${{ github.repository }}
@@ -117,6 +128,10 @@ jobs:
           LIVE_MODEL: ${{ steps.target.outputs.model }}
           REVISION_NOTE: ${{ inputs.revision_note }}
           ACTIVE_E2E_PATH: ${{ steps.target.outputs.e2e_test_path }}
+          SESSION_MODE: ${{ inputs.session_mode || 'fresh' }}
+          RESUME_SESSION_ID: ${{ inputs.resume_session_id || '' }}
+          CI: 'true'
+          PLAYWRIGHT_HTML_OPEN: 'never'
         shell: bash
         run: |
           export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
@@ -291,38 +306,91 @@ jobs:
              - NEVER modify or overwrite already-applied migration files in migrations/. Always append new sequentially numbered migration files (e.g. 0002_xxx.sql) using IF NOT EXISTS / safe ALTER statements where appropriate.
              - Ensure package.json has working build and deploy (wrangler deploy) scripts.
           5. STRICT READ-ONLY CONTRACT: Do NOT modify, weaken, or delete docs/spec.json, tests/e2e.spec.ts, or ANY file inside tests/e2e/.
-          6. FOREGROUND-ONLY VERIFICATION (NO BACKGROUND TASKS):
+          6. FOREGROUND-ONLY VERIFICATION (NO BACKGROUND TASKS & FAST CLEAN EXIT):
              - NEVER start dev servers, watch processes, or Playwright runs as async background tasks or detached daemons (doing so leaves AGY idle waiting 20m for background tasks until DEADLINE_EXCEEDED / print_timeout).
-             - Always run build/typecheck and Playwright strictly in the FOREGROUND with finite timeouts, e.g. `timeout 180s npx playwright test --reporter=line` (relying on Playwright's own webServer lifecycle so processes terminate cleanly).
-             - Before finishing your turn, verify zero background tasks/servers remain running; the CI pipeline automatically executes a dedicated post-coding verification step right after you exit.
+             - Always run build/typecheck and Playwright strictly in the FOREGROUND with `CI=true PLAYWRIGHT_HTML_OPEN=never` and finite timeouts, e.g. `CI=true timeout 120s npx playwright test --reporter=line`.
+             - Do NOT enter redundant verification loops: once `npm run build` and a single foreground Playwright check pass, STOP IMMEDIATELY and output your concise Chinese summary so the turn finishes well within timeout. Step 7 will automatically run the full verification suite right after you exit.
           7. Keep git working tree clean of temporary logs or build artifacts (update .gitignore as needed).
           8. Output a concise summary in Chinese of implemented/modified files and verification results.
           EOF
           )
 
+          AGY_HELP="$(agy --help 2>&1 || true)"
+          USE_RESUME="false"
+          RESUME_ARGS=()
+          if [ "${SESSION_MODE}" = "resume" ] && [ -n "${RESUME_SESSION_ID}" ]; then
+            if echo "${AGY_HELP}" | grep -q -- "--resume"; then
+              USE_RESUME="true"
+              RESUME_ARGS=(--resume "${RESUME_SESSION_ID}")
+              echo "[AutoDev] Conditional session reuse enabled: resuming AGY session ${RESUME_SESSION_ID}" | tee -a "${LOG_FILE}"
+            else
+              echo "[AutoDev] VPS agy CLI does not expose --resume; starting fresh session on branch ${LIVE_BRANCH}" | tee -a "${LOG_FILE}"
+            fi
+          fi
+
+          run_agy_cmd() {
+            if command -v stdbuf >/dev/null 2>&1; then
+              CI=true PLAYWRIGHT_HTML_OPEN=never stdbuf -oL -eL agy \
+                --mode auto \
+                --dangerously-skip-permissions \
+                --model "${LIVE_MODEL}" \
+                --print-timeout 20m \
+                "$@" \
+                --print="${PROMPT}" </dev/null 2>&1 | tee -a "${LOG_FILE}"
+              return ${PIPESTATUS[0]}
+            else
+              CI=true PLAYWRIGHT_HTML_OPEN=never agy \
+                --mode auto \
+                --dangerously-skip-permissions \
+                --model "${LIVE_MODEL}" \
+                --print-timeout 20m \
+                "$@" \
+                --print="${PROMPT}" </dev/null 2>&1 | tee -a "${LOG_FILE}"
+              return ${PIPESTATUS[0]}
+            fi
+          }
+
           set +e
-          if command -v stdbuf >/dev/null 2>&1; then
-            stdbuf -oL -eL agy \
-              --mode auto \
-              --dangerously-skip-permissions \
-              --model "${LIVE_MODEL}" \
-              --print-timeout 20m \
-              --print="${PROMPT}" 2>&1 | tee "${LOG_FILE}"
-            AGY_EXIT=${PIPESTATUS[0]}
+          AGY_START_TS=$(date +%s)
+          if [ "${USE_RESUME}" = "true" ]; then
+            run_agy_cmd "${RESUME_ARGS[@]}"
+            AGY_EXIT=$?
+            AGY_ELAPSED=$(( $(date +%s) - AGY_START_TS ))
+            if [ "${AGY_EXIT}" -ne 0 ] && [ "${AGY_ELAPSED}" -lt 45 ]; then
+              echo "[AutoDev] Resuming session ${RESUME_SESSION_ID} failed quickly (exit ${AGY_EXIT}); falling back to a clean fresh AGY session." | tee -a "${LOG_FILE}"
+              USE_RESUME="false"
+              run_agy_cmd
+              AGY_EXIT=$?
+            fi
           else
-            agy \
-              --mode auto \
-              --dangerously-skip-permissions \
-              --model "${LIVE_MODEL}" \
-              --print-timeout 20m \
-              --print="${PROMPT}" 2>&1 | tee "${LOG_FILE}"
-            AGY_EXIT=${PIPESTATUS[0]}
+            run_agy_cmd
+            AGY_EXIT=$?
           fi
           set -e
+
+          CAPTURED_SESSION_ID="$(grep -oE '(session[_ -]?id|sessionId|session)[[:space:]:=]+([A-Za-z0-9_-]{8,64})' "${LOG_FILE}" | tail -n 1 | awk -F'[:= ]+' '{print $NF}' || true)"
+          if [ -z "${CAPTURED_SESSION_ID}" ] && [ "${USE_RESUME}" = "true" ]; then
+            CAPTURED_SESSION_ID="${RESUME_SESSION_ID}"
+          fi
+
+          HAS_CHANGES="false"
+          if [ -n "$(git status --porcelain)" ]; then
+            HAS_CHANGES="true"
+          fi
+
+          echo "agy_exit=${AGY_EXIT}" >> "$GITHUB_OUTPUT"
+          echo "has_changes=${HAS_CHANGES}" >> "$GITHUB_OUTPUT"
+          echo "agy_session_id=${CAPTURED_SESSION_ID}" >> "$GITHUB_OUTPUT"
+          echo "agy_session_reused=${USE_RESUME}" >> "$GITHUB_OUTPUT"
 
           kill "${REPORTER_PID}" 2>/dev/null || true
           node /tmp/autodev-live-reporter.mjs --final "${AGY_EXIT}" || true
           rm -f /tmp/autodev-live-reporter.mjs "${LOG_FILE}"
+
+          if [ "${AGY_EXIT}" -eq 3 ] && [ "${HAS_CHANGES}" = "true" ]; then
+            echo "::warning::AGY hit print_timeout (exit 3) after modifying files. Proceeding to read-only contract & full automated test verification gate instead of discarding completed code."
+            exit 0
+          fi
           exit "${AGY_EXIT}"
 
       - name: Enforce Read-Only E2E Test & Spec Contract Integrity
@@ -351,6 +419,9 @@ jobs:
           REPORT_PR_NUM: ${{ steps.target.outputs.pr_number }}
           REPORT_PIPELINE_ID: ${{ inputs.run_id }}
           REPORT_CHANNEL_BRANCH: 'autodev-plan-channel'
+          REPORT_AGY_EXIT: ${{ steps.agy.outputs.agy_exit }}
+          REPORT_AGY_SESSION_ID: ${{ steps.agy.outputs.agy_session_id }}
+          REPORT_AGY_SESSION_REUSED: ${{ steps.agy.outputs.agy_session_reused }}
         shell: bash
         run: |
           cat > /tmp/autodev-test-verifier.mjs <<'VERIFY_EOF'
@@ -458,6 +529,11 @@ jobs:
           const total = cases.length;
           const status = failed > 0 && passed > 0 ? 'partial' : failed > 0 ? 'failed' : passed > 0 ? 'passed' : 'skipped';
 
+          const agyExitRaw = process.env.REPORT_AGY_EXIT;
+          const agyExitCode = agyExitRaw !== undefined && agyExitRaw !== '' ? Number(agyExitRaw) : undefined;
+          const agySessionId = (process.env.REPORT_AGY_SESSION_ID || '').trim() || undefined;
+          const agySessionReused = process.env.REPORT_AGY_SESSION_REUSED === 'true';
+
           const report = {
             runId: pipelineRunId,
             actionsRunId,
@@ -476,9 +552,21 @@ jobs:
             summary: '自动验证：' + passed + ' 通过 / ' + failed + ' 失败 / ' + skipped + ' 跳过',
             cases,
             rawLogExcerpt: rawLog.slice(-3000),
+            ...(agySessionId ? { agySessionId } : {}),
+            agySessionReused,
+            ...(Number.isFinite(agyExitCode) ? { agyExitCode } : {}),
           };
 
           console.log('Structured test report summary:', report.summary);
+          if (process.env.GITHUB_OUTPUT) {
+            const allPassed = failed === 0 && passed > 0;
+            fs.appendFileSync(
+              process.env.GITHUB_OUTPUT,
+              'all_passed=' + (allPassed ? 'true' : 'false') + '\n' +
+              'passed_count=' + passed + '\n' +
+              'failed_count=' + failed + '\n'
+            );
+          }
 
           if (token && repo && total > 0) {
             const headers = {
@@ -506,6 +594,23 @@ jobs:
           node /tmp/autodev-test-verifier.mjs || true
           rm -f /tmp/autodev-test-verifier.mjs
 
+      - name: Evaluate AGY Exit & Verified Recovery Gate
+        shell: bash
+        run: |
+          AGY_EXIT="${{ steps.agy.outputs.agy_exit }}"
+          HAS_CHANGES="${{ steps.agy.outputs.has_changes }}"
+          ALL_PASSED="${{ steps.verify.outputs.all_passed }}"
+          if [ "${AGY_EXIT}" = "0" ]; then
+            echo "AGY completed cleanly (exit 0)."
+            exit 0
+          fi
+          if [ "${AGY_EXIT}" = "3" ] && [ "${HAS_CHANGES}" = "true" ] && [ "${ALL_PASSED}" = "true" ]; then
+            echo "Verified recovery approved: AGY hit print_timeout (exit 3) after completing code changes, and 100% of automated verification checks passed (${{ steps.verify.outputs.passed_count }} passed, 0 failed)."
+            exit 0
+          fi
+          echo "::error::AGY exited with code ${AGY_EXIT} and automated verification did not pass (has_changes=${HAS_CHANGES}, all_passed=${ALL_PASSED}, failed=${{ steps.verify.outputs.failed_count }})."
+          exit 1
+
       - name: Commit & Push Implementation to Draft PR Branch
         id: push
         shell: bash
@@ -517,7 +622,11 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No file changes produced by AGY."
           else
-            git commit -m "feat(autodev): implement spec via VPS AGY (${{ steps.target.outputs.model }})"
+            COMMIT_SUFFIX=""
+            if [ "${{ steps.agy.outputs.agy_exit }}" = "3" ]; then
+              COMMIT_SUFFIX=" [verified recovery: ${{ steps.verify.outputs.passed_count }} checks passed]"
+            fi
+            git commit -m "feat(autodev): implement spec via VPS AGY (${{ steps.target.outputs.model }})${COMMIT_SUFFIX}"
             git push origin "HEAD:${{ steps.target.outputs.branch }}"
             SHA=$(git rev-parse --short HEAD)
             echo "changed=true" >> "$GITHUB_OUTPUT"
