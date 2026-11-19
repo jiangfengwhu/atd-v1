@@ -25,7 +25,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: autodev-cf-deploy-${{ inputs.target_branch || github.ref_name }}
+  group: autodev-cf-deploy-single-queue
   cancel-in-progress: false
 
 jobs:
@@ -60,12 +60,71 @@ jobs:
         shell: bash
         run: |
           if [ -f "package-lock.json" ]; then
-            npm ci
+            npm ci || (rm -rf package-lock.json node_modules && npm install)
           elif [ -f "package.json" ]; then
             npm install
           fi
-          if [ -f "package.json" ] && node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.build ? 0 : 1)"; then
+          if [ -f "package.json" ] && node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts['build:client'] ? 0 : 1)"; then
+            npm run build:client
+          elif [ -f "package.json" ] && node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.build ? 0 : 1)"; then
             npm run build
+          fi
+
+      - name: Provision D1 Database (if placeholder) & Apply Remote Migrations
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          node <<'D1_EOF'
+          const fs = require('fs');
+          if (!fs.existsSync('wrangler.toml')) process.exit(0);
+          let toml = fs.readFileSync('wrangler.toml', 'utf8');
+          const nameMatch = toml.match(/database_name\s*=\s*"([^"]+)"/);
+          if (!nameMatch) process.exit(0);
+          const dbName = nameMatch[1];
+          const idMatch = toml.match(/database_id\s*=\s*"([^"]+)"/);
+          const currentId = idMatch ? idMatch[1] : '';
+          const isPlaceholder = !currentId || /^0+(-0+)*$/.test(currentId) || /placeholder|replace/i.test(currentId);
+          (async () => {
+            if (isPlaceholder) {
+              const token = process.env.CLOUDFLARE_API_TOKEN;
+              const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+              const headers = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
+              const listRes = await fetch('https://api.cloudflare.com/client/v4/accounts/' + accountId + '/d1/database', { headers });
+              const listJson = await listRes.json();
+              if (!listRes.ok || !listJson.success) throw new Error('Failed to list D1 databases: ' + JSON.stringify(listJson.errors));
+              let found = (listJson.result || []).find((d) => d.name === dbName);
+              if (!found) {
+                const createRes = await fetch('https://api.cloudflare.com/client/v4/accounts/' + accountId + '/d1/database', {
+                  method: 'POST',
+                  headers,
+                  body: JSON.stringify({ name: dbName }),
+                });
+                const createJson = await createRes.json();
+                if (!createRes.ok || !createJson.success) throw new Error('Failed to create D1 database: ' + JSON.stringify(createJson.errors));
+                found = createJson.result;
+              }
+              if (idMatch) {
+                toml = toml.replace(/database_id\s*=\s*"[^"]+"/, 'database_id = "' + found.uuid + '"');
+              } else {
+                toml = toml.replace(/(database_name\s*=\s*"[^"]+")/, '$1\ndatabase_id = "' + found.uuid + '"');
+              }
+              fs.writeFileSync('wrangler.toml', toml, 'utf8');
+              console.log('Bound production D1 database:', dbName, found.uuid);
+            }
+          })().catch((err) => {
+            console.error(err);
+            process.exit(1);
+          });
+          D1_EOF
+
+          if [ -f "wrangler.toml" ] && [ -d "migrations" ] && ls migrations/*.sql >/dev/null 2>&1; then
+            DB_NAME=$(node -e "const fs=require('fs');const m=fs.readFileSync('wrangler.toml','utf8').match(/database_name\s*=\s*"([^"]+)"/);console.log(m?m[1]:'')")
+            if [ -n "${DB_NAME}" ]; then
+              echo "Applying remote D1 migrations to ${DB_NAME}..."
+              npx --yes wrangler d1 migrations apply "${DB_NAME}" --remote
+            fi
           fi
 
       - name: Deploy to Cloudflare Workers
