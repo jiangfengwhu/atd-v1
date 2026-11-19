@@ -1,7 +1,7 @@
 {
   "jobId": "job-ac932b40",
   "status": "running",
-  "updatedAt": "2026-11-19T14:09:16.897Z",
+  "updatedAt": "2026-11-19T14:09:17.842Z",
   "headSha": "b22ca6aa22e8a484c213b879f157f08e29f22cc9",
   "actionsRunId": 44539376937,
   "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44539376937",
@@ -22,7 +22,9 @@
       "message": "完成 · 生成 6 条接口用例与初版 E2E 测试"
     },
     "qa_critic": {
-      "status": "idle"
+      "status": "running",
+      "startedAt": "2026-11-19T14:09:17.842Z",
+      "message": "Instabox AGY 正在评审边界异常并锁定终版只读回归测试集…"
     }
   },
   "outputFiles": {
