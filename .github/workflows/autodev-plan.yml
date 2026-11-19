@@ -501,6 +501,10 @@ jobs:
               ? 'Default Cloudflare Workers + Hono + D1 + KV + React/Vite stack. Inspect existing wrangler.toml, migrations/, src/, and client/ first!'
               : 'User specified tech stack: ' + input.effectiveTechStack;
 
+            const rsiArchitectBlock = input.rsiSystemPrompts && input.rsiSystemPrompts.architect ? '\n' + input.rsiSystemPrompts.architect + '\n' : '';
+            const rsiQaSpecBlock = input.rsiSystemPrompts && input.rsiSystemPrompts.qa_spec ? '\n' + input.rsiSystemPrompts.qa_spec + '\n' : '';
+            const rsiQaCriticBlock = input.rsiSystemPrompts && input.rsiSystemPrompts.qa_critic ? '\n' + input.rsiSystemPrompts.qa_critic + '\n' : '';
+
             // Stage 1: Architect Agent
             const architectPrompt = [
               'You are Step 1 (Architect Agent) in AutoDev Studio running directly inside the real repository on branch ' + baseBranch + ' (HEAD ' + headSha.slice(0, 7) + ').',
@@ -508,6 +512,7 @@ jobs:
               'SPEED & FOCUS RULE: Use the pre-collected repository digest below as your map; inspect only the 3-6 most relevant source files directly and write .autodev-plan-output/architect.json promptly (aim for under 90 seconds).',
               'INCREMENTAL ITERATION RULE: If the repository already has working code, design INCREMENTAL changes on top of the existing architecture. NEVER delete or rewrite working unrelated modules or already-applied migrations (append sequentially numbered SQL migrations only when schema changes are genuinely needed).',
               'LANGUAGE: All Chinese text fields (titles, descriptions, summaries, ambiguity details, acceptanceCriteria) MUST be written in concise, professional Simplified Chinese.',
+              ...(rsiArchitectBlock ? [rsiArchitectBlock] : []),
               '',
               'Repository Digest:',
               repoDigest,
@@ -539,6 +544,7 @@ jobs:
               'STRICT READ-ONLY RULE: Do NOT modify any repository files. ONLY write your final JSON result to .autodev-plan-output/qa_spec.json.',
               'SPEED & FOCUS RULE: Inspect existing tests/e2e* and playwright.config.ts plus the main UI entry file only, then write .autodev-plan-output/qa_spec.json promptly (aim for under 90 seconds). Do NOT duplicate or break historical regression tests.',
               'LANGUAGE: All Chinese scenario descriptions, assertions, and coverageNotes MUST be in Simplified Chinese.',
+              ...(rsiQaSpecBlock ? [rsiQaSpecBlock] : []),
               '',
               'PRD Title: ' + input.prdTitle,
               'PRD Content:',
@@ -566,6 +572,7 @@ jobs:
               'SPEED & FOCUS RULE: Review Stage 2 QA Spec directly against the PRD and real repository routes/selectors, harden edge cases, and write .autodev-plan-output/qa_critic.json promptly (aim for under 90 seconds).',
               'Produce a hardened, deterministic final Playwright E2E test suite (finalE2eTestCode) and final API checklist (finalApiTestChecklist) that is realistic, fast, and aligned with the real app.',
               'LANGUAGE: All reviewSummary, finding issues, recommendations, and checklist text MUST be in Simplified Chinese.',
+              ...(rsiQaCriticBlock ? [rsiQaCriticBlock] : []),
               '',
               'PRD Title: ' + input.prdTitle,
               'PRD Content:',
