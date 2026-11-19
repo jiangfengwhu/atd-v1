@@ -1,0 +1,16 @@
+{
+  "jobId": "job-ac932b40",
+  "repoFullName": "jiangfengwhu/atd-v1",
+  "baseBranch": "main",
+  "prdTitle": "搜索功能",
+  "prdContent": "添加搜索功能，帖子搜索，支持模糊搜索，包括帖子内容，@支持搜索用户",
+  "effectiveTechStack": "React + Vite + TypeScript (Cloudflare Workers Static Assets) + Hono API on Cloudflare Workers + Cloudflare D1 (SQLite) + Cloudflare KV",
+  "isDefaultCloudflare": true,
+  "agyModel": "gemini-3.8-flash-high",
+  "createdAt": "2026-11-19T14:01:46.815Z",
+  "rsiSystemPrompts": {
+    "architect": "",
+    "qa_spec": "=== RSI 系统自进化强约束规则 (QA Spec 测试规格 · 已自动注入 1 条历史经验) ===\n以下规则均由系统经 Decision 门控筛选并从历史真实故障中提炼，本轮必须严格遵守以避免重复踩坑：\n1. [RECOMMENDED] (测试断言失败 · 触发 1 次) E2E测试定位符唯一性原则：在编写Playwright E2E测试时，严禁使用导致多元素匹配的模糊定位符（如未限定容器的通用getByRole）。若页面存在多个相同语义的组件，必须通过链式调用（如.locator('.nav-container').getByRole(...)）或添加data-testi…",
+    "qa_critic": ""
+  }
+}
