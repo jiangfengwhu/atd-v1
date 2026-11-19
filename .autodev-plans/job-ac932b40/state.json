@@ -1,7 +1,7 @@
 {
   "jobId": "job-ac932b40",
-  "status": "running",
-  "updatedAt": "2026-11-19T14:12:23.095Z",
+  "status": "completed",
+  "updatedAt": "2026-11-19T14:12:24.111Z",
   "headSha": "b22ca6aa22e8a484c213b879f157f08e29f22cc9",
   "actionsRunId": 44539376937,
   "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44539376937",
