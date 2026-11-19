@@ -1,0 +1,274 @@
+{
+  "runId": "run-0273dbc6",
+  "actionsRunId": 44541341972,
+  "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44541341972",
+  "workflowName": "AutoDev AGY Coding Runner",
+  "branch": "autodev/feat-20261119-141244",
+  "prNumber": 6,
+  "kind": "e2e",
+  "status": "partial",
+  "total": 36,
+  "passed": 34,
+  "failed": 2,
+  "skipped": 0,
+  "durationMs": 26756,
+  "executedAt": "2026-11-19T14:41:53.033Z",
+  "summary": "外置验证（第 3/3 轮）：34 通过 / 2 失败 / 0 跳过",
+  "cases": [
+    {
+      "id": "gate-contract",
+      "title": "只读测试与规格契约完整性校验 (sha256sum -c)",
+      "status": "passed",
+      "durationMs": 6
+    },
+    {
+      "id": "check-build",
+      "title": "生产构建检查 (npm run build)",
+      "status": "passed",
+      "durationMs": 3728
+    },
+    {
+      "id": "pw-2",
+      "title": "e2e/run-0273dbc6.spec.ts › Search Feature API Contracts (Hardened) › GET /api/v1/search validates required query parameter q",
+      "file": "e2e/run-0273dbc6.spec.ts",
+      "status": "passed",
+      "durationMs": 31
+    },
+    {
+      "id": "pw-3",
+      "title": "e2e/run-0273dbc6.spec.ts › Search Feature API Contracts (Hardened) › GET /api/v1/search finds posts by fuzzy keyword match and verifies stats",
+      "file": "e2e/run-0273dbc6.spec.ts",
+      "status": "passed",
+      "durationMs": 31
+    },
+    {
+      "id": "pw-4",
+      "title": "e2e/run-0273dbc6.spec.ts › Search Feature API Contracts (Hardened) › GET /api/v1/search finds users by @ prefix query deterministically",
+      "file": "e2e/run-0273dbc6.spec.ts",
+      "status": "passed",
+      "durationMs": 33
+    },
+    {
+      "id": "pw-5",
+      "title": "e2e/run-0273dbc6.spec.ts › Search Feature API Contracts (Hardened) › GET /api/v1/search respects type filtering (posts vs users)",
+      "file": "e2e/run-0273dbc6.spec.ts",
+      "status": "passed",
+      "durationMs": 33
+    },
+    {
+      "id": "pw-6",
+      "title": "e2e/run-0273dbc6.spec.ts › Search Feature API Contracts (Hardened) › GET /api/v1/search returns empty arrays for non-matching query",
+      "file": "e2e/run-0273dbc6.spec.ts",
+      "status": "passed",
+      "durationMs": 12
+    },
+    {
+      "id": "pw-7",
+      "title": "e2e/run-0273dbc6.spec.ts › Search Feature API Contracts (Hardened) › GET /api/v1/search safely handles SQL wildcards and special characters without 500 error",
+      "file": "e2e/run-0273dbc6.spec.ts",
+      "status": "passed",
+      "durationMs": 27
+    },
+    {
+      "id": "pw-8",
+      "title": "e2e/run-0273dbc6.spec.ts › Search Feature API Contracts (Hardened) › GET /api/v1/search enforces limit constraint",
+      "file": "e2e/run-0273dbc6.spec.ts",
+      "status": "passed",
+      "durationMs": 32
+    },
+    {
+      "id": "pw-9",
+      "title": "e2e/run-0273dbc6.spec.ts › Search Feature API Contracts (Hardened) › GET /api/v1/search handles concurrent searches without race conditions",
+      "file": "e2e/run-0273dbc6.spec.ts",
+      "status": "passed",
+      "durationMs": 30
+    },
+    {
+      "id": "pw-10",
+      "title": "e2e/run-0273dbc6.spec.ts › Search Feature Web E2E (Hardened) › User searches for post keyword in sidebar search box and views results",
+      "file": "e2e/run-0273dbc6.spec.ts",
+      "status": "passed",
+      "durationMs": 247
+    },
+    {
+      "id": "pw-11",
+      "title": "e2e/run-0273dbc6.spec.ts › Search Feature Web E2E (Hardened) › User searches with @ query to find users and verifies matched user card",
+      "file": "e2e/run-0273dbc6.spec.ts",
+      "status": "passed",
+      "durationMs": 220
+    },
+    {
+      "id": "pw-12",
+      "title": "e2e/run-0273dbc6.spec.ts › Search Feature Web E2E (Hardened) › User sees friendly empty state when search finds no results",
+      "file": "e2e/run-0273dbc6.spec.ts",
+      "status": "failed",
+      "durationMs": 10200,
+      "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('main').or(locator('.x-main-col, .feed-list')).first().locator('.card.empty-card, [data-testid=\"search-empty\"], .search-empty').or(getByRole('main').or(locator('.x-main-col, .feed-list')).first().getByText(/未找到|没有找到|暂无|无相关结果|无结果|没有匹配|no results/i)).first()\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('main').or(locator('.x-main-col, .feed-list')).first().locator('.card.empty-card, [data-testid=\"search-empty\"], .search-"
+    },
+    {
+      "id": "pw-13",
+      "title": "e2e/run-0273dbc6.spec.ts › Search Feature Web E2E (Hardened) › User can clear search and return to default feed stream",
+      "file": "e2e/run-0273dbc6.spec.ts",
+      "status": "failed",
+      "durationMs": 386,
+      "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('main').or(locator('.x-main-col, .feed-list')).first().getByText('DefaultFeedItem_1795099303077').or(getByRole('main').or(locator('.x-main-col, .feed-list')).first().locator('.post-card, article').first())\nExpected: visible\nError: strict mode violation: getByRole('main').or(locator('.x-main-col, .feed-list')).first().getByText('DefaultFeedItem_1795099303077').or(getByRole('main').or(locator('.x-main-col, .feed-list')).first().locator('.post-card, article').first()) resolved to 2 elemen"
+    },
+    {
+      "id": "pw-14",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts validates auth, whitespace, missing fields, and publishes content",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 54
+    },
+    {
+      "id": "pw-15",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › GET /api/v1/feed enforces pagination boundaries and cursor consistency",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 29
+    },
+    {
+      "id": "pw-16",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST /api/v1/messages guarantees target user via seed and rejects invalid/missing recipients",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 34
+    },
+    {
+      "id": "pw-17",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › GET /api/v1/messages retrieves user direct message history with authentication",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 15
+    },
+    {
+      "id": "pw-18",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts handles concurrent requests without ID collisions",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 34
+    },
+    {
+      "id": "pw-19",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST and GET /api/v1/posts/:postId/comments validates auth, empty content, and retrieves comments thread including parent_id replies",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 34
+    },
+    {
+      "id": "pw-20",
+      "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › User publishes post with whitespace guard, double-click prevention, and reload persistence",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 1331
+    },
+    {
+      "id": "pw-21",
+      "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › XSS payloads in post content are rendered safely without script execution",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 231
+    },
+    {
+      "id": "pw-22",
+      "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › User submits private message and sees error feedback for missing recipient",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 1071
+    },
+    {
+      "id": "pw-23",
+      "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › UI displays graceful error state and recovers when feed API returns 500_DB_ERROR",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 565
+    },
+    {
+      "id": "pw-24",
+      "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › X.com responsive navigation preserves view switching, active state indicators, and identity status",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 350
+    },
+    {
+      "id": "pw-25",
+      "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › User can expand tweet comments thread and post a reply smoothly with scoped selectors",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 1034
+    },
+    {
+      "id": "pw-26",
+      "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › Direct message compose form handles validation and interactive feedback",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 656
+    },
+    {
+      "id": "pw-27",
+      "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › Global layout and interactive controls apply modern responsive design and smooth transition attributes",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 178
+    },
+    {
+      "id": "pw-28",
+      "title": "e2e.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts validates auth, whitespace, missing fields, and publishes content",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 27
+    },
+    {
+      "id": "pw-29",
+      "title": "e2e.spec.ts › Community API Contracts (Hardened) › GET /api/v1/feed enforces pagination boundaries and cursor consistency",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 26
+    },
+    {
+      "id": "pw-30",
+      "title": "e2e.spec.ts › Community API Contracts (Hardened) › POST /api/v1/messages guarantees target user via seed and rejects invalid/missing recipients",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 30
+    },
+    {
+      "id": "pw-31",
+      "title": "e2e.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts handles concurrent requests without ID collisions",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 28
+    },
+    {
+      "id": "pw-32",
+      "title": "e2e.spec.ts › Community Web E2E (Hardened) › User publishes post with whitespace guard, double-click prevention, and reload persistence",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 1264
+    },
+    {
+      "id": "pw-33",
+      "title": "e2e.spec.ts › Community Web E2E (Hardened) › XSS payloads in post content are rendered safely without script execution",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 253
+    },
+    {
+      "id": "pw-34",
+      "title": "e2e.spec.ts › Community Web E2E (Hardened) › User submits private message and sees error feedback for missing recipient",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 1031
+    },
+    {
+      "id": "pw-35",
+      "title": "e2e.spec.ts › Community Web E2E (Hardened) › UI displays graceful error state and recovers when feed API returns 500_DB_ERROR",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 535
+    }
+  ],
+  "rawLogExcerpt": "[36m\u001b[39m\ntransforming...\n\u001b[32m✓\u001b[39m 34 modules transformed.\nrendering chunks...\ncomputing gzip size...\n\u001b[2mdist/\u001b[22m\u001b[32mindex.html                 \u001b[39m\u001b[1m\u001b[2m  0.57 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:  0.41 kB\u001b[22m\n\u001b[2mdist/\u001b[22m\u001b[2massets/\u001b[22m\u001b[35mindex-Dm1rtD4T.css  \u001b[39m\u001b[1m\u001b[2m 25.82 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:  5.03 kB\u001b[22m\n\u001b[2mdist/\u001b[22m\u001b[2massets/\u001b[22m\u001b[36mindex-BHWnJ3aw.js   \u001b[39m\u001b[1m\u001b[2m250.68 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip: 77.63 kB\u001b[22m\n\u001b[32m✓ built in 948ms\u001b[39m\n=== Playwright E2E ===\n  \"tags\": [],\n              \"tests\": [\n                {\n                  \"timeout\": 30000,\n                  \"annotations\": [],\n                  \"expectedStatus\": \"passed\",\n                  \"projectId\": \"chromium\",\n                  \"projectName\": \"chromium\",\n                  \"results\": [\n                    {\n                      \"workerIndex\": 2,\n                      \"parallelIndex\": 0,\n                      \"status\": \"passed\",\n                      \"duration\": 1031,\n                      \"errors\": [],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-19T14:41:51.326Z\",\n                      \"annotations\": [],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"b1c7859d981cc20c96be-3100a1f292e71522a9b9\",\n              \"file\": \"e2e.spec.ts\",\n              \"line\": 11,\n              \"column\": 6854\n            },\n            {\n              \"title\": \"UI displays graceful error state and recovers when feed API returns 500_DB_ERROR\",\n              \"ok\": true,\n              \"tags\": [],\n              \"tests\": [\n                {\n                  \"timeout\": 30000,\n                  \"annotations\": [],\n                  \"expectedStatus\": \"passed\",\n                  \"projectId\": \"chromium\",\n                  \"projectName\": \"chromium\",\n                  \"results\": [\n                    {\n                      \"workerIndex\": 2,\n                      \"parallelIndex\": 0,\n                      \"status\": \"passed\",\n                      \"duration\": 535,\n                      \"errors\": [],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-19T14:41:52.366Z\",\n                      \"annotations\": [],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"b1c7859d981cc20c96be-b6d913637e19927031ed\",\n              \"file\": \"e2e.spec.ts\",\n              \"line\": 11,\n              \"column\": 8156\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"errors\": [],\n  \"stats\": {\n    \"startTime\": \"2026-11-19T14:41:30.763Z\",\n    \"duration\": 22227.519999999997,\n    \"expected\": 32,\n    \"skipped\": 0,\n    \"unexpected\": 2,\n    \"flaky\": 0\n  }\n}\n",
+  "agySessionReused": false,
+  "agyExitCode": 3
+}
