@@ -5,6 +5,7 @@ interface Comment {
   id: string;
   post_id: string;
   user_id: string;
+  author_name?: string;
   parent_id: string | null;
   content: string;
   created_at: string;
@@ -12,9 +13,15 @@ interface Comment {
 
 interface CommentsProps {
   postId: string;
+  currentUserLabel?: string;
+  onCommentAdded?: () => void;
 }
 
-export const Comments: React.FC<CommentsProps> = ({ postId }) => {
+export const Comments: React.FC<CommentsProps> = ({
+  postId,
+  currentUserLabel,
+  onCommentAdded,
+}) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [content, setContent] = useState('');
@@ -60,6 +67,7 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
       setContent('');
       setReplyTo(null);
       await loadComments();
+      onCommentAdded?.();
     } catch (err: any) {
       setError(err.message || '评论发送失败');
     } finally {
@@ -67,13 +75,11 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
     }
   };
 
-  const currentFp = getFingerprint();
+  const avatarSeed = currentUserLabel || getFingerprint();
 
   return (
     <div className="comments-section x-comments-thread x-fade-in-up">
-      <h4 className="comments-title">
-        💬 回复对话流 ({comments.length})
-      </h4>
+      <h4 className="comments-title">回复列表 ({comments.length})</h4>
 
       {/* Reply compose form */}
       <form onSubmit={handleSubmit} className="comment-form x-thread-reply-form">
@@ -92,7 +98,7 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
 
         <div className="x-thread-input-row">
           <div className="avatar x-avatar-sm">
-            {currentFp ? currentFp.slice(0, 2).toUpperCase() : 'ME'}
+            {avatarSeed ? avatarSeed.slice(0, 2).toUpperCase() : 'ME'}
           </div>
           <div className="x-thread-input-wrapper">
             <input
@@ -130,47 +136,52 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
           <div className="x-shimmer x-skeleton-line medium" />
         </div>
       ) : comments.length === 0 ? (
-        <div className="empty-state-sm">暂无回复，发表第一条观点吧~</div>
+        <div className="empty-state-sm">暂无回复，发表第一条观点吧</div>
       ) : (
         <div className="comments-list x-thread-list">
-          {comments.map((c) => (
-            <div
-              key={c.id}
-              className={`comment-item x-thread-item ${
-                c.parent_id ? 'nested-reply' : ''
-              } x-fade-in-up`}
-            >
-              {c.parent_id && <div className="x-thread-line" />}
-              <div className="comment-header">
-                <div className="x-comment-author">
-                  <div className="avatar x-avatar-xs">
-                    {c.user_id.slice(0, 2).toUpperCase()}
+          {comments.map((c) => {
+            const displayAuthor =
+              c.author_name ||
+              (c.user_id.length > 12 ? `User-${c.user_id.slice(0, 6)}` : c.user_id);
+            return (
+              <div
+                key={c.id}
+                className={`comment-item x-thread-item ${
+                  c.parent_id ? 'nested-reply' : ''
+                } x-fade-in-up`}
+              >
+                {c.parent_id && <div className="x-thread-line" />}
+                <div className="comment-header">
+                  <div className="x-comment-author">
+                    <div className="avatar x-avatar-xs">
+                      {displayAuthor.slice(0, 2).toUpperCase()}
+                    </div>
+                    <span className="user-badge author-name">
+                      {displayAuthor}
+                    </span>
                   </div>
-                  <span className="user-badge author-name">
-                    {c.user_id.length > 12 ? `User-${c.user_id.slice(0, 6)}` : c.user_id}
-                  </span>
+                  <time className="timestamp" dateTime={c.created_at}>
+                    {new Date(c.created_at).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </time>
                 </div>
-                <time className="timestamp" dateTime={c.created_at}>
-                  {new Date(c.created_at).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </time>
-              </div>
 
-              <div className="comment-content">{c.content}</div>
+                <div className="comment-content">{c.content}</div>
 
-              <div className="comment-actions">
-                <button
-                  type="button"
-                  className="btn-link x-comment-reply-btn"
-                  onClick={() => setReplyTo(c.id)}
-                >
-                  回复
-                </button>
+                <div className="comment-actions">
+                  <button
+                    type="button"
+                    className="btn-link x-comment-reply-btn"
+                    onClick={() => setReplyTo(c.id)}
+                  >
+                    回复
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

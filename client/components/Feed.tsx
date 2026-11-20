@@ -1,70 +1,116 @@
 import React, { useState, useEffect, useRef } from 'react';
+import {
+  BarChart2,
+  Heart,
+  ImagePlus,
+  Loader2,
+  MessageCircle,
+  Repeat2,
+  X,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { apiRequest } from '../api';
 import { Comments } from './Comments';
-import {
-  VerifiedBadgeIcon,
-  ReplyIcon,
-  RepostIcon,
-  HeartIcon,
-  HeartFilledIcon,
-  ViewsIcon,
-  BookmarkIcon,
-  ShareIcon,
-  MoreIcon,
-  ImageIcon,
-  GifIcon,
-  PollIcon,
-  EmojiIcon,
-  ScheduleIcon,
-  LocationIcon,
-} from './Icons';
+import { ImageLightbox, LightboxImage } from './ImageLightbox';
 
-interface Post {
+export interface PostImage {
+  id: string;
+  url: string;
+  mime_type?: string;
+}
+
+export interface Post {
   id: string;
   user_id: string;
+  author_name?: string;
   content: string;
+  images?: PostImage[];
+  clicks_count?: number;
+  views_count?: number;
+  likes_count?: number;
+  reposts_count?: number;
+  comments_count?: number;
+  user_liked?: boolean;
+  user_reposted?: boolean;
   created_at: string;
 }
 
-interface FeedProps {
-  onSelectUserForDm?: (userId: string) => void;
-  currentUserId?: string;
+interface UploadedMediaPreview {
+  id: string;
+  url: string;
+  name: string;
 }
 
-export const Feed: React.FC<FeedProps> = ({ onSelectUserForDm, currentUserId = '' }) => {
+interface FeedProps {
+  sort: 'latest' | 'hot';
+  searchQuery?: string;
+  onSelectUserForDm?: (userId: string) => void;
+  currentUserLabel?: string;
+  onStatsChange?: () => void;
+  onFeedErrorChange?: (hasError: boolean) => void;
+}
+
+const MAX_IMAGES = 4;
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+]);
+
+export const Feed: React.FC<FeedProps> = ({
+  sort,
+  searchQuery = '',
+  onSelectUserForDm,
+  currentUserLabel = '',
+  onStatsChange,
+  onFeedErrorChange,
+}) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [nextCursor, setNextCursor] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [feedError, setFeedError] = useState<string | null>(null);
 
-  const [content, setContent] = useState('');
+  const [charCount, setCharCount] = useState(0);
+  const [uploadedImages, setUploadedImages] = useState<UploadedMediaPreview[]>([]);
+  const [uploadingCount, setUploadingCount] = useState(0);
   const [publishError, setPublishError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submittingRef = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
-
-  // Micro-interaction states
-  const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
-  const [repostedPosts, setRepostedPosts] = useState<Record<string, boolean>>({});
-  const [bookmarkedPosts, setBookmarkedPosts] = useState<Record<string, boolean>>({});
+  const [lightboxState, setLightboxState] = useState<{
+    open: boolean;
+    images: LightboxImage[];
+    index: number;
+  }>({ open: false, images: [], index: 0 });
 
   const fetchFeed = async (reset = true) => {
     if (reset) {
       setLoading(true);
       setFeedError(null);
+      onFeedErrorChange?.(false);
     } else {
       setLoadingMore(true);
     }
 
     try {
-      const url =
-        reset || !nextCursor
-          ? '/api/v1/feed?limit=20'
-          : `/api/v1/feed?cursor=${encodeURIComponent(nextCursor)}&limit=20`;
+      const params = new URLSearchParams();
+      params.set('limit', '20');
+      params.set('sort', sort);
+      if (searchQuery.trim()) {
+        params.set('q', searchQuery.trim());
+      }
+      if (!reset && nextCursor) {
+        params.set('cursor', nextCursor);
+      }
 
-      const data = await apiRequest<{ posts: Post[]; next_cursor: string }>(url);
+      const data = await apiRequest<{ posts: Post[]; next_cursor: string }>(
+        `/api/v1/feed?${params.toString()}`
+      );
       if (reset) {
         setPosts(data.posts || []);
       } else {
@@ -72,9 +118,11 @@ export const Feed: React.FC<FeedProps> = ({ onSelectUserForDm, currentUserId = '
       }
       setNextCursor(data.next_cursor || '');
       setFeedError(null);
+      onFeedErrorChange?.(false);
     } catch (err: any) {
       console.error('Feed loading error:', err);
       setFeedError('动态加载失败，服务异常 (500_DB_ERROR)');
+      onFeedErrorChange?.(true);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -83,19 +131,73 @@ export const Feed: React.FC<FeedProps> = ({ onSelectUserForDm, currentUserId = '
 
   useEffect(() => {
     fetchFeed(true);
-  }, []);
+  }, [sort, searchQuery]);
 
-  const handlePublish = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleSelectFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
 
-    // Guard against concurrent double-click
-    if (submittingRef.current) {
+    const files = Array.from(fileList);
+    e.target.value = '';
+
+    const remainingSlots = MAX_IMAGES - uploadedImages.length;
+    if (remainingSlots <= 0) {
+      toast.error(`最多支持上传 ${MAX_IMAGES} 张图片`);
       return;
     }
 
-    const trimmed = content.trim();
-    if (!trimmed) {
-      setPublishError('内容不能为空 (invalid content)');
+    const toUpload = files.slice(0, remainingSlots);
+    if (files.length > remainingSlots) {
+      toast.warning(`单条动态最多 ${MAX_IMAGES} 张图片，已选取前 ${remainingSlots} 张`);
+    }
+
+    setPublishError('');
+    setUploadingCount((c) => c + toUpload.length);
+
+    for (const file of toUpload) {
+      if (!ALLOWED_MIME_TYPES.has(file.type.toLowerCase())) {
+        toast.error(`不支持的图片格式: ${file.name}`);
+        setUploadingCount((c) => Math.max(0, c - 1));
+        continue;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await apiRequest<{
+          id: string;
+          url: string;
+          mime_type: string;
+          size_bytes: number;
+        }>('/api/v1/media/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        setUploadedImages((prev) => [
+          ...prev,
+          { id: res.id, url: res.url, name: file.name },
+        ]);
+      } catch (err: any) {
+        toast.error(err?.message || `上传 ${file.name} 失败`);
+      } finally {
+        setUploadingCount((c) => Math.max(0, c - 1));
+      }
+    }
+  };
+
+  const handleRemoveImage = (id: string) => {
+    setUploadedImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  const handlePublish = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (submittingRef.current || uploadingCount > 0) return;
+
+    const rawValue = textareaRef.current?.value ?? '';
+    const trimmed = rawValue.trim();
+    if (!trimmed && uploadedImages.length === 0) {
+      setPublishError('内容不能为空，请输入文字或上传图片 (invalid content)');
       return;
     }
 
@@ -106,12 +208,20 @@ export const Feed: React.FC<FeedProps> = ({ onSelectUserForDm, currentUserId = '
     try {
       await apiRequest('/api/v1/posts', {
         method: 'POST',
-        body: JSON.stringify({ content: trimmed }),
+        body: JSON.stringify({
+          content: trimmed,
+          media_ids: uploadedImages.map((img) => img.id),
+        }),
       });
-      setContent('');
+      if (textareaRef.current) {
+        textareaRef.current.value = '';
+      }
+      setCharCount(0);
+      setUploadedImages([]);
       setPublishError('');
-      // Reload feed to show new post
+      toast.success('发布成功');
       await fetchFeed(true);
+      onStatsChange?.();
     } catch (err: any) {
       setPublishError(err.message || '发布失败');
     } finally {
@@ -120,27 +230,103 @@ export const Feed: React.FC<FeedProps> = ({ onSelectUserForDm, currentUserId = '
     }
   };
 
-  const toggleLike = (postId: string) => {
-    setLikedPosts((prev) => ({ ...prev, [postId]: !prev[postId] }));
-  };
-
-  const toggleRepost = (postId: string) => {
-    setRepostedPosts((prev) => ({ ...prev, [postId]: !prev[postId] }));
-  };
-
-  const toggleBookmark = (postId: string) => {
-    setBookmarkedPosts((prev) => ({ ...prev, [postId]: !prev[postId] }));
-  };
-
-  const formatViews = (id: string) => {
-    // Generate deterministic nice view count from id
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) {
-      hash = (hash << 5) - hash + id.charCodeAt(i);
-      hash |= 0;
+  const recordClick = async (postId: string) => {
+    try {
+      const res = await apiRequest<{
+        post_id: string;
+        clicks_count: number;
+        views_count: number;
+      }>(`/api/v1/posts/${postId}/click`, {
+        method: 'POST',
+      });
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                clicks_count: res.clicks_count,
+                views_count: res.views_count,
+              }
+            : p
+        )
+      );
+      onStatsChange?.();
+    } catch {
+      // ignore non-blocking click tracking errors
     }
-    const count = Math.abs(hash % 900) + 120;
-    return `${(count / 10).toFixed(1)}K`;
+  };
+
+  const handleToggleLike = async (postId: string) => {
+    try {
+      const res = await apiRequest<{
+        post_id: string;
+        liked: boolean;
+        likes_count: number;
+      }>(`/api/v1/posts/${postId}/like`, {
+        method: 'POST',
+      });
+
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                user_liked: res.liked,
+                likes_count: res.likes_count,
+              }
+            : p
+        )
+      );
+      onStatsChange?.();
+    } catch (err: any) {
+      toast.error(err?.message || '点赞操作失败');
+    }
+  };
+
+  const handleToggleRepost = async (postId: string) => {
+    try {
+      const res = await apiRequest<{
+        post_id: string;
+        reposted: boolean;
+        reposts_count: number;
+      }>(`/api/v1/posts/${postId}/repost`, {
+        method: 'POST',
+      });
+
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                user_reposted: res.reposted,
+                reposts_count: res.reposts_count,
+              }
+            : p
+        )
+      );
+      onStatsChange?.();
+    } catch (err: any) {
+      toast.error(err?.message || '转发操作失败');
+    }
+  };
+
+  const handleToggleComments = (postId: string) => {
+    const expanding = activeCommentsPostId !== postId;
+    setActiveCommentsPostId(expanding ? postId : null);
+    if (expanding) {
+      recordClick(postId);
+    }
+  };
+
+  const handleOpenLightbox = (post: Post, index: number) => {
+    const imgs = post.images || [];
+    if (imgs.length === 0) return;
+    recordClick(post.id);
+    setLightboxState({
+      open: true,
+      images: imgs.map((im) => ({ id: im.id, url: im.url })),
+      index,
+    });
   };
 
   const formatRelativeTime = (isoString: string) => {
@@ -160,37 +346,59 @@ export const Feed: React.FC<FeedProps> = ({ onSelectUserForDm, currentUserId = '
     }
   };
 
+  const avatarSeed = currentUserLabel || 'ME';
+
   return (
     <div className="feed-container">
-      {/* 1:1 X.com Tweet Compose Box */}
+      {/* Compose Post Form */}
       <div className="post-create-card x-compose-box">
         <div className="x-compose-avatar">
-          <div className="avatar">
-            {currentUserId ? currentUserId.slice(0, 2).toUpperCase() : 'ME'}
-          </div>
+          <div className="avatar">{avatarSeed.slice(0, 2).toUpperCase()}</div>
         </div>
 
         <div className="x-compose-main">
-          <div className="x-audience-badge" title="受众设置">
-            🌐 所有人可见
-          </div>
-
           <form onSubmit={handlePublish}>
             <textarea
+              ref={textareaRef}
               className="textarea-field x-compose-textarea"
               aria-label="说点什么"
-              placeholder="有什么新鲜事？说点什么，分享你的想法..."
+              placeholder="有什么新鲜事？分享图文或想法..."
               rows={3}
-              value={content}
+              defaultValue=""
               onChange={(e) => {
-                setContent(e.target.value);
+                setCharCount(e.target.value.length);
                 if (publishError) setPublishError('');
               }}
             />
 
+            {/* Uploaded Image Previews */}
+            {(uploadedImages.length > 0 || uploadingCount > 0) && (
+              <div className="x-compose-preview-grid">
+                {uploadedImages.map((img) => (
+                  <div key={img.id} className="x-compose-preview-item">
+                    <img src={img.url} alt={img.name} />
+                    <button
+                      type="button"
+                      className="x-preview-remove-btn"
+                      aria-label={`移除图片 ${img.name}`}
+                      onClick={() => handleRemoveImage(img.id)}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                {uploadingCount > 0 && (
+                  <div className="x-compose-preview-loading">
+                    <Loader2 size={20} className="x-spin" />
+                    <span>上传中...</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {publishError && (
               <div className="error-banner x-fade-in-up" role="alert">
-                ⚠️ {publishError}
+                {publishError}
               </div>
             )}
 
@@ -198,35 +406,43 @@ export const Feed: React.FC<FeedProps> = ({ onSelectUserForDm, currentUserId = '
 
             <div className="x-compose-footer">
               <div className="x-compose-tools">
-                <button type="button" className="x-icon-btn" title="媒体图片">
-                  <ImageIcon size={19} />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  multiple
+                  className="sr-only"
+                  aria-label="选择图片"
+                  onChange={handleSelectFiles}
+                />
+                <button
+                  type="button"
+                  className="x-icon-btn"
+                  title="上传图片（最多 4 张）"
+                  aria-label="添加图片"
+                  disabled={uploadedImages.length >= MAX_IMAGES}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <ImagePlus size={20} />
                 </button>
-                <button type="button" className="x-icon-btn" title="GIF">
-                  <GifIcon size={19} />
-                </button>
-                <button type="button" className="x-icon-btn" title="投票">
-                  <PollIcon size={19} />
-                </button>
-                <button type="button" className="x-icon-btn" title="表情符号">
-                  <EmojiIcon size={19} />
-                </button>
-                <button type="button" className="x-icon-btn" title="定时排程">
-                  <ScheduleIcon size={19} />
-                </button>
-                <button type="button" className="x-icon-btn" title="位置">
-                  <LocationIcon size={19} />
-                </button>
+                <span className="x-upload-hint">
+                  {uploadedImages.length}/{MAX_IMAGES} 图
+                </span>
               </div>
 
               <div className="x-compose-right">
-                <span className="char-count">{content.length} 字</span>
+                <span className="char-count">{charCount} 字</span>
                 <span className="x-v-divider" />
                 <button
                   type="submit"
                   className="btn btn-primary x-tweet-btn x-btn-active"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || uploadingCount > 0}
                 >
-                  {isSubmitting ? '发布中...' : '发布'}
+                  {isSubmitting
+                    ? '发布中...'
+                    : uploadingCount > 0
+                    ? '传图中...'
+                    : '发布'}
                 </button>
               </div>
             </div>
@@ -236,7 +452,7 @@ export const Feed: React.FC<FeedProps> = ({ onSelectUserForDm, currentUserId = '
 
       {/* Feed list / Error State */}
       {feedError ? (
-        <div className="card error-card x-fade-in-up" role="alert">
+        <div className="error-card x-fade-in-up" role="alert">
           <div className="error-title">{feedError}</div>
           <button
             type="button"
@@ -247,7 +463,7 @@ export const Feed: React.FC<FeedProps> = ({ onSelectUserForDm, currentUserId = '
           </button>
         </div>
       ) : (
-        <div data-testid="feed-list" role="main" className="feed-list">
+        <div className="feed-list">
           {loading && posts.length === 0 ? (
             <div className="x-skeletons-wrapper">
               {[1, 2, 3].map((i) => (
@@ -268,145 +484,173 @@ export const Feed: React.FC<FeedProps> = ({ onSelectUserForDm, currentUserId = '
               ))}
             </div>
           ) : posts.length === 0 ? (
-            <div className="card empty-card x-fade-in-up">
-              <h3 style={{ marginBottom: 6, fontWeight: 700 }}>欢迎来到社区流！</h3>
-              <p>暂无动态，快来发布第一条内容吧！</p>
+            <div className="empty-card x-fade-in-up">
+              <h3 style={{ marginBottom: 6, fontWeight: 700 }}>暂无动态</h3>
+              <p>
+                {searchQuery.trim()
+                  ? '未找到匹配的社区动态，试试其他关键词吧。'
+                  : '快来发布第一条图文动态吧！'}
+              </p>
             </div>
           ) : (
             posts.map((post) => {
-              const isLiked = !!likedPosts[post.id];
-              const isReposted = !!repostedPosts[post.id];
-              const isBookmarked = !!bookmarkedPosts[post.id];
+              const displayName =
+                post.author_name ||
+                (post.user_id.length > 12
+                  ? `User-${post.user_id.slice(0, 6)}`
+                  : post.user_id);
+              const imgs = post.images || [];
+              const clicks = post.clicks_count ?? post.views_count ?? 0;
+              const likes = post.likes_count ?? 0;
+              const reposts = post.reposts_count ?? 0;
+              const commentsCount = post.comments_count ?? 0;
 
               return (
                 <article
                   key={post.id}
-                  className="card post-card x-tweet-card x-fade-in-up"
+                  data-testid="post-card"
+                  className="post-card x-tweet-card x-fade-in-up"
                 >
                   <div className="x-tweet-avatar-col">
                     <div className="avatar">
-                      {post.user_id.slice(0, 2).toUpperCase()}
+                      {displayName.slice(0, 2).toUpperCase()}
                     </div>
                   </div>
 
                   <div className="x-tweet-content-col">
                     <div className="post-header x-tweet-header">
                       <div className="author-info x-tweet-author-info">
-                        <span className="author-name">
-                          {post.user_id.length > 12
-                            ? `User-${post.user_id.slice(0, 6)}`
-                            : post.user_id}
-                        </span>
-                        <VerifiedBadgeIcon className="x-verified-badge" size={17} />
+                        <span className="author-name">{displayName}</span>
                         <span className="x-handle">
                           @{post.user_id.slice(0, 10)}
                         </span>
                         <span className="x-dot">·</span>
-                        <time className="post-time" dateTime={post.created_at}>
+                        <time
+                          className="post-time"
+                          dateTime={post.created_at}
+                          onClick={() => recordClick(post.id)}
+                        >
                           {formatRelativeTime(post.created_at)}
                         </time>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        {onSelectUserForDm && (
-                          <button
-                            type="button"
-                            className="btn-link x-dm-quick-btn"
-                            onClick={() => onSelectUserForDm(post.user_id)}
-                            title="发送私信给该作者"
-                          >
-                            发消息
-                          </button>
-                        )}
-                        <button type="button" className="x-more-btn" title="更多选项">
-                          <MoreIcon size={18} />
+                      {onSelectUserForDm && (
+                        <button
+                          type="button"
+                          className="btn-link x-dm-quick-btn"
+                          onClick={() => onSelectUserForDm(post.user_id)}
+                          title="联系作者"
+                        >
+                          联系作者
                         </button>
-                      </div>
+                      )}
                     </div>
 
-                    {/* Safe text content rendering against XSS */}
-                    <div className="post-content x-tweet-text">{post.content}</div>
+                    {/* Text content */}
+                    {post.content && (
+                      <div
+                        className="post-content x-tweet-text"
+                        onClick={() => recordClick(post.id)}
+                      >
+                        {post.content}
+                      </div>
+                    )}
 
-                    {/* Tweet Actions Row */}
+                    {/* Images Grid (1-4 images) */}
+                    {imgs.length > 0 && (
+                      <div
+                        className={`x-media-grid x-media-grid-${Math.min(
+                          imgs.length,
+                          4
+                        )}`}
+                      >
+                        {imgs.map((img, idx) => (
+                          <button
+                            key={img.id}
+                            type="button"
+                            className="x-media-tile"
+                            onClick={() => handleOpenLightbox(post, idx)}
+                            aria-label={`查看大图 ${idx + 1}`}
+                          >
+                            <img
+                              src={img.url}
+                              alt={`动态图片 ${idx + 1}`}
+                              loading="lazy"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Real 4-Dimension Stats & Actions Row */}
                     <div className="post-footer x-tweet-actions-bar">
                       <button
                         type="button"
                         className={`x-tweet-action-btn x-reply-btn ${
                           activeCommentsPostId === post.id ? 'active' : ''
                         }`}
-                        onClick={() =>
-                          setActiveCommentsPostId(
-                            activeCommentsPostId === post.id ? null : post.id
-                          )
-                        }
+                        onClick={() => handleToggleComments(post.id)}
                         aria-label="评论"
                       >
-                        <ReplyIcon size={18} />
-                        <span>
-                          {activeCommentsPostId === post.id ? '收起评论' : '评论'}
-                        </span>
+                        <MessageCircle size={18} />
+                        <span>{commentsCount}</span>
                       </button>
 
                       <button
                         type="button"
                         className={`x-tweet-action-btn x-repost-btn ${
-                          isReposted ? 'reposted' : ''
+                          post.user_reposted ? 'reposted' : ''
                         }`}
-                        onClick={() => toggleRepost(post.id)}
+                        onClick={() => handleToggleRepost(post.id)}
                         aria-label="转发"
                       >
-                        <RepostIcon size={18} />
-                        <span>{isReposted ? '1' : ''}</span>
+                        <Repeat2 size={18} />
+                        <span>{reposts}</span>
                       </button>
 
                       <button
                         type="button"
                         className={`x-tweet-action-btn x-like-btn ${
-                          isLiked ? 'liked' : ''
+                          post.user_liked ? 'liked' : ''
                         }`}
-                        onClick={() => toggleLike(post.id)}
-                        aria-label="喜欢"
+                        onClick={() => handleToggleLike(post.id)}
+                        aria-label="点赞"
                       >
-                        {isLiked ? (
-                          <HeartFilledIcon className="x-heart-pop" size={18} />
-                        ) : (
-                          <HeartIcon size={18} />
-                        )}
-                        <span>{isLiked ? '1' : ''}</span>
+                        <Heart
+                          size={18}
+                          fill={post.user_liked ? 'currentColor' : 'none'}
+                        />
+                        <span>{likes}</span>
                       </button>
 
                       <button
                         type="button"
                         className="x-tweet-action-btn x-views-btn"
-                        aria-label="浏览量"
+                        onClick={() => recordClick(post.id)}
+                        aria-label="点击数"
+                        title="点击 / 浏览量"
                       >
-                        <ViewsIcon size={18} />
-                        <span>{formatViews(post.id)}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        className={`x-tweet-action-btn x-bookmark-btn ${
-                          isBookmarked ? 'active' : ''
-                        }`}
-                        onClick={() => toggleBookmark(post.id)}
-                        aria-label="书签"
-                      >
-                        <BookmarkIcon size={18} />
-                      </button>
-
-                      <button
-                        type="button"
-                        className="x-tweet-action-btn x-share-btn"
-                        aria-label="分享"
-                      >
-                        <ShareIcon size={18} />
+                        <BarChart2 size={18} />
+                        <span>{clicks}</span>
                       </button>
                     </div>
 
                     {/* Expanded Thread Comments */}
                     {activeCommentsPostId === post.id && (
-                      <Comments postId={post.id} />
+                      <Comments
+                        postId={post.id}
+                        currentUserLabel={currentUserLabel}
+                        onCommentAdded={() => {
+                          setPosts((prev) =>
+                            prev.map((p) =>
+                              p.id === post.id
+                                ? { ...p, comments_count: (p.comments_count ?? 0) + 1 }
+                                : p
+                            )
+                          );
+                          onStatsChange?.();
+                        }}
+                      />
                     )}
                   </div>
                 </article>
@@ -428,6 +672,14 @@ export const Feed: React.FC<FeedProps> = ({ onSelectUserForDm, currentUserId = '
           )}
         </div>
       )}
+
+      <ImageLightbox
+        images={lightboxState.images}
+        currentIndex={lightboxState.index}
+        open={lightboxState.open}
+        onOpenChange={(open) => setLightboxState((prev) => ({ ...prev, open }))}
+        onIndexChange={(index) => setLightboxState((prev) => ({ ...prev, index }))}
+      />
     </div>
   );
 };
