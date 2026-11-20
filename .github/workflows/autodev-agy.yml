@@ -30,7 +30,7 @@ on:
       agy_model:
         description: 'AGY model ID configured on the VPS (supports Gemini 4 & live synced models)'
         required: false
-        default: 'gemini-4-pro-high'
+        default: 'gemini-4-neon-high'
         type: string
       agy_mode:
         description: 'AGY execution mode (--mode: auto, accept-edits, plan)'
@@ -76,7 +76,7 @@ jobs:
         shell: bash
         run: |
           BRANCH="${{ inputs.pr_branch || github.head_ref }}"
-          MODEL="${{ inputs.agy_model || 'gemini-4-pro-high' }}"
+          MODEL="${{ inputs.agy_model || 'gemini-4-neon-high' }}"
           MODE="${{ inputs.agy_mode || 'auto' }}"
           PR_NUM="${{ inputs.pr_number || github.event.pull_request.number || '' }}"
           E2E_PATH="${{ inputs.e2e_test_path || '' }}"
@@ -156,7 +156,7 @@ jobs:
           const repo = process.env.LIVE_REPO || '';
           const actionsRunId = Number(process.env.LIVE_RUN_ID || 0);
           const branch = process.env.LIVE_BRANCH || 'main';
-          const requestedModel = (process.env.LIVE_MODEL || 'gemini-4-pro-high').trim();
+          const requestedModel = (process.env.LIVE_MODEL || 'gemini-4-neon-high').trim();
           const requestedMode = (process.env.LIVE_MODE || 'auto').trim();
           const prNumber = process.env.LIVE_PR_NUM ? Number(process.env.LIVE_PR_NUM) : undefined;
           const pipelineRunId = (process.env.LIVE_PIPELINE_ID || '').trim() || undefined;
@@ -362,13 +362,14 @@ jobs:
             const parsedModels = [];
             for (const line of modelsText.split('\n')) {
               const clean = line.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').trim();
-              if (!clean || /^(available|models|name|id|---)/i.test(clean)) continue;
+              if (!clean || /^(fetching|loading|available|models|name|id|usage|error|---)/i.test(clean)) continue;
               const tokenMatch = clean.match(/^[-*•]?\s*([a-z0-9][a-z0-9._-]{2,64})\b(.*)$/i);
               if (tokenMatch) {
                 const id = tokenMatch[1];
+                if (!id.includes('-')) continue;
                 const rest = tokenMatch[2].trim().replace(/^[-:–|]+\s*/, '');
                 if (!parsedModels.some((m) => m.id === id)) {
-                  parsedModels.push({ id, label: rest ? id + ' (' + rest.slice(0, 48) + ')' : id });
+                  parsedModels.push({ id, label: rest ? rest.slice(0, 64) : id });
                 }
               }
             }
