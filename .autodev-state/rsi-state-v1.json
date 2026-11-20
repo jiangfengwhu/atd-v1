@@ -358,30 +358,6 @@
   ],
   "incidents": [
     {
-      "id": "inc-62b3c7ee",
-      "sourceRefKey": "actions:44727895990",
-      "source": "ci_env_error",
-      "repoFullName": "jiangfengwhu/atd-v1",
-      "title": "AutoDev AGY Coding Runner #44727895990 异常（failure）",
-      "errorSummary": "Execute VPS AGY Coding (No Timeout + Direct Push) & Blind Independent E2E Verification (Step conclusion: failure)",
-      "rawEvidence": "et-all 'http.https://github.com/.extraheader' || :\"\n2026-11-20T11:28:46.0030559Z Removing includeIf entries pointing to credentials config files\n2026-11-20T11:28:46.0035131Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\\.gitdir:\n2026-11-20T11:28:46.0058455Z includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path\n2026-11-20T11:28:46.0058847Z includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-20T11:28:46.0059232Z includeif.gitdir:/github/workspace/.git.path\n2026-11-20T11:28:46.0059845Z includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-20T11:28:46.0064345Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path\n2026-11-20T11:28:46.0082366Z /data/home/actions-runner/_work/_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0097302Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path \\/data\\/home\\/actions\\-runner\\/_work\\/_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0117600Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-20T11:28:46.0135683Z /data/home/actions-runner/_work/_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0143325Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path \\/data\\/home\\/actions\\-runner\\/_work\\/_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0169548Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path\n2026-11-20T11:28:46.0190815Z /github/runner_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0202217Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \\/github\\/runner_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0221344Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-20T11:28:46.0238713Z /github/runner_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0242485Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \\/github\\/runner_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0267395Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url\n2026-11-20T11:28:46.0448640Z Removing credentials config '/data/home/actions-runner/_work/_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config'\n2026-11-20T11:28:46.0596082Z Cleaning up orphan processes\n",
-      "relatedActionsRunId": 44727895990,
-      "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44727895990",
-      "branch": "main",
-      "occurredAt": "2026-11-20T11:28:49Z",
-      "analysisStatus": "analyzed",
-      "attribution": {
-        "rootCauseCategory": "ci_workflow",
-        "rootCauseSummary": "CI 流水线步骤 Execute VPS AGY Coding (No Timeout + Direct Push) & Blind Independent E2E Verification 执行失败，但截取到的日志仅包含 GitHub Actions 作业结束后的 Git 凭据清理与孤儿进程清理过程，缺少实际失败阶段的错误详情。",
-        "shouldCodifyAsRule": false,
-        "decisionRationale": "原始日志仅记录了作业后置清理阶段的输出，未包含具体失败堆栈、断言错误或环境异常信息，无法定位可复用的工程或测试规律，因此不应固化为永久 System Prompt 规则。",
-        "confidence": 0.85,
-        "appliedOutcome": "discarded",
-        "analyzedAt": "2026-11-20T12:30:41.855Z",
-        "model": "gemini-4-hydrogen"
-      }
-    },
-    {
       "id": "inc-603e6132",
       "sourceRefKey": "actions:44728477037",
       "source": "test_failure",
@@ -420,6 +396,30 @@
         "analyzedAt": "2026-11-20T12:29:32.709Z",
         "model": "gemini-4-hydrogen + gemini-decision-1",
         "generatedRuleId": "rsi-46589212"
+      }
+    },
+    {
+      "id": "inc-62b3c7ee",
+      "sourceRefKey": "actions:44727895990",
+      "source": "ci_env_error",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "title": "AutoDev AGY Coding Runner #44727895990 异常（failure）",
+      "errorSummary": "Execute VPS AGY Coding (No Timeout + Direct Push) & Blind Independent E2E Verification (Step conclusion: failure)",
+      "rawEvidence": "et-all 'http.https://github.com/.extraheader' || :\"\n2026-11-20T11:28:46.0030559Z Removing includeIf entries pointing to credentials config files\n2026-11-20T11:28:46.0035131Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\\.gitdir:\n2026-11-20T11:28:46.0058455Z includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path\n2026-11-20T11:28:46.0058847Z includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-20T11:28:46.0059232Z includeif.gitdir:/github/workspace/.git.path\n2026-11-20T11:28:46.0059845Z includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-20T11:28:46.0064345Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path\n2026-11-20T11:28:46.0082366Z /data/home/actions-runner/_work/_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0097302Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path \\/data\\/home\\/actions\\-runner\\/_work\\/_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0117600Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-20T11:28:46.0135683Z /data/home/actions-runner/_work/_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0143325Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path \\/data\\/home\\/actions\\-runner\\/_work\\/_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0169548Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path\n2026-11-20T11:28:46.0190815Z /github/runner_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0202217Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \\/github\\/runner_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0221344Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-20T11:28:46.0238713Z /github/runner_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0242485Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \\/github\\/runner_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0267395Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url\n2026-11-20T11:28:46.0448640Z Removing credentials config '/data/home/actions-runner/_work/_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config'\n2026-11-20T11:28:46.0596082Z Cleaning up orphan processes\n",
+      "relatedActionsRunId": 44727895990,
+      "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44727895990",
+      "branch": "main",
+      "occurredAt": "2026-11-20T11:28:49Z",
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "ci_workflow",
+        "rootCauseSummary": "CI 流水线步骤 Execute VPS AGY Coding (No Timeout + Direct Push) & Blind Independent E2E Verification 执行失败，但截取到的日志仅包含 GitHub Actions 作业结束后的 Git 凭据清理与孤儿进程清理过程，缺少实际失败阶段的错误详情。",
+        "shouldCodifyAsRule": false,
+        "decisionRationale": "原始日志仅记录了作业后置清理阶段的输出，未包含具体失败堆栈、断言错误或环境异常信息，无法定位可复用的工程或测试规律，因此不应固化为永久 System Prompt 规则。",
+        "confidence": 0.85,
+        "appliedOutcome": "discarded",
+        "analyzedAt": "2026-11-20T12:30:41.855Z",
+        "model": "gemini-4-hydrogen"
       }
     },
     {
