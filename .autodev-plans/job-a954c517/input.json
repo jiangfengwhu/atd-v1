@@ -1,0 +1,16 @@
+{
+  "jobId": "job-a954c517",
+  "repoFullName": "jiangfengwhu/atd-v1",
+  "baseBranch": "main",
+  "prdTitle": "新版社区",
+  "prdContent": "忽略现有实现，重新做。做一个社区应用：\n1. 支持发图文即可\n2. 邮箱验证码登陆，使用resend服务\n3. 添加必要的统计数据：比如点击，点赞，转发，评论数等\n4. UI风格仿照知名的社交媒体网站来做，如果有推荐的github组件库，可以直接引入使用\n5. 添加管理员页面，支持配置后台resend apikey等，不在页面留入口，仅通过url进入，账号密码初始都是admin，支持修改",
+  "effectiveTechStack": "React + Vite + TypeScript (Cloudflare Workers Static Assets) + Hono API on Cloudflare Workers + Cloudflare D1 (SQLite) + Cloudflare KV",
+  "isDefaultCloudflare": true,
+  "agyModel": "gemini-4-neon-high",
+  "createdAt": "2026-11-20T11:10:47.255Z",
+  "rsiSystemPrompts": {
+    "architect": "=== RSI 系统自进化强约束规则 (Architect 架构规划 · 已自动注入 1 条历史经验) ===\n以下规则均由系统经 Decision 门控筛选并从历史真实故障中提炼，本轮必须严格遵守以避免重复踩坑：\n1. [CRITICAL] (流水线与权限 · 触发 1 次) 严禁在生成内容中夹带密钥特征串：严禁在规划文档、代码、示例配置或测试数据中写入真实密钥或符合常见密钥格式（如 sk-、ghp_、AKIA 等）的占位符，应改用无密钥特征的占位文本（如 YOUR_API_KEY_HERE），避免触发 GitHub Secret Scanning 拦截（409）。",
+    "qa_spec": "=== RSI 系统自进化强约束规则 (QA Spec 测试规格 · 已自动注入 1 条历史经验) ===\n以下规则均由系统经 Decision 门控筛选并从历史真实故障中提炼，本轮必须严格遵守以避免重复踩坑：\n1. [CRITICAL] (流水线与权限 · 触发 1 次) 严禁在生成内容中夹带密钥特征串：严禁在规划文档、代码、示例配置或测试数据中写入真实密钥或符合常见密钥格式（如 sk-、ghp_、AKIA 等）的占位符，应改用无密钥特征的占位文本（如 YOUR_API_KEY_HERE），避免触发 GitHub Secret Scanning 拦截（409）。",
+    "qa_critic": "=== RSI 系统自进化强约束规则 (QA Critic 边界评审 · 已自动注入 1 条历史经验) ===\n以下规则均由系统经 Decision 门控筛选并从历史真实故障中提炼，本轮必须严格遵守以避免重复踩坑：\n1. [CRITICAL] (流水线与权限 · 触发 1 次) 严禁在生成内容中夹带密钥特征串：严禁在规划文档、代码、示例配置或测试数据中写入真实密钥或符合常见密钥格式（如 sk-、ghp_、AKIA 等）的占位符，应改用无密钥特征的占位文本（如 YOUR_API_KEY_HERE），避免触发 GitHub Secret Scanning 拦截（409）。"
+  }
+}
