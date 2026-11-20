@@ -47,6 +47,7 @@ interface FeedProps {
   onSelectUserForDm?: (userId: string) => void;
   currentUserLabel?: string;
   onStatsChange?: () => void;
+  onFeedErrorChange?: (hasError: boolean) => void;
 }
 
 const MAX_IMAGES = 4;
@@ -63,6 +64,7 @@ export const Feed: React.FC<FeedProps> = ({
   onSelectUserForDm,
   currentUserLabel = '',
   onStatsChange,
+  onFeedErrorChange,
 }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [nextCursor, setNextCursor] = useState<string>('');
@@ -89,6 +91,7 @@ export const Feed: React.FC<FeedProps> = ({
     if (reset) {
       setLoading(true);
       setFeedError(null);
+      onFeedErrorChange?.(false);
     } else {
       setLoadingMore(true);
     }
@@ -114,9 +117,11 @@ export const Feed: React.FC<FeedProps> = ({
       }
       setNextCursor(data.next_cursor || '');
       setFeedError(null);
+      onFeedErrorChange?.(false);
     } catch (err: any) {
       console.error('Feed loading error:', err);
       setFeedError('动态加载失败，服务异常 (500_DB_ERROR)');
+      onFeedErrorChange?.(true);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -448,11 +453,11 @@ export const Feed: React.FC<FeedProps> = ({
             className="btn btn-secondary x-btn-active"
             onClick={() => fetchFeed(true)}
           >
-            刷新重试
+            刷新
           </button>
         </div>
       ) : (
-        <div data-testid="feed-list" className="feed-list">
+        <div className="feed-list">
           {loading && posts.length === 0 ? (
             <div className="x-skeletons-wrapper">
               {[1, 2, 3].map((i) => (

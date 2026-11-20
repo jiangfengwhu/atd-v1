@@ -98,6 +98,7 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const [overview, setOverview] = useState<OverviewStats | null>(null);
+  const [feedHasError, setFeedHasError] = useState(false);
 
   const loadAuthState = async () => {
     const token = getAuthToken();
@@ -277,7 +278,7 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
         </aside>
 
         {/* Center Main Column */}
-        <main className="x-main-col">
+        <main className="x-main-col" data-testid="feed-list">
           <header className="x-header">
             <div className="x-header-top">
               <h1 className="x-header-title">
@@ -350,6 +351,7 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
               onSelectUserForDm={handleSelectUserForDm}
               currentUserLabel={activeUserLabel}
               onStatsChange={loadOverview}
+              onFeedErrorChange={setFeedHasError}
             />
           ) : (
             <Messages
@@ -406,44 +408,45 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
             </div>
           </div>
 
-          <div className="x-widget-card" data-testid="hot-posts-card">
-            <div className="x-widget-header">
-              <Flame size={18} />
-              <h3 className="x-widget-title">热门动态</h3>
-            </div>
-
-            {overview && overview.hot_posts.length > 0 ? (
-              <div className="x-hot-list">
-                {overview.hot_posts.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className="x-hot-item"
-                    onClick={() => {
-                      setActiveTab('feed');
-                      setFeedSort('hot');
-                    }}
-                  >
-                    <div className="x-hot-author">{item.author_name}</div>
-                    <div className="x-hot-snippet">
-                      {item.content
-                        ? item.content.slice(0, 64)
-                        : '（图片动态）'}
-                    </div>
-                    <div className="x-hot-meta">
-                      <span>{item.likes_count} 赞</span>
-                      <span>·</span>
-                      <span>{item.comments_count} 评</span>
-                      <span>·</span>
-                      <span>{item.clicks_count} 点击</span>
-                    </div>
-                  </button>
-                ))}
+          {!feedHasError && (
+            <div className="x-widget-card" data-testid="hot-posts-card">
+              <div className="x-widget-header">
+                <Flame size={18} />
+                <h3 className="x-widget-title">热门动态</h3>
               </div>
-            ) : (
-              <p className="x-widget-desc">暂无热门动态，发布或互动后将实时更新。</p>
-            )}
-          </div>
+
+              {overview && overview.hot_posts.length > 0 ? (
+                <div className="x-hot-list">
+                  {overview.hot_posts.map((item) => (
+                    <div
+                      key={item.id}
+                      className="x-hot-item"
+                      onClick={() => {
+                        setActiveTab('feed');
+                        setFeedSort('hot');
+                      }}
+                    >
+                      <div className="x-hot-author">{item.author_name}</div>
+                      <div className="x-hot-snippet">
+                        {item.content
+                          ? item.content.slice(0, 64)
+                          : '（图片动态）'}
+                      </div>
+                      <div className="x-hot-meta">
+                        <span>{item.likes_count} 赞</span>
+                        <span>·</span>
+                        <span>{item.comments_count} 评</span>
+                        <span>·</span>
+                        <span>{item.clicks_count} 点击</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="x-widget-desc">暂无热门动态，发布或互动后将实时更新。</p>
+              )}
+            </div>
+          )}
         </aside>
       </div>
 
