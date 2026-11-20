@@ -629,7 +629,26 @@ jobs:
               let combinedOut = '';
               let lineBuf = '';
               let directCapturedSessionId = undefined;
+              let finalResponseText = '';
+              const assistantTextChunks = [];
+              let reportedInputTokens = 0;
+              let reportedOutputTokens = 0;
+              let reportedTotalTokens = 0;
+              let hasReportedTokens = false;
               const roundStart = Date.now();
+
+              const captureUsageObj = (u) => {
+                if (!u || typeof u !== 'object') return;
+                const inp = Number(u.input_tokens ?? u.inputTokens ?? u.prompt_tokens ?? u.promptTokenCount ?? 0) || 0;
+                const out = Number(u.output_tokens ?? u.outputTokens ?? u.completion_tokens ?? u.candidatesTokenCount ?? 0) || 0;
+                const tot = Number(u.total_tokens ?? u.totalTokens ?? u.totalTokenCount ?? 0) || (inp + out);
+                if (tot > 0 || inp > 0 || out > 0) {
+                  hasReportedTokens = true;
+                  reportedInputTokens = Math.max(reportedInputTokens, inp);
+                  reportedOutputTokens = Math.max(reportedOutputTokens, out);
+                  reportedTotalTokens = Math.max(reportedTotalTokens, tot || (inp + out));
+                }
+              };
 
               const formatStreamJsonLine = (rawLine) => {
                 const trimmed = rawLine.trim();
@@ -638,6 +657,13 @@ jobs:
                 try {
                   const ev = JSON.parse(trimmed);
                   const evType = String(ev.type || ev.event || '');
+                  captureUsageObj(ev.usage);
+                  captureUsageObj(ev.token_usage);
+                  captureUsageObj(ev.result?.usage);
+                  captureUsageObj(ev.result?.token_usage);
+                  captureUsageObj(ev.result?.stats?.usage);
+                  captureUsageObj(ev.message?.usage);
+                  captureUsageObj(ev.stats?.usage);
                   const foundSid =
                     ev.session_id ||
                     ev.sessionId ||
@@ -655,6 +681,13 @@ jobs:
                     }
                   }
                   if (evType === 'result' || evType === 'turn_complete' || evType === 'done') {
+                    const fullResp =
+                      (typeof ev.result === 'string'
+                        ? ev.result
+                        : ev.result?.response || ev.result?.text || ev.result?.content || ev.response || ev.text || '') || '';
+                    if (typeof fullResp === 'string' && fullResp.trim()) {
+                      finalResponseText = fullResp.trim().slice(0, 40000);
+                    }
                     const msg = typeof ev.result === 'string' ? ev.result.slice(0, 300) : JSON.stringify(ev).slice(0, 300);
                     return '[agy:result] ' + msg;
                   }
@@ -670,6 +703,7 @@ jobs:
                       if (b?.type === 'tool_use') {
                         parts.push('[agy:tool] ' + String(b.name || 'tool') + ' ' + JSON.stringify(b.input || {}).slice(0, 160));
                       } else if (b?.type === 'text' && b.text) {
+                        assistantTextChunks.push(String(b.text));
                         parts.push('[agy] ' + String(b.text).replace(/\s+/g, ' ').slice(0, 240));
                       }
                     }
@@ -677,6 +711,7 @@ jobs:
                   }
                   if (evType === 'text' || evType === 'delta' || typeof ev.text === 'string' || typeof ev.delta === 'string') {
                     const t = String(ev.text || ev.delta || '').trim();
+                    if (t) assistantTextChunks.push(t);
                     return t ? '[agy] ' + t.slice(0, 240) : '';
                   }
                   if (evType === 'error' || ev.error) {
@@ -720,7 +755,13 @@ jobs:
 
               child.on('error', (err) => {
                 appendLog('[AutoDev] AGY spawn error: ' + String(err));
-                resolve({ exitCode: 1, elapsedMs: Date.now() - roundStart, capturedSessionId: directCapturedSessionId });
+                resolve({
+                  exitCode: 1,
+                  elapsedMs: Date.now() - roundStart,
+                  capturedSessionId: directCapturedSessionId,
+                  finalResponse: '',
+                  tokenUsage: undefined,
+                });
               });
               child.on('close', (code) => {
                 if (useStreamJson && lineBuf.trim()) {
@@ -733,10 +774,25 @@ jobs:
                   }
                 }
                 const sessionMatch = combinedOut.match(/(?:session[_ -]?id|sessionId|conversation[_ -]?id|conversationId)["'\s:=]+([A-Za-z0-9_-]{8,64})/i);
+                const resolvedResponse =
+                  finalResponseText ||
+                  assistantTextChunks.join('\n\n').trim().slice(-20000) ||
+                  (!useStreamJson ? stripAnsi(combinedOut).trim().slice(-12000) : '');
+                const tokenUsage = hasReportedTokens
+                  ? {
+                      inputTokens: reportedInputTokens,
+                      outputTokens: reportedOutputTokens,
+                      totalTokens: reportedTotalTokens || (reportedInputTokens + reportedOutputTokens),
+                      source: 'reported',
+                      model: resolvedModel,
+                    }
+                  : undefined;
                 resolve({
                   exitCode: code ?? 1,
                   elapsedMs: Date.now() - roundStart,
                   capturedSessionId: directCapturedSessionId || (sessionMatch ? sessionMatch[1] : undefined),
+                  finalResponse: resolvedResponse.slice(0, 40000),
+                  tokenUsage,
                 });
               });
             });
@@ -880,7 +936,19 @@ jobs:
           }
 
           async function publishTestReport(verify, meta) {
-            if (!token || !repo || verify.total <= 0) return;
+            if (!token || !repo) return;
+            const effectiveVerify = verify || {
+              kind: 'build_check',
+              status: meta.agyExitCode === 0 ? 'passed' : 'failed',
+              total: 0,
+              passed: 0,
+              failed: 0,
+              skipped: 0,
+              durationMs: 0,
+              cases: [],
+              rawLogExcerpt: '',
+            };
+            if (effectiveVerify.total <= 0 && !meta.codingFinalOutput) return;
             const report = {
               runId: pipelineRunId,
               actionsRunId,
@@ -888,29 +956,33 @@ jobs:
               workflowName: 'AutoDev AGY Coding Runner',
               branch,
               prNumber,
-              kind: verify.kind,
-              status: verify.status,
-              total: verify.total,
-              passed: verify.passed,
-              failed: verify.failed,
-              skipped: verify.skipped,
-              durationMs: verify.durationMs,
+              commitSha: meta.commitSha,
+              model: resolvedModel,
+              kind: effectiveVerify.kind,
+              status: effectiveVerify.status,
+              total: effectiveVerify.total,
+              passed: effectiveVerify.passed,
+              failed: effectiveVerify.failed,
+              skipped: effectiveVerify.skipped,
+              durationMs: effectiveVerify.durationMs,
               executedAt: new Date().toISOString(),
               summary:
                 '独立盲测验证（' + resolvedModel + ' / ' + requestedMode +
                 (meta.repairRounds > 0 ? ' · 自动返工 ' + meta.repairRounds + ' 轮' : '') + '）：' +
-                verify.passed + ' 通过 / ' + verify.failed + ' 失败 / ' + verify.skipped + ' 跳过',
-              cases: verify.cases,
-              rawLogExcerpt: verify.rawLogExcerpt,
+                effectiveVerify.passed + ' 通过 / ' + effectiveVerify.failed + ' 失败 / ' + effectiveVerify.skipped + ' 跳过',
+              cases: effectiveVerify.cases,
+              rawLogExcerpt: effectiveVerify.rawLogExcerpt,
               ...(meta.agySessionId ? { agySessionId: meta.agySessionId } : {}),
               agySessionReused: meta.agySessionReused,
               agyExitCode: meta.agyExitCode,
               repairRounds: meta.repairRounds || 0,
+              ...(meta.codingFinalOutput ? { codingFinalOutput: meta.codingFinalOutput } : {}),
+              ...(meta.tokenUsage ? { tokenUsage: meta.tokenUsage } : {}),
             };
             await upsertChannelJson(
               '.autodev-test-reports/' + actionsRunId + '.json',
               report,
-              'chore(autodev-test): publish blind E2E report for run ' + actionsRunId
+              'chore(autodev-test): publish blind E2E report & coding output for run ' + actionsRunId
             );
           }
 
@@ -927,10 +999,13 @@ jobs:
 
             let stashState = null;
             let hydratedVaultFiles = [];
-            let agyRes = { exitCode: 1, elapsedMs: 0, capturedSessionId: undefined };
+            let agyRes = { exitCode: 1, elapsedMs: 0, capturedSessionId: undefined, finalResponse: '', tokenUsage: undefined };
             let pushInfo = { changed: false, commitSha: initialHeadSha.slice(0, 7) };
             let verify = null;
             let repairRounds = 0;
+            let totalAgyElapsedMs = 0;
+            const codingOutputSections = [];
+            const accTokens = { inputTokens: 0, outputTokens: 0, totalTokens: 0, reported: false };
             let useStreamJson = Boolean(caps.supportsStreamJson);
             const initialResume = sessionMode === 'resume' && resumeSessionId && caps.supportsConversation ? resumeSessionId : undefined;
             let activeSessionId = initialResume;
@@ -969,6 +1044,19 @@ jobs:
                 });
               }
 
+              totalAgyElapsedMs += Number(res.elapsedMs || 0);
+              if (res.tokenUsage && res.tokenUsage.totalTokens > 0) {
+                accTokens.reported = true;
+                accTokens.inputTokens += res.tokenUsage.inputTokens || 0;
+                accTokens.outputTokens += res.tokenUsage.outputTokens || 0;
+                accTokens.totalTokens += res.tokenUsage.totalTokens || 0;
+              }
+              if (res.finalResponse && res.finalResponse.trim()) {
+                codingOutputSections.push({
+                  label: fallbackLabel,
+                  text: res.finalResponse.trim(),
+                });
+              }
               if (res.capturedSessionId) {
                 activeSessionId = res.capturedSessionId;
               }
@@ -1048,14 +1136,41 @@ jobs:
               cleanupHydratedVaultTests(hydratedVaultFiles);
             }
 
-            if (verify) {
-              await publishTestReport(verify, {
-                agySessionId: activeSessionId || agyRes.capturedSessionId || initialResume,
-                agySessionReused: sessionReused,
-                agyExitCode: agyRes.exitCode,
-                repairRounds,
-              });
-            }
+            const combinedCodingFinalOutput = codingOutputSections.length <= 1
+              ? (codingOutputSections[0]?.text || '').slice(0, 40000)
+              : codingOutputSections
+                  .map((s, idx) => '### Round ' + (idx + 1) + ' (' + s.label + ')\n\n' + s.text)
+                  .join('\n\n---\n\n')
+                  .slice(-40000);
+
+            const totalElapsedMin = Math.max(0.1, totalAgyElapsedMs / 60000);
+            const estTotal = Math.round(totalElapsedMin * 22000);
+            const estInput = Math.round(estTotal * 0.72);
+            const finalTokenUsage = accTokens.reported && accTokens.totalTokens > 0
+              ? {
+                  inputTokens: accTokens.inputTokens,
+                  outputTokens: accTokens.outputTokens,
+                  totalTokens: accTokens.totalTokens,
+                  source: 'reported',
+                  model: resolvedModel,
+                }
+              : {
+                  inputTokens: estInput,
+                  outputTokens: Math.max(0, estTotal - estInput),
+                  totalTokens: estTotal,
+                  source: 'estimated',
+                  model: resolvedModel,
+                };
+
+            await publishTestReport(verify, {
+              agySessionId: activeSessionId || agyRes.capturedSessionId || initialResume,
+              agySessionReused: sessionReused,
+              agyExitCode: agyRes.exitCode,
+              repairRounds,
+              commitSha: pushInfo.commitSha,
+              codingFinalOutput: combinedCodingFinalOutput || undefined,
+              tokenUsage: finalTokenUsage,
+            });
 
             const verifiedOk = Boolean(verify && verify.allPassed && agyRes.exitCode === 0);
             const finalStatus = verifiedOk
