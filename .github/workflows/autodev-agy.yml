@@ -419,6 +419,20 @@ jobs:
             };
           }
 
+          function movePathSafe(src, dest) {
+            fs.mkdirSync(path.dirname(dest), { recursive: true });
+            try {
+              fs.renameSync(src, dest);
+            } catch (err) {
+              if (err && err.code === 'EXDEV') {
+                fs.cpSync(src, dest, { recursive: true, force: true });
+                fs.rmSync(src, { recursive: true, force: true });
+              } else {
+                throw err;
+              }
+            }
+          }
+
           // Blind Isolation: hide ALL existing E2E tests from workspace BEFORE AGY runs so AGY cannot cheat!
           function stashExistingE2eTests() {
             const stashed = [];
@@ -443,8 +457,7 @@ jobs:
               } catch {}
 
               const dest = path.join(blindStashDir, rel);
-              fs.mkdirSync(path.dirname(dest), { recursive: true });
-              fs.renameSync(rel, dest);
+              movePathSafe(rel, dest);
               stashed.push(rel);
             }
             appendLog('[Blind E2E] Isolated ' + stashed.length + ' existing E2E path(s) from coding workspace (' + skipWorktreeFiles.length + ' tracked files shielded via skip-worktree).');
@@ -459,8 +472,7 @@ jobs:
                 if (fs.existsSync(rel)) {
                   fs.rmSync(rel, { recursive: true, force: true });
                 }
-                fs.mkdirSync(path.dirname(rel), { recursive: true });
-                fs.renameSync(src, rel);
+                movePathSafe(src, rel);
               }
             }
             for (const tf of stashState.skipWorktreeFiles) {
@@ -948,8 +960,9 @@ jobs:
             process.exit(verifiedOk ? 0 : 1);
           }
 
-          main().catch((err) => {
+          main().catch(async (err) => {
             appendLog('[AutoDev] Fatal runner error: ' + String(err));
+            await syncLiveComment('FAILED (fatal runner error)').catch(() => {});
             process.exit(1);
           });
           BLIND_RUNNER_EOF
