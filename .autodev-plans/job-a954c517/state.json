@@ -1,7 +1,7 @@
 {
   "jobId": "job-a954c517",
   "status": "running",
-  "updatedAt": "2026-11-20T11:14:20.044Z",
+  "updatedAt": "2026-11-20T11:14:20.966Z",
   "headSha": "f19988fb68bdbc3ea4e0c91c2b19a6fea1d0ab71",
   "actionsRunId": 44725451753,
   "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44725451753",
@@ -15,7 +15,9 @@
       "message": "完成 · 识别 5 项歧义、6 项增量任务"
     },
     "qa_spec": {
-      "status": "idle"
+      "status": "running",
+      "startedAt": "2026-11-20T11:14:20.966Z",
+      "message": "Instabox AGY 正在结合现有页面与历史测试生成独立 Playwright E2E 测试集…"
     },
     "qa_critic": {
       "status": "idle"
