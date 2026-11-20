@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "id": "aud-fc75ff52",
+    "timestamp": "2026-11-20T10:08:35.359Z",
+    "category": "execution",
+    "action": "preview_deployed",
+    "label": "部署隔离预览环境",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "branch": "main",
+    "status": "success",
+    "detail": "部署生产 Worker atd-v1 (https://atd-v1.809740942.workers.dev)"
+  }
+]
