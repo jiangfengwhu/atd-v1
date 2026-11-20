@@ -457,7 +457,7 @@ export const Feed: React.FC<FeedProps> = ({
           </button>
         </div>
       ) : (
-        <div className="feed-list">
+        <div data-testid="feed-list" role="main" className="feed-list">
           {loading && posts.length === 0 ? (
             <div className="x-skeletons-wrapper">
               {[1, 2, 3].map((i) => (
