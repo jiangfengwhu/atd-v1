@@ -278,7 +278,7 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
         </aside>
 
         {/* Center Main Column */}
-        <div className="x-main-col">
+        <main className="x-main-col" data-testid="feed-list">
           <header className="x-header">
             <div className="x-header-top">
               <h1 className="x-header-title">
@@ -359,7 +359,7 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
               currentUserId={activeUserId}
             />
           )}
-        </div>
+        </main>
 
         {/* Right Sidebar: Real Search, Real Community Stats, Real Hot Posts */}
         <aside className="x-sidebar-right">

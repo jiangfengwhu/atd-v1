@@ -72,12 +72,13 @@ export const Feed: React.FC<FeedProps> = ({
   const [loadingMore, setLoadingMore] = useState(false);
   const [feedError, setFeedError] = useState<string | null>(null);
 
-  const [content, setContent] = useState('');
+  const [charCount, setCharCount] = useState(0);
   const [uploadedImages, setUploadedImages] = useState<UploadedMediaPreview[]>([]);
   const [uploadingCount, setUploadingCount] = useState(0);
   const [publishError, setPublishError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submittingRef = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
@@ -193,7 +194,8 @@ export const Feed: React.FC<FeedProps> = ({
     if (e) e.preventDefault();
     if (submittingRef.current || uploadingCount > 0) return;
 
-    const trimmed = content.trim();
+    const rawValue = textareaRef.current?.value ?? '';
+    const trimmed = rawValue.trim();
     if (!trimmed && uploadedImages.length === 0) {
       setPublishError('内容不能为空，请输入文字或上传图片 (invalid content)');
       return;
@@ -211,7 +213,10 @@ export const Feed: React.FC<FeedProps> = ({
           media_ids: uploadedImages.map((img) => img.id),
         }),
       });
-      setContent('');
+      if (textareaRef.current) {
+        textareaRef.current.value = '';
+      }
+      setCharCount(0);
       setUploadedImages([]);
       setPublishError('');
       toast.success('发布成功');
@@ -354,13 +359,14 @@ export const Feed: React.FC<FeedProps> = ({
         <div className="x-compose-main">
           <form onSubmit={handlePublish}>
             <textarea
+              ref={textareaRef}
               className="textarea-field x-compose-textarea"
               aria-label="说点什么"
               placeholder="有什么新鲜事？分享图文或想法..."
               rows={3}
-              value={content}
+              defaultValue=""
               onChange={(e) => {
-                setContent(e.target.value);
+                setCharCount(e.target.value.length);
                 if (publishError) setPublishError('');
               }}
             />
@@ -425,7 +431,7 @@ export const Feed: React.FC<FeedProps> = ({
               </div>
 
               <div className="x-compose-right">
-                <span className="char-count">{content.length} 字</span>
+                <span className="char-count">{charCount} 字</span>
                 <span className="x-v-divider" />
                 <button
                   type="submit"
@@ -457,7 +463,7 @@ export const Feed: React.FC<FeedProps> = ({
           </button>
         </div>
       ) : (
-        <div data-testid="feed-list" role="main" className="feed-list">
+        <div className="feed-list">
           {loading && posts.length === 0 ? (
             <div className="x-skeletons-wrapper">
               {[1, 2, 3].map((i) => (
