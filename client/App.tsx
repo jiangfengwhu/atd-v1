@@ -1,52 +1,185 @@
-import React, { useState, useEffect } from 'react';
-import { getFingerprint, setFingerprint } from './api';
+import React, { useEffect, useState } from 'react';
+import {
+  BarChart3,
+  Flame,
+  Home,
+  LogIn,
+  LogOut,
+  Mail,
+  Moon,
+  PenSquare,
+  Search,
+  Sparkles,
+  Sun,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  apiRequest,
+  clearAuthToken,
+  getAuthToken,
+  getFingerprint,
+} from './api';
+import { AdminPage } from './components/AdminPage';
+import { AuthModal, AuthenticatedUser } from './components/AuthModal';
 import { Feed } from './components/Feed';
 import { Messages } from './components/Messages';
-import {
-  XLogoIcon,
-  HomeIcon,
-  MailIcon,
-  SearchIcon,
-  VerifiedBadgeIcon,
-} from './components/Icons';
+
+interface OverviewStats {
+  site_name: string;
+  totals: {
+    posts: number;
+    users: number;
+    comments: number;
+    likes: number;
+    reposts: number;
+    clicks: number;
+  };
+  hot_posts: Array<{
+    id: string;
+    content: string;
+    author_name: string;
+    likes_count: number;
+    reposts_count: number;
+    comments_count: number;
+    clicks_count: number;
+  }>;
+}
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'feed' | 'messages'>('feed');
-  const [feedFilter, setFeedFilter] = useState<'for-you' | 'following'>('for-you');
-  const [currentFp, setCurrentFp] = useState<string>('');
-  const [dmTargetUser, setDmTargetUser] = useState<string>('');
-  const [isEditingFp, setIsEditingFp] = useState(false);
-  const [tempFp, setTempFp] = useState('');
+  const isAdminPath =
+    typeof window !== 'undefined' &&
+    (window.location.pathname === '/admin' ||
+      window.location.pathname.startsWith('/admin/'));
+
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('community_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        return 'dark';
+      }
     }
-    return 'dark';
+    return 'light';
   });
 
   useEffect(() => {
-    const fp = getFingerprint();
-    setCurrentFp(fp);
-    setTempFp(fp);
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('community_theme', theme);
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  // Hidden Admin Console Route (zero links exposed in public UI)
+  if (isAdminPath) {
+    return <AdminPage theme={theme} onToggleTheme={toggleTheme} />;
+  }
+
+  return <CommunityApp theme={theme} onToggleTheme={toggleTheme} />;
+};
+
+interface CommunityAppProps {
+  theme: 'dark' | 'light';
+  onToggleTheme: () => void;
+}
+
+const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => {
+  const [activeTab, setActiveTab] = useState<'feed' | 'messages'>('feed');
+  const [feedSort, setFeedSort] = useState<'latest' | 'hot'>('latest');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dmTargetUser, setDmTargetUser] = useState('');
+
+  const [currentFp, setCurrentFp] = useState('');
+  const [emailUser, setEmailUser] = useState<AuthenticatedUser | null>(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  const [overview, setOverview] = useState<OverviewStats | null>(null);
+
+  const loadAuthState = async () => {
+    const token = getAuthToken();
+    if (!token) {
+      // Also check cookie session without failing loudly
+      try {
+        const res = await fetch('/api/v1/auth/me', { credentials: 'same-origin' });
+        if (res.ok) {
+          const data = (await res.json()) as {
+            auth_type?: string;
+            user?: AuthenticatedUser;
+          };
+          if (data?.auth_type === 'email' && data.user) {
+            setEmailUser(data.user);
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
+      setEmailUser(null);
+      return;
+    }
+
+    try {
+      const data = await apiRequest<{
+        authenticated: boolean;
+        auth_type: 'email' | 'fingerprint';
+        user: AuthenticatedUser;
+      }>('/api/v1/auth/me');
+      if (data.auth_type === 'email' && data.user) {
+        setEmailUser(data.user);
+      } else {
+        setEmailUser(null);
+      }
+    } catch {
+      clearAuthToken();
+      setEmailUser(null);
+    }
+  };
+
+  const loadOverview = async () => {
+    try {
+      const data = await apiRequest<OverviewStats>('/api/v1/stats/overview');
+      setOverview(data);
+    } catch {
+      // ignore non-critical sidebar load failures
+    }
+  };
+
+  useEffect(() => {
+    setCurrentFp(getFingerprint());
+    loadAuthState();
+    loadOverview();
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
+
+  const handleLogout = async () => {
+    try {
+      await apiRequest('/api/v1/auth/logout', { method: 'POST' });
+    } catch {
+      // ignore
+    }
+    clearAuthToken();
+    setEmailUser(null);
+    toast.success('已退出登录');
+  };
 
   const handleSelectUserForDm = (userId: string) => {
     setDmTargetUser(userId);
     setActiveTab('messages');
   };
 
-  const handleSaveFingerprint = () => {
-    if (tempFp.trim()) {
-      setFingerprint(tempFp.trim());
-      setCurrentFp(tempFp.trim());
-      setIsEditingFp(false);
-      window.location.reload();
-    }
-  };
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  };
+  const activeUserId = emailUser?.id || currentFp;
+  const activeUserLabel = emailUser?.username || currentFp;
+  const siteName = overview?.site_name || 'Pulse 社区';
 
   return (
     <div className="x-app-wrapper" data-theme={theme}>
@@ -54,25 +187,23 @@ export const App: React.FC = () => {
         {/* Left Navigation Sidebar */}
         <aside className="x-sidebar-left">
           <div className="x-sidebar-nav-group">
-            {/* X Brand Logo */}
             <button
               type="button"
               className="x-logo-btn"
-              title="X.com Community"
+              title={siteName}
               onClick={() => setActiveTab('feed')}
             >
-              <XLogoIcon size={30} />
+              <Sparkles size={26} />
             </button>
 
-            {/* Navigation Menu */}
-            <nav className="x-nav-menu">
+            <nav className="x-nav-menu" aria-label="主导航">
               <button
                 type="button"
                 className={`x-nav-item nav-btn ${activeTab === 'feed' ? 'active' : ''}`}
                 onClick={() => setActiveTab('feed')}
               >
                 <span className="x-nav-icon">
-                  <HomeIcon size={24} />
+                  <Home size={22} />
                 </span>
                 <span className="x-nav-label">动态 Feed</span>
               </button>
@@ -83,13 +214,12 @@ export const App: React.FC = () => {
                 onClick={() => setActiveTab('messages')}
               >
                 <span className="x-nav-icon">
-                  <MailIcon size={24} />
+                  <Mail size={22} />
                 </span>
                 <span className="x-nav-label">站内信</span>
               </button>
             </nav>
 
-            {/* Fast Tweet / Post action trigger on desktop sidebar */}
             <button
               type="button"
               className="x-sidebar-tweet-btn"
@@ -97,246 +227,234 @@ export const App: React.FC = () => {
                 if (activeTab !== 'feed') {
                   setActiveTab('feed');
                 }
-                setTimeout(() => {
+                window.setTimeout(() => {
                   const textarea = document.querySelector<HTMLTextAreaElement>(
                     '.x-compose-textarea'
                   );
-                  if (textarea) textarea.focus();
+                  textarea?.focus();
                 }, 50);
               }}
             >
-              发推
+              <PenSquare size={18} />
+              <span>写动态</span>
             </button>
           </div>
 
-          {/* User Identity / Account Card */}
-          <div
-            className="user-identity-box"
-            data-testid="user-identity"
-            title={`指纹 ID: ${currentFp}`}
-          >
-            {isEditingFp ? (
-              <div className="identity-editor">
-                <input
-                  type="text"
-                  className="input-field input-sm"
-                  value={tempFp}
-                  onChange={(e) => setTempFp(e.target.value)}
-                  placeholder="指纹 ID"
-                />
+          {/* Account Status Card */}
+          <div className="user-identity-box" data-testid="user-identity">
+            {emailUser ? (
+              <div className="identity-display">
+                <div className="user-avatar-sm">
+                  {emailUser.username.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="identity-info">
+                  <span className="identity-name">{emailUser.username}</span>
+                  <span className="identity-handle">
+                    {emailUser.email || `@${emailUser.id.slice(0, 8)}`}
+                  </span>
+                </div>
                 <button
                   type="button"
-                  className="btn btn-sm btn-primary"
-                  onClick={handleSaveFingerprint}
+                  className="btn-icon x-logout-btn"
+                  title="退出登录"
+                  aria-label="退出登录"
+                  onClick={handleLogout}
                 >
-                  保存
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-secondary"
-                  onClick={() => setIsEditingFp(false)}
-                >
-                  取消
+                  <LogOut size={16} />
                 </button>
               </div>
             ) : (
-              <div className="identity-display">
-                <div className="user-avatar-sm">
-                  {currentFp ? currentFp.slice(0, 2).toUpperCase() : 'ME'}
-                </div>
-                <div className="identity-info">
-                  <span className="identity-name">
-                    {currentFp ? currentFp.slice(0, 10) : 'Anonymous'}
-                  </span>
-                  <span className="identity-handle">
-                    @{currentFp ? currentFp.slice(0, 12) : 'guest'}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className="btn-icon"
-                  title="切换/模拟浏览器指纹"
-                  onClick={() => setIsEditingFp(true)}
-                >
-                  ✏️
-                </button>
-              </div>
+              <button
+                type="button"
+                className="x-sidebar-login-btn"
+                onClick={() => setAuthModalOpen(true)}
+              >
+                <LogIn size={18} />
+                <span>邮箱登录</span>
+              </button>
             )}
           </div>
         </aside>
 
         {/* Center Main Column */}
-        <div className="x-main-col">
-          {/* Sticky Header with Blur and Theme Toggle */}
+        <main className="x-main-col">
           <header className="x-header">
             <div className="x-header-top">
               <h1 className="x-header-title">
-                {activeTab === 'feed' ? '主页' : '站内私信'}
+                {activeTab === 'feed' ? siteName : '站内私信'}
               </h1>
+
               <div className="x-header-controls">
+                {emailUser ? (
+                  <div className="x-header-user-pill">
+                    <span className="x-header-user-email">
+                      {emailUser.email || emailUser.username}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-link x-header-logout-link"
+                      onClick={handleLogout}
+                    >
+                      退出
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm x-header-login-btn"
+                    onClick={() => setAuthModalOpen(true)}
+                  >
+                    <LogIn size={14} />
+                    <span>邮箱登录</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   className="x-theme-toggle-btn"
-                  onClick={toggleTheme}
+                  onClick={onToggleTheme}
+                  aria-label={theme === 'dark' ? '切换为亮色模式' : '切换为暗色模式'}
                   title={theme === 'dark' ? '切换为亮色模式' : '切换为暗色模式'}
                 >
-                  {theme === 'dark' ? '☀️' : '🌙'}
+                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
               </div>
             </div>
 
-            {/* Sub-tabs when on Feed */}
             {activeTab === 'feed' && (
               <div className="x-header-tabs">
                 <button
                   type="button"
-                  className={`x-tab-btn ${feedFilter === 'for-you' ? 'active' : ''}`}
-                  onClick={() => setFeedFilter('for-you')}
+                  className={`x-tab-btn ${feedSort === 'latest' ? 'active' : ''}`}
+                  onClick={() => setFeedSort('latest')}
                 >
-                  为你推荐
-                  {feedFilter === 'for-you' && <div className="x-tab-indicator" />}
+                  最新动态
+                  {feedSort === 'latest' && <div className="x-tab-indicator" />}
                 </button>
                 <button
                   type="button"
-                  className={`x-tab-btn ${feedFilter === 'following' ? 'active' : ''}`}
-                  onClick={() => setFeedFilter('following')}
+                  className={`x-tab-btn ${feedSort === 'hot' ? 'active' : ''}`}
+                  onClick={() => setFeedSort('hot')}
                 >
-                  正在关注
-                  {feedFilter === 'following' && <div className="x-tab-indicator" />}
+                  热门精选
+                  {feedSort === 'hot' && <div className="x-tab-indicator" />}
                 </button>
               </div>
             )}
           </header>
 
-          {/* Active View */}
           {activeTab === 'feed' ? (
             <Feed
+              sort={feedSort}
+              searchQuery={searchQuery}
               onSelectUserForDm={handleSelectUserForDm}
-              currentUserId={currentFp}
+              currentUserLabel={activeUserLabel}
+              onStatsChange={loadOverview}
             />
           ) : (
             <Messages
               initialRecipient={dmTargetUser}
-              currentUserId={currentFp}
+              currentUserId={activeUserId}
             />
           )}
-        </div>
+        </main>
 
-        {/* Right Sidebar: Trends, Search & Who to Follow */}
+        {/* Right Sidebar: Real Search, Real Community Stats, Real Hot Posts */}
         <aside className="x-sidebar-right">
-          {/* Search Box */}
           <div className="x-search-box">
-            <SearchIcon size={18} />
+            <Search size={18} />
             <input
               type="text"
               className="x-search-input"
               aria-label="搜索"
-              placeholder="搜索 X / 热门话题"
+              placeholder="搜索社区动态..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
 
-          {/* Premium Subscription Card */}
-          <div className="x-widget-card">
-            <h3 className="x-widget-title">订阅 Premium</h3>
-            <p className="x-widget-desc">
-              订阅以解锁创作者分成、专属蓝色认证标识等更多高级体验与前沿功能。
-            </p>
-            <button type="button" className="x-subscribe-btn">
-              订阅
-            </button>
-          </div>
-
-          {/* Trending Topics Widget */}
-          <div className="x-widget-card">
-            <h3 className="x-widget-title">实时趋势</h3>
-            <div className="x-trend-list">
-              <div className="x-trend-item">
-                <div>
-                  <div className="x-trend-category">科技 · 实时热门</div>
-                  <div className="x-trend-topic">#React19</div>
-                  <div className="x-trend-count">48.2K 动态</div>
-                </div>
-                <span>···</span>
+          <div className="x-widget-card" data-testid="community-stats-card">
+            <div className="x-widget-header">
+              <BarChart3 size={18} />
+              <h3 className="x-widget-title">社区实时数据</h3>
+            </div>
+            <div className="x-stats-grid">
+              <div className="x-stat-cell">
+                <span className="x-stat-label">动态</span>
+                <strong className="x-stat-val">{overview?.totals.posts ?? 0}</strong>
               </div>
-              <div className="x-trend-item">
-                <div>
-                  <div className="x-trend-category">云计算 · 实时热门</div>
-                  <div className="x-trend-topic">#CloudflareWorkers</div>
-                  <div className="x-trend-count">29.6K 动态</div>
-                </div>
-                <span>···</span>
+              <div className="x-stat-cell">
+                <span className="x-stat-label">成员</span>
+                <strong className="x-stat-val">{overview?.totals.users ?? 0}</strong>
               </div>
-              <div className="x-trend-item">
-                <div>
-                  <div className="x-trend-category">设计与动效 · 实时热门</div>
-                  <div className="x-trend-topic">#Awwwards2026</div>
-                  <div className="x-trend-count">16.4K 动态</div>
-                </div>
-                <span>···</span>
+              <div className="x-stat-cell">
+                <span className="x-stat-label">点击</span>
+                <strong className="x-stat-val">{overview?.totals.clicks ?? 0}</strong>
               </div>
-              <div className="x-trend-item">
-                <div>
-                  <div className="x-trend-category">全栈工程 · 实时热门</div>
-                  <div className="x-trend-topic">#HonoFramework</div>
-                  <div className="x-trend-count">12.1K 动态</div>
-                </div>
-                <span>···</span>
+              <div className="x-stat-cell">
+                <span className="x-stat-label">点赞</span>
+                <strong className="x-stat-val">{overview?.totals.likes ?? 0}</strong>
+              </div>
+              <div className="x-stat-cell">
+                <span className="x-stat-label">转发</span>
+                <strong className="x-stat-val">{overview?.totals.reposts ?? 0}</strong>
+              </div>
+              <div className="x-stat-cell">
+                <span className="x-stat-label">评论</span>
+                <strong className="x-stat-val">{overview?.totals.comments ?? 0}</strong>
               </div>
             </div>
           </div>
 
-          {/* Who to Follow Widget */}
-          <div className="x-widget-card">
-            <h3 className="x-widget-title">推荐关注</h3>
-            <div className="x-follow-list">
-              <div className="x-follow-item">
-                <div className="x-follow-user">
-                  <div className="avatar x-avatar-sm" style={{ background: '#1d9bf0' }}>
-                    AG
-                  </div>
-                  <div className="x-follow-info">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <span className="x-follow-name">Antigravity AI</span>
-                      <VerifiedBadgeIcon size={14} />
-                    </div>
-                    <span className="x-follow-handle">@antigravity</span>
-                  </div>
-                </div>
-                <button type="button" className="x-follow-btn">
-                  关注
-                </button>
-              </div>
-
-              <div className="x-follow-item">
-                <div className="x-follow-user">
-                  <div className="avatar x-avatar-sm" style={{ background: '#f6821f' }}>
-                    CF
-                  </div>
-                  <div className="x-follow-info">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <span className="x-follow-name">Cloudflare D1</span>
-                      <VerifiedBadgeIcon size={14} />
-                    </div>
-                    <span className="x-follow-handle">@cloudflare_d1</span>
-                  </div>
-                </div>
-                <button type="button" className="x-follow-btn">
-                  关注
-                </button>
-              </div>
+          <div className="x-widget-card" data-testid="hot-posts-card">
+            <div className="x-widget-header">
+              <Flame size={18} />
+              <h3 className="x-widget-title">热门动态</h3>
             </div>
-          </div>
 
-          {/* Footer Meta Links */}
-          <footer className="x-sidebar-footer">
-            <a href="#terms">服务条款</a>
-            <a href="#privacy">隐私政策</a>
-            <a href="#cookies">Cookie 政策</a>
-            <a href="#accessibility">无障碍辅助</a>
-            <span>© 2026 X Corp. / Community</span>
-          </footer>
+            {overview && overview.hot_posts.length > 0 ? (
+              <div className="x-hot-list">
+                {overview.hot_posts.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="x-hot-item"
+                    onClick={() => {
+                      setActiveTab('feed');
+                      setFeedSort('hot');
+                    }}
+                  >
+                    <div className="x-hot-author">{item.author_name}</div>
+                    <div className="x-hot-snippet">
+                      {item.content
+                        ? item.content.slice(0, 64)
+                        : '（图片动态）'}
+                    </div>
+                    <div className="x-hot-meta">
+                      <span>{item.likes_count} 赞</span>
+                      <span>·</span>
+                      <span>{item.comments_count} 评</span>
+                      <span>·</span>
+                      <span>{item.clicks_count} 点击</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="x-widget-desc">暂无热门动态，发布或互动后将实时更新。</p>
+            )}
+          </div>
         </aside>
       </div>
+
+      <AuthModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
+        onAuthenticated={(user) => {
+          setEmailUser(user);
+          loadOverview();
+        }}
+      />
     </div>
   );
 };

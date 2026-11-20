@@ -1,6 +1,10 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { authRoute } from './routes/auth';
+import { adminRoute } from './routes/admin';
+import { mediaRoute } from './routes/media';
 import { postsRoute } from './routes/posts';
+import { statsRoute } from './routes/stats';
 import { messagesRoute } from './routes/messages';
 import { commentsRoute } from './routes/comments';
 import { usersRoute } from './routes/users';
@@ -29,7 +33,11 @@ app.get('/api/health', (c) => {
 });
 
 // Mount Community API routes under /api/v1
+app.route('/api/v1/auth', authRoute);
+app.route('/api/v1/admin', adminRoute);
+app.route('/api/v1', mediaRoute);
 app.route('/api/v1', postsRoute);
+app.route('/api/v1', statsRoute);
 app.route('/api/v1', messagesRoute);
 app.route('/api/v1', commentsRoute);
 app.route('/api/v1', usersRoute);

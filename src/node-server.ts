@@ -24,21 +24,48 @@ const dbPath = path.resolve(process.cwd(), '.dev.db');
 const nodeDb = createNodeSqliteAdapter(dbPath);
 setNodeDb(nodeDb);
 
-// Run migrations on startup
-const migrationsDir = path.resolve(process.cwd(), 'migrations');
-if (fs.existsSync(migrationsDir)) {
+async function runMigrations() {
+  await nodeDb.exec('PRAGMA foreign_keys = ON;');
+  await nodeDb.exec(`
+    CREATE TABLE IF NOT EXISTS _applied_migrations (
+      name TEXT PRIMARY KEY,
+      applied_at TEXT NOT NULL
+    );
+  `);
+
+  const migrationsDir = path.resolve(process.cwd(), 'migrations');
+  if (!fs.existsSync(migrationsDir)) return;
+
   const migrationFiles = fs
     .readdirSync(migrationsDir)
     .filter((f) => f.endsWith('.sql'))
     .sort();
 
+  let appliedCount = 0;
   for (const file of migrationFiles) {
+    const existing = await nodeDb
+      .prepare('SELECT name FROM _applied_migrations WHERE name = ?')
+      .bind(file)
+      .first<{ name: string }>();
+
+    if (existing) continue;
+
     const filePath = path.join(migrationsDir, file);
     const sql = fs.readFileSync(filePath, 'utf8');
-    nodeDb.exec(sql);
+    await nodeDb.exec(sql);
+    await nodeDb
+      .prepare('INSERT OR IGNORE INTO _applied_migrations (name, applied_at) VALUES (?, ?)')
+      .bind(file, new Date().toISOString())
+      .run();
+    appliedCount++;
   }
-  console.log(`Applied ${migrationFiles.length} migration(s).`);
+
+  console.log(
+    `Migrations ready (${migrationFiles.length} total, ${appliedCount} newly applied).`
+  );
 }
+
+await runMigrations();
 
 // Serve static assets from ./dist
 app.use(

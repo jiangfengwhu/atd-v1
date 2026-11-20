@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { getDb } from '../db';
-import { requireAuth, optionalAuth } from '../middleware/fingerprint';
+import { requireAuth, optionalAuth } from '../middleware/auth';
 import { Env, AppVariables, CommentRecord, PostRecord } from '../types';
 
 export const commentsRoute = new Hono<{
@@ -60,11 +60,17 @@ commentsRoute.post('/posts/:postId/comments', requireAuth, async (c) => {
       .bind(commentId, postId, userId, parent_id || null, content.trim(), createdAt)
       .run();
 
+    const userRow = await db
+      .prepare('SELECT username FROM users WHERE id = ?')
+      .bind(userId)
+      .first<{ username: string }>();
+
     return c.json(
       {
         id: commentId,
         post_id: postId,
         user_id: userId,
+        author_name: userRow?.username || `User-${userId.slice(0, 6)}`,
         parent_id: parent_id || null,
         content: content.trim(),
         created_at: createdAt,
@@ -88,7 +94,13 @@ commentsRoute.get('/posts/:postId/comments', optionalAuth, async (c) => {
     const db = getDb(c);
     const res = await db
       .prepare(
-        'SELECT id, post_id, user_id, parent_id, content, created_at FROM comments WHERE post_id = ? ORDER BY created_at ASC'
+        `SELECT c.id, c.post_id, c.user_id,
+                COALESCE(u.username, 'User-' || substr(c.user_id, 1, 6)) AS author_name,
+                c.parent_id, c.content, c.created_at
+         FROM comments c
+         LEFT JOIN users u ON u.id = c.user_id
+         WHERE c.post_id = ?
+         ORDER BY c.created_at ASC`
       )
       .bind(postId)
       .all<CommentRecord>();
