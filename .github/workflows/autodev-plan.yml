@@ -20,7 +20,7 @@ on:
       agy_model:
         description: 'AGY model ID configured on the VPS (supports Gemini 4 & live synced models)'
         required: false
-        default: 'gemini-4-pro-high'
+        default: 'gemini-4-neon-high'
         type: string
       agy_mode:
         description: 'AGY execution mode (--mode: auto, accept-edits, plan)'
@@ -58,7 +58,7 @@ jobs:
           PLAN_JOB_ID: ${{ inputs.job_id }}
           PLAN_BASE_BRANCH: ${{ inputs.base_branch || 'main' }}
           PLAN_CHANNEL_BRANCH: ${{ inputs.channel_branch || 'autodev-plan-channel' }}
-          PLAN_MODEL: ${{ inputs.agy_model || 'gemini-4-pro-high' }}
+          PLAN_MODEL: ${{ inputs.agy_model || 'gemini-4-neon-high' }}
           PLAN_MODE: ${{ inputs.agy_mode || 'auto' }}
         shell: bash
         run: |
@@ -79,7 +79,7 @@ jobs:
           const safeJobId = String(jobId || 'unknown').replace(/[^a-zA-Z0-9._-]/g, '_');
           const baseBranch = process.env.PLAN_BASE_BRANCH || 'main';
           const channelBranch = process.env.PLAN_CHANNEL_BRANCH || 'autodev-plan-channel';
-          const requestedModel = (process.env.PLAN_MODEL || 'gemini-4-pro-high').trim();
+          const requestedModel = (process.env.PLAN_MODEL || 'gemini-4-neon-high').trim();
           const requestedMode = (process.env.PLAN_MODE || 'auto').trim();
           const actionsUrl = 'https://github.com/' + repo + '/actions/runs/' + actionsRunId;
 
@@ -105,9 +105,9 @@ jobs:
             const ids = [];
             for (const line of mText.split('\n')) {
               const clean = line.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').trim();
-              if (!clean || /^(available|models|name|id|---)/i.test(clean)) continue;
+              if (!clean || /^(fetching|loading|available|models|name|id|usage|error|---)/i.test(clean)) continue;
               const m = clean.match(/^[-*•]?\s*([a-z0-9][a-z0-9._-]{2,64})\b/i);
-              if (m && !ids.includes(m[1])) ids.push(m[1]);
+              if (m && m[1].includes('-') && !ids.includes(m[1])) ids.push(m[1]);
             }
             if (ids.length > 0 && !ids.includes(requestedModel)) {
               const lower = requestedModel.toLowerCase();
