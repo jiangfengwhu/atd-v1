@@ -1,5 +1,33 @@
 [
   {
+    "id": "aud-bfe4e0e2",
+    "timestamp": "2026-11-20T11:10:47.257Z",
+    "category": "planning",
+    "action": "prd_analysis_started",
+    "label": "发起需求规划",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "jobId": "job-a954c517",
+    "prdTitle": "新版社区",
+    "branch": "main",
+    "status": "success",
+    "detail": "发起需求三阶段规划（引擎：Instabox VPS AGY / gemini-4-neon-high / mode:auto）"
+  },
+  {
+    "id": "aud-e941fd7c",
+    "timestamp": "2026-11-20T11:07:45.555Z",
+    "category": "planning",
+    "action": "prd_analysis_started",
+    "label": "发起需求规划",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "jobId": "job-4852d9d9",
+    "prdTitle": "新版社区",
+    "branch": "main",
+    "status": "success",
+    "detail": "发起需求三阶段规划（引擎：Instabox VPS AGY / gemini-4-neon-high / mode:auto）"
+  },
+  {
     "id": "aud-fc75ff52",
     "timestamp": "2026-11-20T10:08:35.359Z",
     "category": "execution",

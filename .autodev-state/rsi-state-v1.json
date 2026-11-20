@@ -1,5 +1,64 @@
 {
   "testReports": [],
-  "incidents": [],
-  "rules": []
+  "incidents": [
+    {
+      "id": "inc-bacf4991",
+      "sourceRefKey": "plan-dispatch:job-4852d9d9",
+      "source": "plan_error",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "title": "规划派发失败：新版社区",
+      "errorSummary": "GitHub API 错误 (409): Repository rule violations found\n\nSecret detected in content",
+      "rawEvidence": "Job ID: job-4852d9d9\nExecution Mode: vps_agy\nModel: gemini-4-neon-high\nError: GitHub API 错误 (409): Repository rule violations found\n\nSecret detected in content\n\n",
+      "branch": "main",
+      "occurredAt": "2026-11-20T11:07:47.070Z",
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "ci_workflow",
+        "rootCauseSummary": "规划派发写入 GitHub 仓库时，提交内容中包含触发 GitHub Secret Scanning / Push Protection 规则的密钥特征字符串，导致 GitHub API 返回 409 Repository rule violations found 并中断流程。",
+        "shouldCodifyAsRule": true,
+        "decisionRationale": "Decision 门控放行立即生效（通用性 96% · 泛化评分 2.78/3.0）：高危系统性工程防线，直接注入下游 Prompt。 在规划文档、配置示例或代码测试中误入疑似密钥前缀的占位符属于高频可复现工程陷阱，会直接阻断 GitHub 写入与流水线推进，需固化为全局约束以在生成阶段规避。",
+        "confidence": 0.97,
+        "suggestedRule": {
+          "title": "严禁在生成内容中夹带密钥特征串",
+          "targetStage": "all",
+          "severity": "critical",
+          "promptDirective": "严禁在规划文档、代码、示例配置或测试数据中写入真实密钥或符合常见密钥格式（如 sk-、ghp_、AKIA 等）的占位符，应改用无密钥特征的占位文本（如 YOUR_API_KEY_HERE），避免触发 GitHub Secret Scanning 拦截（409）。",
+          "dedupeKey": "github-secret-scanning-no-secrets"
+        },
+        "decisionGate": {
+          "model": "gemini-decision-1",
+          "generalizableProb": 0.9612,
+          "duplicateProb": 0.0213,
+          "generalityScore": 2.781,
+          "chosenAction": "create_critical_active",
+          "actionConfidence": 0.9653,
+          "evaluatedAt": "2026-11-20T11:08:12.837Z"
+        },
+        "appliedOutcome": "active_created",
+        "analyzedAt": "2026-11-20T11:08:12.837Z",
+        "model": "gemini-4-hydrogen + gemini-decision-1",
+        "generatedRuleId": "rsi-eb3a26f4"
+      }
+    }
+  ],
+  "rules": [
+    {
+      "id": "rsi-eb3a26f4",
+      "dedupeKey": "github-secret-scanning-no-secrets",
+      "title": "严禁在生成内容中夹带密钥特征串",
+      "targetStage": "all",
+      "severity": "critical",
+      "status": "active",
+      "promptDirective": "严禁在规划文档、代码、示例配置或测试数据中写入真实密钥或符合常见密钥格式（如 sk-、ghp_、AKIA 等）的占位符，应改用无密钥特征的占位文本（如 YOUR_API_KEY_HERE），避免触发 GitHub Secret Scanning 拦截（409）。",
+      "rootCauseCategory": "ci_workflow",
+      "sourceIncidentIds": [
+        "inc-bacf4991"
+      ],
+      "hitCount": 1,
+      "appliedCount": 3,
+      "createdAt": "2026-11-20T11:08:12.838Z",
+      "updatedAt": "2026-11-20T11:08:12.838Z",
+      "lastAppliedAt": "2026-11-20T11:10:47.847Z"
+    }
+  ]
 }

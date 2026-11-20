@@ -1,1 +1,476 @@
-[]
+[
+  {
+    "id": "job-a954c517",
+    "createdAt": "2026-11-20T11:10:47.255Z",
+    "updatedAt": "2026-11-20T11:16:46.488Z",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "defaultBranch": "main",
+    "prdTitle": "新版社区",
+    "prdContent": "忽略现有实现，重新做。做一个社区应用：\n1. 支持发图文即可\n2. 邮箱验证码登陆，使用resend服务\n3. 添加必要的统计数据：比如点击，点赞，转发，评论数等\n4. UI风格仿照知名的社交媒体网站来做，如果有推荐的github组件库，可以直接引入使用\n5. 添加管理员页面，支持配置后台resend apikey等，不在页面留入口，仅通过url进入，账号密码初始都是admin，支持修改",
+    "executionMode": "vps_agy",
+    "agyModel": "gemini-4-neon-high",
+    "agyMode": "auto",
+    "status": "running",
+    "steps": [
+      {
+        "id": "architect",
+        "label": "01. Architect Agent",
+        "roleTitle": "读取仓库真实代码 · 增量架构 · 任务树",
+        "status": "completed",
+        "startedAt": "2026-11-20T11:11:02.357Z",
+        "message": "完成 · 识别 5 项歧义、6 项增量任务",
+        "completedAt": "2026-11-20T11:14:20.044Z",
+        "durationMs": 197687
+      },
+      {
+        "id": "qa_spec",
+        "label": "02. QA Spec Agent",
+        "roleTitle": "结合现有路由与历史测试 · Playwright 初版",
+        "status": "running",
+        "startedAt": "2026-11-20T11:14:20.966Z",
+        "message": "Instabox AGY 正在结合现有页面与历史测试生成独立 Playwright E2E 测试集…"
+      },
+      {
+        "id": "qa_critic",
+        "label": "03. QA Critic Agent",
+        "roleTitle": "边界异常评审 · 锁定独立只读回归测试集",
+        "status": "idle"
+      }
+    ],
+    "repoContext": {
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "branch": "main",
+      "headSha": "f19988fb68bdbc3ea4e0c91c2b19a6fea1d0ab71",
+      "fetchedAt": "2026-11-20T11:10:47.256Z",
+      "isEmptyRepo": false,
+      "totalFiles": 41,
+      "fileTree": [
+        ".github/workflows/autodev-agy.yml",
+        ".github/workflows/autodev-deploy-cf.yml",
+        ".github/workflows/autodev-plan.yml",
+        ".gitignore",
+        "README.md",
+        "client/App.tsx",
+        "client/api.ts",
+        "client/components/Comments.tsx",
+        "client/components/Feed.tsx",
+        "client/components/Icons.tsx",
+        "client/components/Messages.tsx",
+        "client/main.tsx",
+        "client/styles.css",
+        "docs/iterations/run-f734f054-prd.md",
+        "docs/iterations/run-f734f054-spec.json",
+        "docs/prd.md",
+        "docs/revision-feedback.md",
+        "docs/rsi-guidelines.md",
+        "docs/spec.json",
+        "index.html",
+        "migrations/0001_initial.sql",
+        "migrations/0002_post_stats.sql",
+        "package.json",
+        "playwright.config.ts",
+        "src/db/index.ts",
+        "src/db/node-sqlite.ts",
+        "src/index.ts",
+        "src/middleware/fingerprint.ts",
+        "src/node-server.ts",
+        "src/routes/comments.ts",
+        "src/routes/messages.ts",
+        "src/routes/posts.ts",
+        "src/routes/users.ts",
+        "src/types.ts",
+        "tests/e2e.spec.ts",
+        "tests/e2e/run-f734f054.spec.ts",
+        "tsconfig.json",
+        "vite.config.ts",
+        "worker-configuration.d.ts",
+        "wrangler.toml"
+      ],
+      "packageJsonSnippet": "{\n  \"name\": \"atd-v1\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"dev\": \"vite\",\n    \"dev:worker\": \"wrangler dev\",\n    \"build:client\": \"vite build\",\n    \"build:server\": \"tsc --noEmit\",\n    \"build\": \"vite build && tsc --noEmit\",\n    \"start\": \"tsx src/node-server.ts\",\n    \"deploy\": \"wrangler deploy\",\n    \"test\": \"playwright test\",\n    \"test:e2e\": \"playwright test\"\n  },\n  \"dependencies\": {\n    \"@hono/node-server\": \"^1.13.8\",\n    \"@hono/zod-validator\": \"^0.4.3\",\n    \"hono\": \"^4.7.4\",\n    \"react\": \"^19.0.0\",\n    \"react-dom\": \"^19.0.0\",\n    \"zod\": \"^3.24.2\"\n  },\n  \"devDependencies\": {\n    \"@cloudflare/workers-types\": \"^4.20250224.0\",\n    \"@playwright/test\": \"^1.50.1\",\n    \"@types/node\": \"^22.13.9\",\n    \"@types/react\": \"^19.0.10\",\n    \"@types/react-dom\": \"^19.0.4\",\n    \"@vitejs/plugin-react\": \"^4.3.4\",\n    \"tsx\": \"^4.19.3\",\n    \"typescript\": \"^5.7.3\",\n    \"vite\": \"^6.2.0\",\n    \"wrangler\": \"^3.111.0\"\n  }\n}\n",
+      "wranglerConfigSnippet": "name = \"atd-v1\"\nmain = \"src/index.ts\"\ncompatibility_date = \"2024-09-23\"\ncompatibility_flags = [\"nodejs_compat\"]\n\n[assets]\ndirectory = \"./dist\"\nnot_found_handling = \"single-page-application\"\n\n[[d1_databases]]\nbinding = \"DB\"\ndatabase_name = \"community_db\"\ndatabase_id = \"00000000-0000-0000-0000-000000000000\"\nmigrations_dir = \"migrations\"\n",
+      "existingMigrations": [
+        {
+          "path": "migrations/0001_initial.sql",
+          "snippet": "-- Migration: 0001_initial.sql\n-- Description: Initial schema for user community platform\n\nCREATE TABLE IF NOT EXISTS users (\n    id TEXT PRIMARY KEY,\n    username TEXT NOT NULL,\n    created_at TEXT NOT NULL\n);\n\nCREATE TABLE IF NOT EXISTS posts (\n    id TEXT PRIMARY KEY,\n    user_id TEXT NOT NULL,\n    content TEXT NOT NULL,\n    created_at TEXT NOT NULL,\n    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE\n);\n\nCREATE TABLE IF NOT EXISTS comments (\n    id TEXT PRIMARY KEY,\n    post_id TEXT NOT NULL,\n    user_id TEXT NOT NULL,\n    parent_id TEXT,\n    content TEXT NOT NULL,\n    created_at TEXT NOT NULL,\n    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,\n    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE\n);\n\nCREATE TABLE IF NOT EXISTS messages (\n    id TEXT PRIMARY KEY,\n    sender_id TEXT NOT NULL,\n    recipient_id TEXT NOT NULL,\n    content TEXT NOT NULL,\n    created_at TEXT NOT NULL,\n    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,\n    FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE\n);\n\nCREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC, id DESC);\nCREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);\nCREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id, created_at ASC);\nCREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id, created_at DESC);\nCREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient_id, created_at DESC);\n"
+        },
+        {
+          "path": "migrations/0002_post_stats.sql",
+          "snippet": "-- Migration: 0002_post_stats.sql\n-- Description: Add post likes and post views for real statistics\n\nCREATE TABLE IF NOT EXISTS post_likes (\n    post_id TEXT NOT NULL,\n    user_id TEXT NOT NULL,\n    created_at TEXT NOT NULL,\n    PRIMARY KEY (post_id, user_id),\n    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,\n    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE\n);\n\nCREATE TABLE IF NOT EXISTS post_views (\n    post_id TEXT PRIMARY KEY,\n    views_count INTEGER NOT NULL DEFAULT 0,\n    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE\n);\n\nCREATE INDEX IF NOT EXISTS idx_post_likes_post ON post_likes(post_id);\nCREATE INDEX IF NOT EXISTS idx_post_likes_user ON post_likes(user_id);\n"
+        }
+      ],
+      "existingE2eTests": [
+        "tests/e2e.spec.ts",
+        "tests/e2e/run-f734f054.spec.ts"
+      ],
+      "previousSpecSummary": "{\n  \"schemaVersion\": \"1.1\",\n  \"generatedBy\": \"AutoDev Studio\",\n  \"runId\": \"run-f734f054\",\n  \"createdAt\": \"2026-11-19T09:46:30.142Z\",\n  \"repository\": \"jiangfengwhu/atd-v1\",\n  \"baseBranch\": \"main\",\n  \"baseCommitSha\": \"e6253f2ab012609d4e4b814b01b8d25f4b0221e8\",\n  \"e2eTestPath\": \"tests/e2e/run-f734f054.spec.ts\",\n  \"archivedSpecPath\": \"docs/iterations/run-f734f054-spec.json\",\n  \"prdTitle\": \"UI优化\",\n  \"architecture\": {\n    \"summary\": \"本项目基于 React 19 + Vite 构建前端单页应用，后端运行于 Cloudflare Workers (Hono) 框架。当前前端已具备动态发布、游标分页 Feed、评论交互与站内私信等完备业务链路，但界面为居中单列的传统极简卡片风格。本次架构升级以 X.com（原 Twitter）视觉与交互规范为基准，实施端到端增量优化：重塑 client/styles.css 为 X 主题设计系统（采用纯黑/暗夜/亮白高精度色彩系统、细边框流式分割线及 Awwwards 级交互动效），重组 client/App.tsx 布局体系为 X 经典三栏自适应网格，升级 Feed、Comments 与 Messages 组件为 X 风格推文卡片、操作栏、头像微标识与平滑动画反馈，同时严格兼容并保留现有 Playwright E2E 测试所需的各类角色属性、无障碍标签与文案契约。\",\n    \"techDecisions\": [\n      \"采用 X.com 经典自适应三栏布局规范（左侧导航条、中栏沉浸流、右侧小部件栏），在保持现有状态管理与路由逻辑不变的前提下完成视觉与结构重构\",\n      \"基于原生现代 CSS 构建 Awwwards 级别的微动效系统（包含弹簧缓动曲线、按钮 Ripple/Scale 反馈、骨架屏微光渐变"
+    },
+    "planChannelBranch": "autodev-plan-channel",
+    "planActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44725451753",
+    "planActionsRunId": 44725451753,
+    "architect": {
+      "ambiguities": [
+        {
+          "id": "AMB-1",
+          "severity": "high",
+          "title": "“忽略现有实现重做”与既有只读 E2E 回归契约及增量演进规范的兼容边界",
+          "detail": "PRD 提出忽略现有实现重新构建图文社区，但仓库已部署 0001/0002 迁移脚本、站内信/评论路由以及 tests/e2e.spec.ts、tests/e2e/run-f734f054.spec.ts 只读 Playwright 契约（依赖匿名浏览器指纹头发帖与站内信导航）。若直接删除存量路由或强制阻断旧指纹请求，将导致存量只读测试失败。",
+          "clarificationSuggestion": "建议在后端采取增量演进与双轨鉴权策略：完整保留 0001/0002 迁移及评论/站内信接口，主界面围绕新版图文社区与邮箱验证码登录重构；鉴权中间件优先解析邮箱登录会话 Token，兼容回退 x-browser-fingerprint 请求头。若确认彻底废弃匿名发帖与站内信，需同步更新或归档历史 E2E 契约。"
+        },
+        {
+          "id": "AMB-2",
+          "severity": "high",
+          "title": "社区图片持久化存储介质（D1 表存储 vs Cloudflare R2）与上传规格",
+          "detail": "当前 wrangler.toml 仅绑定了 D1 数据库（DB），未配置 R2 对象存储 Bucket，且本地测试运行在 node:sqlite 适配器上。PRD 未明确图片上传体积上限、单帖张数上限及是否引入外部对象存储。",
+          "clarificationSuggestion": "建议首期新增 D1/SQLite 媒体资源表 media_assets 并提供 /api/v1/media/upload 与 /api/v1/media/:id 接口，前端压缩后限制单帖最多 4 张图、单图不超过 1MB（白名单 JPEG/PNG/WebP/GIF），实现 Cloudflare Workers 与本地 Node SQLite 双端零额外依赖运行；后续流量增长再平滑迁移至 R2。"
+        },
+        {
+          "id": "AMB-3",
+          "severity": "medium",
+          "title": "未配置 Resend API Key 时的登录降级行为与访客权限策略",
+          "detail": "管理员尚未在后台配置 Resend API Key 时无法真实发信；此外 PRD 未明确未登录访客是否可浏览动态流，以及未登录点击发帖/点赞/转发时的交互方式。",
+          "clarificationSuggestion": "建议允许未登录访客只读浏览动态与真实统计数据，触发发帖或互动时引导弹出邮箱验证码登录框；当 Resend API Key 未配置时，发送验证码接口明确返回 503_EMAIL_NOT_CONFIGURED 提示管理员先前往后台配置，避免静默失败或伪造发送成功。"
+        },
+        {
+          "id": "AMB-4",
+          "severity": "medium",
+          "title": "点击、点赞、转发、评论四类统计数据的去重与业务口径",
+          "detail": "PRD 要求添加点击、点赞、转发、评论数等必要统计，但未明确“点击数”按浏览/点击事件累计还是按用户去重，以及“转发”采用轻量计数转发还是创建引用新帖。",
+          "clarificationSuggestion": "建议点赞与转发基于 (post_id, user_id) 联合主键实现真实切换（Toggle）防重复刷数；评论数实时统计 comments 表；点击数复用现有 post_views 表在点击帖子详情或图片时原子累加，并在 API 中同时返回 clicks_count 与 views_count。"
+        },
+        {
+          "id": "AMB-5",
+          "severity": "low",
+          "title": "隐藏管理员入口 URL 路径与 Resend 发件人邮箱配置项",
+          "detail": "PRD 要求管理员页面不在页面留入口、仅通过 URL 进入且初始账密为 admin/admin，但未指定具体路径，且 Resend 生产发信通常需要同时配置发件人邮箱地址。",
+          "clarificationSuggestion": "建议将管理后台挂载在隐藏前端路径 /admin（全站公开页面不保留任何链接或文案入口），后台表单除 Resend API Key 外同时支持配置发件人邮箱（resend_from_email）、站点名称及测试发信功能，并在使用默认密码时提示尽快修改。"
+        }
+      ],
+      "architectureSummary": "基于现有 Cloudflare Workers + Hono + D1（以及本地 node:sqlite 双端适配）与 React 19 + Vite 6 架构进行增量升级重构，不修改已有 0001_initial.sql 与 0002_post_stats.sql 迁移，通过新增幂等迁移 0003_community_v2.sql 扩展媒体资源表（media_assets、post_media）、邮箱验证码与会话表（user_auth_emails、email_otp_codes、user_sessions）、转发统计表（post_reposts）以及管理员与系统配置表（admin_users、admin_sessions、system_settings），并在 src/node-server.ts 中补充迁移执行追踪机制。后端新增 Resend REST API 邮件服务、Web Crypto PBKDF2/SHA-256 鉴权与加密工具、邮箱 OTP 认证路由、图片上传/读取路由、真实点击/点赞/转发/评论统计聚合接口以及独立鉴权的管理员配置接口（默认 admin/admin 懒初始化哈希并支持改密，API Key 脱敏返回）。前端引入 lucide-react、@radix-ui/react-dialog 与 sonner 等成熟开源组件库，打造仿 X / Bluesky 风格的三栏响应式明暗双色社区界面，支持多图上传预览与灯箱浏览，彻底移除侧边栏与卡片中的 Mock 数据与占位按钮，并通过 SPA 路由在无任何界面入口的隐藏路径 /admin 提供独立管理员控制台。",
+      "techDecisions": [
+        "增量迁移与双端幂等兼容：严格保留 0001_initial.sql 与 0002_post_stats.sql，新增 migrations/0003_community_v2.sql 全部采用 CREATE TABLE IF NOT EXISTS 独立扩展表设计（避免 SQLite ALTER TABLE 重复执行报错），并在 src/node-server.ts 中增加 _applied_migrations 记录表保障本地与 D1 迁移语义一致。",
+        "零 SDK 依赖直连 Resend REST API：通过标准 fetch 调用 https://api.resend.com/emails，优先读取 D1 system_settings 表中管理员动态配置的 resend_api_key 与 resend_from_email（支持环境变量兜底），确保 Cloudflare Workers 边缘运行时与 Node.js 环境 100% 行为一致。",
+        "Web Crypto 统一安全原语：使用标准 Web Crypto API（crypto.subtle PBKDF2-SHA256 加随机盐哈希管理员密码、SHA-256 哈希邮箱 OTP 与会话令牌、crypto.getRandomValues 生成 6 位验证码与高熵 Session Token），无需引入原生 bcrypt 二进制依赖即可跨 Workers 与 Node 运行。",
+        "双轨兼容的认证中间件设计：新建 src/middleware/auth.ts，优先验证邮箱登录签发的 Bearer Token / HttpOnly Cookie 会话；为遵循增量演进原则并保障仓库只读 E2E 回归契约通过，在接口层平滑兼容回退 x-browser-fingerprint 身份头，前端则以邮箱验证码登录作为核心用户体系。",
+        "D1/SQLite 媒体资源表承载图文附件：新增 media_assets 与 post_media 表存储校验后的图片数据（白名单 MIME、单图上限 1MB、单帖最多 4 张），Feed 接口仅返回轻量 /api/v1/media/:id 地址并由读取接口输出不可变缓存头与 nosniff 安全头，无需额外配置 R2 即可开箱运行。",
+        "开源组件库与无 Mock 社交 UI 体系：引入 lucide-react（图标）、@radix-ui/react-dialog（无障碍登录弹窗与图片灯箱）与 sonner（全局轻提示），在现有语义化亮暗双色主题变量体系上重构仿 X / Bluesky 三栏布局，彻底清除硬编码暗色、假浏览量哈希与占位 Mock 卡片，右栏接入真实社区统计与热帖数据。",
+        "无入口隐藏路径管理后台：借助 wrangler.toml 与 node-server.ts 既有的 SPA 回退机制，通过 pathname 识别 /admin 渲染独立 AdminPage 组件，主社区页面不留任何入口；管理员配置页对 Resend API Key 执行后端脱敏（仅返回配置状态与掩码）并提供测试发信与账密修改能力。"
+      ],
+      "apiContracts": [
+        {
+          "id": "API-1",
+          "method": "POST",
+          "path": "/api/v1/auth/send-code",
+          "summary": "校验邮箱格式并施加 60 秒发送频控，生成 6 位验证码入库并通过管理员配置的 Resend 服务发送登录邮件",
+          "requestSchema": "{ \"email\": \"string (valid email)\" }",
+          "responseSchema": "{ \"sent\": true, \"expires_in_seconds\": 600, \"cooldown_seconds\": 60 }",
+          "errorCodes": [
+            "400_INVALID_EMAIL",
+            "429_RATE_LIMITED",
+            "502_EMAIL_SEND_FAILED",
+            "503_EMAIL_NOT_CONFIGURED"
+          ]
+        },
+        {
+          "id": "API-2",
+          "method": "POST",
+          "path": "/api/v1/auth/verify-code",
+          "summary": "校验邮箱与 6 位验证码（限 5 次尝试与有效期），自动创建或绑定社区用户并签发会话令牌与 HttpOnly Cookie",
+          "requestSchema": "{ \"email\": \"string\", \"code\": \"string (6 digits)\" }",
+          "responseSchema": "{ \"token\": \"string\", \"user\": { \"id\": \"string\", \"username\": \"string\", \"email\": \"string\", \"created_at\": \"string\" } }",
+          "errorCodes": [
+            "400_INVALID_CODE",
+            "410_CODE_EXPIRED",
+            "429_TOO_MANY_ATTEMPTS"
+          ]
+        },
+        {
+          "id": "API-3",
+          "method": "GET",
+          "path": "/api/v1/auth/me",
+          "summary": "获取当前请求对应的登录态与用户信息（区分邮箱已登录用户与未登录状态）",
+          "requestSchema": "Headers: Authorization: Bearer <token> 或 Cookie: session_token",
+          "responseSchema": "{ \"authenticated\": true, \"auth_type\": \"email|fingerprint\", \"user\": { \"id\": \"string\", \"username\": \"string\", \"email\": \"string|null\", \"created_at\": \"string\" } }",
+          "errorCodes": [
+            "401_UNAUTHORIZED"
+          ]
+        },
+        {
+          "id": "API-4",
+          "method": "POST",
+          "path": "/api/v1/auth/logout",
+          "summary": "吊销当前邮箱登录会话令牌并清除客户端 Cookie",
+          "requestSchema": "Headers: Authorization: Bearer <token> 或 Cookie: session_token",
+          "responseSchema": "{ \"success\": true }",
+          "errorCodes": [
+            "500_DB_ERROR"
+          ]
+        },
+        {
+          "id": "API-5",
+          "method": "POST",
+          "path": "/api/v1/media/upload",
+          "summary": "上传帖子图片（支持 multipart/form-data 或 JSON data_url），校验图片 MIME 白名单与体积限制并持久化",
+          "requestSchema": "multipart/form-data (file: File) 或 { \"data_url\": \"string\", \"filename\": \"string\" }",
+          "responseSchema": "{ \"id\": \"string\", \"url\": \"/api/v1/media/:id\", \"mime_type\": \"string\", \"size_bytes\": 12345 }",
+          "errorCodes": [
+            "400_INVALID_MEDIA",
+            "401_UNAUTHORIZED",
+            "413_MEDIA_TOO_LARGE",
+            "500_DB_ERROR"
+          ]
+        },
+        {
+          "id": "API-6",
+          "method": "GET",
+          "path": "/api/v1/media/:id",
+          "summary": "按媒体 ID 输出图片二进制内容，附带 Content-Type、Cache-Control 与 X-Content-Type-Options 安全头",
+          "requestSchema": "Path param: id (string)",
+          "responseSchema": "Binary image stream",
+          "errorCodes": [
+            "404_MEDIA_NOT_FOUND"
+          ]
+        },
+        {
+          "id": "API-7",
+          "method": "POST",
+          "path": "/api/v1/posts",
+          "summary": "发布图文动态（支持纯文、纯图或图文混排，兼容存量纯文本请求；无文字且无图时拒绝）",
+          "requestSchema": "{ \"content\": \"string\", \"media_ids\": [\"string (optional, max 4)\"] }",
+          "responseSchema": "{ \"id\": \"string\", \"created_at\": \"string\", \"images\": [{ \"id\": \"string\", \"url\": \"string\", \"mime_type\": \"string\" }] }",
+          "errorCodes": [
+            "400_INVALID_CONTENT",
+            "400_INVALID_MEDIA",
+            "401_UNAUTHORIZED",
+            "500_DB_ERROR"
+          ]
+        },
+        {
+          "id": "API-8",
+          "method": "GET",
+          "path": "/api/v1/feed",
+          "summary": "游标分页获取社区图文动态流，返回作者昵称、图片数组及真实点击/点赞/转发/评论数与当前用户互动状态",
+          "requestSchema": "Query: limit (1-100, default 20), cursor (optional), sort (latest|hot, default latest), q (optional search)",
+          "responseSchema": "{ \"posts\": [{ \"id\": \"string\", \"user_id\": \"string\", \"author_name\": \"string\", \"content\": \"string\", \"images\": [{ \"id\": \"string\", \"url\": \"string\" }], \"clicks_count\": 0, \"views_count\": 0, \"likes_count\": 0, \"reposts_count\": 0, \"comments_count\": 0, \"user_liked\": false, \"user_reposted\": false, \"created_at\": \"string\" }], \"next_cursor\": \"string\" }",
+          "errorCodes": [
+            "500_DB_ERROR"
+          ]
+        },
+        {
+          "id": "API-9",
+          "method": "POST",
+          "path": "/api/v1/posts/:id/like",
+          "summary": "切换当前用户对指定帖子的点赞状态（幂等防刷）并返回最新真实点赞数",
+          "requestSchema": "Path param: id (post id)",
+          "responseSchema": "{ \"post_id\": \"string\", \"liked\": true, \"likes_count\": 1 }",
+          "errorCodes": [
+            "401_UNAUTHORIZED",
+            "404_POST_NOT_FOUND",
+            "500_DB_ERROR"
+          ]
+        },
+        {
+          "id": "API-10",
+          "method": "POST",
+          "path": "/api/v1/posts/:id/repost",
+          "summary": "切换当前用户对指定帖子的转发状态并返回最新真实转发数",
+          "requestSchema": "Path param: id (post id)",
+          "responseSchema": "{ \"post_id\": \"string\", \"reposted\": true, \"reposts_count\": 1 }",
+          "errorCodes": [
+            "401_UNAUTHORIZED",
+            "404_POST_NOT_FOUND",
+            "500_DB_ERROR"
+          ]
+        },
+        {
+          "id": "API-11",
+          "method": "POST",
+          "path": "/api/v1/posts/:id/click",
+          "summary": "原子递增指定帖子的点击/浏览计数（复用 post_views 表）并返回最新统计",
+          "requestSchema": "Path param: id (post id)",
+          "responseSchema": "{ \"post_id\": \"string\", \"clicks_count\": 1, \"views_count\": 1 }",
+          "errorCodes": [
+            "404_POST_NOT_FOUND",
+            "500_DB_ERROR"
+          ]
+        },
+        {
+          "id": "API-12",
+          "method": "GET",
+          "path": "/api/v1/stats/overview",
+          "summary": "获取社区真实汇总统计（总帖数、总用户数、总点击、总点赞、总转发、总评论）及真实热门动态摘要",
+          "requestSchema": "None",
+          "responseSchema": "{ \"totals\": { \"posts\": 0, \"users\": 0, \"comments\": 0, \"likes\": 0, \"reposts\": 0, \"clicks\": 0 }, \"hot_posts\": [{ \"id\": \"string\", \"content\": \"string\", \"author_name\": \"string\", \"likes_count\": 0, \"comments_count\": 0, \"clicks_count\": 0 }] }",
+          "errorCodes": [
+            "500_DB_ERROR"
+          ]
+        },
+        {
+          "id": "API-13",
+          "method": "POST",
+          "path": "/api/v1/admin/login",
+          "summary": "管理员账号密码登录（若无管理员记录则自动以 PBKDF2 哈希初始化 admin/admin），签发独立管理员会话",
+          "requestSchema": "{ \"username\": \"string\", \"password\": \"string\" }",
+          "responseSchema": "{ \"token\": \"string\", \"admin\": { \"id\": \"string\", \"username\": \"string\", \"must_change_password\": true } }",
+          "errorCodes": [
+            "400_INVALID_CREDENTIALS",
+            "401_INVALID_CREDENTIALS",
+            "500_DB_ERROR"
+          ]
+        },
+        {
+          "id": "API-14",
+          "method": "GET",
+          "path": "/api/v1/admin/settings",
+          "summary": "获取后台系统配置与平台统计概览（Resend API Key 仅返回已配置状态与脱敏掩码，绝不返回明文）",
+          "requestSchema": "Headers: Authorization: Bearer <admin_token> 或管理员 Cookie",
+          "responseSchema": "{ \"admin\": { \"id\": \"string\", \"username\": \"string\", \"must_change_password\": false }, \"settings\": { \"resend_api_key_configured\": true, \"resend_api_key_masked\": \"****1234\", \"resend_from_email\": \"string\", \"site_name\": \"string\", \"otp_expiry_minutes\": 10, \"max_images_per_post\": 4 }, \"stats\": { \"users\": 0, \"email_users\": 0, \"posts\": 0, \"media\": 0, \"comments\": 0, \"likes\": 0, \"reposts\": 0, \"clicks\": 0 } }",
+          "errorCodes": [
+            "401_ADMIN_UNAUTHORIZED",
+            "500_DB_ERROR"
+          ]
+        },
+        {
+          "id": "API-15",
+          "method": "PUT",
+          "path": "/api/v1/admin/settings",
+          "summary": "保存管理员配置的 Resend API Key（留空不覆盖、支持显式清空）、发件人邮箱、社区名称等参数",
+          "requestSchema": "{ \"resend_api_key\": \"YOUR_RESEND_API_KEY_HERE (optional)\", \"clear_resend_api_key\": false, \"resend_from_email\": \"string\", \"site_name\": \"string\", \"otp_expiry_minutes\": 10, \"max_images_per_post\": 4 }",
+          "responseSchema": "{ \"success\": true, \"settings\": { \"resend_api_key_configured\": true, \"resend_api_key_masked\": \"****1234\", \"resend_from_email\": \"string\", \"site_name\": \"string\", \"otp_expiry_minutes\": 10, \"max_images_per_post\": 4 } }",
+          "errorCodes": [
+            "400_INVALID_SETTINGS",
+            "401_ADMIN_UNAUTHORIZED",
+            "500_DB_ERROR"
+          ]
+        },
+        {
+          "id": "API-16",
+          "method": "POST",
+          "path": "/api/v1/admin/settings/test-email",
+          "summary": "使用当前已保存的 Resend API Key 与发件人邮箱向目标邮箱发送配置验证邮件",
+          "requestSchema": "{ \"to_email\": \"string (valid email)\" }",
+          "responseSchema": "{ \"success\": true, \"provider_id\": \"string\" }",
+          "errorCodes": [
+            "400_INVALID_EMAIL",
+            "401_ADMIN_UNAUTHORIZED",
+            "502_EMAIL_SEND_FAILED",
+            "503_EMAIL_NOT_CONFIGURED"
+          ]
+        },
+        {
+          "id": "API-17",
+          "method": "PUT",
+          "path": "/api/v1/admin/credentials",
+          "summary": "校验当前密码后修改管理员登录用户名与密码，并重新生成随机盐与 PBKDF2 哈希",
+          "requestSchema": "{ \"current_password\": \"string\", \"new_username\": \"string (optional)\", \"new_password\": \"string (min 6 chars)\" }",
+          "responseSchema": "{ \"success\": true, \"admin\": { \"id\": \"string\", \"username\": \"string\", \"must_change_password\": false } }",
+          "errorCodes": [
+            "400_INVALID_CREDENTIALS",
+            "401_ADMIN_UNAUTHORIZED",
+            "403_WRONG_PASSWORD",
+            "500_DB_ERROR"
+          ]
+        }
+      ],
+      "tasks": [
+        {
+          "id": "T-01",
+          "title": "数据库增量迁移与双端数据层扩展",
+          "module": "database",
+          "description": "保留既有 migrations/0001_initial.sql 与 0002_post_stats.sql 不变，新增幂等迁移文件 migrations/0003_community_v2.sql，建表涵盖 media_assets、post_media、post_reposts、user_auth_emails、email_otp_codes、user_sessions、admin_users、admin_sessions 与 system_settings，并补充必要索引与默认配置项。更新 src/types.ts 定义新增领域模型类型，同时在 src/node-server.ts 中完善迁移执行幂等追踪（_applied_migrations）。",
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "migrations/0001_initial.sql 与 migrations/0002_post_stats.sql 保持原样未被修改",
+            "migrations/0003_community_v2.sql 在 Cloudflare D1 与本地 node:sqlite 环境下重复执行均无报错",
+            "所有新增外键、唯一约束（如 email 唯一、post_reposts 联合主键）与查询索引正确创建",
+            "npm run build:server 类型检查通过，无 TypeScript 错误"
+          ],
+          "estimatedComplexity": "S"
+        },
+        {
+          "id": "T-02",
+          "title": "邮箱验证码登录认证与 Resend 邮件服务集成",
+          "module": "backend-auth",
+          "description": "实现基于 Web Crypto 的通用哈希与令牌工具（src/utils/crypto.ts）、Resend REST API 发信服务（src/services/resend.ts，优先读取 D1 system_settings 配置）、双轨鉴权中间件（src/middleware/auth.ts，优先校验邮箱会话 Token/Cookie，平滑兼容存量 x-browser-fingerprint 头）以及认证路由（src/routes/auth.ts：send-code、verify-code、me、logout，含 60 秒发送频控、10 分钟过期与最多 5 次错码锁定）。",
+          "dependsOn": [
+            "T-01"
+          ],
+          "acceptanceCriteria": [
+            "POST /api/v1/auth/send-code 正确校验邮箱格式与 60 秒频控，未配置 Resend API Key 时返回 503_EMAIL_NOT_CONFIGURED，配置有效时正确请求 Resend API",
+            "POST /api/v1/auth/verify-code 正确校验 6 位验证码、过期时间与尝试次数，成功后创建/关联用户并返回可用会话 Token 与 HttpOnly Cookie",
+            "GET /api/v1/auth/me 与 POST /api/v1/auth/logout 完整支持会话查询与失效吊销",
+            "存量使用 x-browser-fingerprint 请求头的接口（发帖、评论、私信）继续兼容通过，无回归破坏"
+          ],
+          "estimatedComplexity": "M"
+        },
+        {
+          "id": "T-03",
+          "title": "图文发布、媒体存储与真实互动统计后端 API",
+          "module": "backend-community",
+          "description": "新增 src/routes/media.ts 实现图片上传（MIME 白名单、单图大小校验、返回 /api/v1/media/:id）与安全流式读取；升级 src/routes/posts.ts 支持图文混排与多图关联（最多 4 张，保留空内容 400_INVALID_CONTENT 契约），在 GET /api/v1/feed 与 GET /api/v1/posts/:id 中真实聚合图片、作者名及 clicks_count/views_count、likes_count、reposts_count、comments_count、user_liked、user_reposted；新增点赞、转发切换接口、点击自增接口及社区真实统计概览路由 src/routes/stats.ts。",
+          "dependsOn": [
+            "T-01",
+            "T-02"
+          ],
+          "acceptanceCriteria": [
+            "支持上传 JPEG/PNG/WebP/GIF 图片并返回可访问的 /api/v1/media/:id，非法类型返回 400、超限返回 413",
+            "POST /api/v1/posts 支持纯文本、纯图片与图文混排发布，空内容且无图时返回 400_INVALID_CONTENT",
+            "POST /api/v1/posts/:id/like、/repost 支持按用户幂等切换并持久化至 post_likes、post_reposts，POST /api/v1/posts/:id/click 原子递增 post_views",
+            "GET /api/v1/feed 与 GET /api/v1/stats/overview 全部返回数据库真实统计数据，零硬编码或伪造数值"
+          ],
+          "estimatedComplexity": "M"
+        },
+        {
+          "id": "T-04",
+          "title": "隐藏式管理员后台鉴权与系统配置 API",
+          "module": "backend-admin",
+          "description": "实现 src/services/admin-auth.ts 与 src/routes/admin.ts 并在 src/index.ts 挂载：首次登录自动使用 PBKDF2-SHA256 哈希初始化默认管理员账号 admin / 密码 admin，签发独立管理员会话（与普通社区用户隔离）；提供 GET/PUT /api/v1/admin/settings 管理 Resend API Key（脱敏返回，绝不回显明文）、发件人邮箱、社区名及发图上限；提供 POST /api/v1/admin/settings/test-email 验证发信，以及 PUT /api/v1/admin/credentials 支持修改管理员账号与密码；更新 CORS 允许方法。",
+          "dependsOn": [
+            "T-01",
+            "T-02"
+          ],
+          "acceptanceCriteria": [
+            "首次启动无需手动操作即可使用默认账号 admin、密码 admin 登录 POST /api/v1/admin/login",
+            "所有管理员配置与改密接口均严格校验独立管理员会话，未授权或普通用户 Token 一律返回 401_ADMIN_UNAUTHORIZED",
+            "PUT /api/v1/admin/settings 保存的 Resend API Key 实时生效于邮箱登录发信流程，GET 接口仅返回已配置标志与掩码",
+            "PUT /api/v1/admin/credentials 修改账号密码后，旧密码立即失效、新密码可正常登录且 must_change_password 置为 false"
+          ],
+          "estimatedComplexity": "M"
+        },
+        {
+          "id": "T-05",
+          "title": "社交媒体风格图文社区前端重构与开源组件库集成",
+          "module": "frontend-community",
+          "description": "安装并集成 lucide-react、@radix-ui/react-dialog 与 sonner，重构 client/App.tsx、client/components/Feed.tsx、client/api.ts 与 client/styles.css，新增 AuthModal.tsx（邮箱验证码登录弹窗）与 ImageLightbox.tsx（多图灯箱）。打造仿 X / Bluesky 风格的三栏响应式亮暗主题界面：支持多图上传预览与 1-4 图网格排版、真实点击/点赞/转发/评论计数与交互动画、真实社区数据与热帖右栏；彻底清除历史 Mock 趋势、订阅卡片、伪造浏览量与未实现占位按钮；保持既有只读 E2E 契约定位器兼容且不在公开界面暴露任何管理后台入口。",
+          "dependsOn": [
+            "T-02",
+            "T-03"
+          ],
+          "acceptanceCriteria": [
+            "页面采用统一语义化亮暗双色主题变量，无硬编码灰暗色块、无任何 Mock 趋势/推荐/伪造浏览量与未实现按钮",
+            "用户可在发帖框选择多张图片预览并发布图文动态，点击图片可打开 Radix Dialog 灯箱查看原图",
+            "每条动态展示真实的点击、点赞、转发、评论数，交互后持久化至后端并在刷新页面后保持一致",
+            "支持打开邮箱验证码登录弹窗完成发码与验证流程并展示已登录邮箱状态与退出按钮，且页面中不存在任何指向 /admin 的链接或入口"
+          ],
+          "estimatedComplexity": "L"
+        },
+        {
+          "id": "T-06",
+          "title": "隐藏 URL 管理员前端页面与全链路 E2E 验证",
+          "module": "frontend-admin-and-qa",
+          "description": "在 client/App.tsx 中基于 window.location.pathname 接入隐藏路径 /admin，开发独立美观的 client/components/AdminPage.tsx：包含管理员登录表单、首次默认密码安全提示、Resend API Key 与发件人邮箱/站点配置表单（支持测试发信）、平台真实统计看板以及管理员账号密码修改面板。编写增量 Playwright E2E 测试覆盖图文发帖、真实四维统计、邮箱验证码登录（含 Resend 拦截模拟）、/admin 隐藏入口校验、默认 admin/admin 登录改密与 Resend 配置生效，并确保全部既有与新增测试及构建命令通过。",
+          "dependsOn": [
+            "T-04",
+            "T-05"
+          ],
+          "acceptanceCriteria": [
+            "直接访问 /admin 可进入管理员登录页并完成 admin/admin 登录，主社区页面 DOM 中搜索不到任何 /admin 入口链接",
+            "管理员可在后台保存 Resend API Key（脱敏展示）、发件人邮箱并触发测试发信，且可修改账号密码后使用新凭据重新登录",
+            "npm run build（vite build && tsc --noEmit）构建与类型检查零报错",
+            "全部既有只读 E2E 契约与新增社区/管理后台 Playwright E2E 测试全部通过"
+          ],
+          "estimatedComplexity": "M"
+        }
+      ]
+    }
+  }
+]
