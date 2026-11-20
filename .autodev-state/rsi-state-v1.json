@@ -1,6 +1,390 @@
 {
-  "testReports": [],
+  "testReports": [
+    {
+      "id": "tr-gh-44728477037",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "actionsRunId": 44728477037,
+      "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44728477037",
+      "workflowName": "AutoDev AGY Coding Runner",
+      "branch": "autodev/feat-20261120-112741",
+      "pipelineRunId": "run-ec6c3c00",
+      "prNumber": 7,
+      "kind": "e2e",
+      "status": "partial",
+      "total": 35,
+      "passed": 29,
+      "failed": 6,
+      "skipped": 0,
+      "passRate": 83,
+      "durationMs": 18901,
+      "executedAt": "2026-11-20T11:40:22.057Z",
+      "summary": "独立盲测验证（gemini-4-hydrogen-high / auto）：29 通过 / 6 失败 / 0 跳过",
+      "cases": [
+        {
+          "id": "check-build",
+          "title": "生产构建检查 (npm run build)",
+          "status": "passed",
+          "durationMs": 3957
+        },
+        {
+          "id": "pw-1",
+          "title": "e2e/run-ec6c3c00.spec.ts › Community V2: Media Upload & Image-Text Posts API › POST /api/v1/media/upload & GET /api/v1/media/:id validate auth, MIME, size, traversal, and concurrency",
+          "file": "e2e/run-ec6c3c00.spec.ts",
+          "status": "passed",
+          "durationMs": 98
+        },
+        {
+          "id": "pw-2",
+          "title": "e2e/run-ec6c3c00.spec.ts › Community V2: Media Upload & Image-Text Posts API › POST /api/v1/posts supports image-only and multi-image posts while rejecting empty or invalid media",
+          "file": "e2e/run-ec6c3c00.spec.ts",
+          "status": "passed",
+          "durationMs": 48
+        },
+        {
+          "id": "pw-3",
+          "title": "e2e/run-ec6c3c00.spec.ts › Community V2: Real 4D Stats, Atomic Concurrency & Overview API › Like, repost, concurrent atomic clicks, comments, and stats overview reflect persisted real counts",
+          "file": "e2e/run-ec6c3c00.spec.ts",
+          "status": "passed",
+          "durationMs": 61
+        },
+        {
+          "id": "pw-4",
+          "title": "e2e/run-ec6c3c00.spec.ts › Community V2: Email OTP Auth API Contracts › Auth routes validate email format, malformed codes, invalid tokens, /me dual auth, and logout",
+          "file": "e2e/run-ec6c3c00.spec.ts",
+          "status": "passed",
+          "durationMs": 21
+        },
+        {
+          "id": "pw-5",
+          "title": "e2e/run-ec6c3c00.spec.ts › Community V2 Web E2E: Image-Text Feed, Real Stats & Email Login › Public community page exposes no /admin entry links or buttons and removes legacy mock widgets",
+          "file": "e2e/run-ec6c3c00.spec.ts",
+          "status": "passed",
+          "durationMs": 185
+        },
+        {
+          "id": "pw-6",
+          "title": "e2e/run-ec6c3c00.spec.ts › Community V2 Web E2E: Image-Text Feed, Real Stats & Email Login › User uploads image with text, safely escapes XSS, and persists image post across reload",
+          "file": "e2e/run-ec6c3c00.spec.ts",
+          "status": "passed",
+          "durationMs": 481
+        },
+        {
+          "id": "pw-7",
+          "title": "e2e/run-ec6c3c00.spec.ts › Community V2 Web E2E: Image-Text Feed, Real Stats & Email Login › User likes, reposts, and comments on a post with real backend persistence after reload",
+          "file": "e2e/run-ec6c3c00.spec.ts",
+          "status": "passed",
+          "durationMs": 1673
+        },
+        {
+          "id": "pw-8",
+          "title": "e2e/run-ec6c3c00.spec.ts › Community V2 Web E2E: Image-Text Feed, Real Stats & Email Login › Email OTP login sends code, verifies 6-digit OTP, shows logged-in email, and logs out",
+          "file": "e2e/run-ec6c3c00.spec.ts",
+          "status": "passed",
+          "durationMs": 728
+        },
+        {
+          "id": "pw-9",
+          "title": "e2e/run-ec6c3c00.spec.ts › Hidden Admin Console & Resend Config E2E › Admin API enforces strict auth isolation and supports default admin/admin login",
+          "file": "e2e/run-ec6c3c00.spec.ts",
+          "status": "passed",
+          "durationMs": 68
+        },
+        {
+          "id": "pw-10",
+          "title": "e2e/run-ec6c3c00.spec.ts › Hidden Admin Console & Resend Config E2E › Admin settings API manages Resend key with masking, empty preservation, clear, and live email wiring",
+          "file": "e2e/run-ec6c3c00.spec.ts",
+          "status": "passed",
+          "durationMs": 295
+        },
+        {
+          "id": "pw-11",
+          "title": "e2e/run-ec6c3c00.spec.ts › Hidden Admin Console & Resend Config E2E › Hidden /admin page allows admin/admin login, displays dashboard, and persists masked Resend config",
+          "file": "e2e/run-ec6c3c00.spec.ts",
+          "status": "passed",
+          "durationMs": 332
+        },
+        {
+          "id": "pw-12",
+          "title": "e2e/run-ec6c3c00.spec.ts › Hidden Admin Console & Resend Config E2E › Admin credentials update invalidates default admin password and allows re-login with new credentials",
+          "file": "e2e/run-ec6c3c00.spec.ts",
+          "status": "passed",
+          "durationMs": 252
+        },
+        {
+          "id": "pw-13",
+          "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts validates auth, whitespace, missing fields, and publishes content",
+          "file": "e2e/run-f734f054.spec.ts",
+          "status": "passed",
+          "durationMs": 27
+        },
+        {
+          "id": "pw-14",
+          "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › GET /api/v1/feed enforces pagination boundaries and cursor consistency",
+          "file": "e2e/run-f734f054.spec.ts",
+          "status": "passed",
+          "durationMs": 10
+        },
+        {
+          "id": "pw-15",
+          "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST /api/v1/messages guarantees target user via seed and rejects invalid/missing recipients",
+          "file": "e2e/run-f734f054.spec.ts",
+          "status": "passed",
+          "durationMs": 35
+        },
+        {
+          "id": "pw-16",
+          "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › GET /api/v1/messages retrieves user direct message history with authentication",
+          "file": "e2e/run-f734f054.spec.ts",
+          "status": "passed",
+          "durationMs": 6
+        },
+        {
+          "id": "pw-17",
+          "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts handles concurrent requests without ID collisions",
+          "file": "e2e/run-f734f054.spec.ts",
+          "status": "passed",
+          "durationMs": 33
+        },
+        {
+          "id": "pw-18",
+          "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST and GET /api/v1/posts/:postId/comments validates auth, empty content, and retrieves comments thread including parent_id replies",
+          "file": "e2e/run-f734f054.spec.ts",
+          "status": "passed",
+          "durationMs": 18
+        },
+        {
+          "id": "pw-19",
+          "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › User publishes post with whitespace guard, double-click prevention, and reload persistence",
+          "file": "e2e/run-f734f054.spec.ts",
+          "status": "passed",
+          "durationMs": 1430
+        },
+        {
+          "id": "pw-20",
+          "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › XSS payloads in post content are rendered safely without script execution",
+          "file": "e2e/run-f734f054.spec.ts",
+          "status": "passed",
+          "durationMs": 191
+        },
+        {
+          "id": "pw-21",
+          "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › User submits private message and sees error feedback for missing recipient",
+          "file": "e2e/run-f734f054.spec.ts",
+          "status": "passed",
+          "durationMs": 1003
+        },
+        {
+          "id": "pw-22",
+          "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › UI displays graceful error state and recovers when feed API returns 500_DB_ERROR",
+          "file": "e2e/run-f734f054.spec.ts",
+          "status": "failed",
+          "durationMs": 134,
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/加载失败|服务异常|error|retry|重试/i)\nExpected: visible\nError: strict mode violation: getByText(/加载失败|服务异常|error|retry|重试/i) resolved to 3 elements:\n    1) <div class=\"error-title\">动态加载失败，服务异常 (500_DB_ERROR)</div> aka getByText('动态加载失败，服务异常 (500_DB_ERROR)')\n    2) <button type=\"button\" class=\"btn btn-secondary x-btn-active\">刷新重试</button> aka getByRole('button', { name: '刷新重试' })\n    3) <div class=\"x-hot-snippet\"><img src=x onerror=\"window.__xssExecuted=true;ale…</div> aka getByRole('button', { "
+        },
+        {
+          "id": "pw-23",
+          "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › X.com responsive navigation preserves view switching, active state indicators, and identity status",
+          "file": "e2e/run-f734f054.spec.ts",
+          "status": "failed",
+          "durationMs": 325,
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('feed-list').or(getByRole('main'))\nExpected: visible\nError: strict mode violation: getByTestId('feed-list').or(getByRole('main')) resolved to 2 elements:\n    1) <main class=\"x-main-col\">…</main> aka getByText('新版社区 Pro邮箱登录最新动态热门精选FP0/4 图0')\n    2) <div class=\"feed-list\" data-testid=\"feed-list\">…</div> aka getByTestId('feed-list')\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('feed-list').or(getByRole('main')) with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('feed-list'"
+        },
+        {
+          "id": "pw-24",
+          "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › User can expand tweet comments thread and post a reply smoothly with scoped selectors",
+          "file": "e2e/run-f734f054.spec.ts",
+          "status": "passed",
+          "durationMs": 1045
+        },
+        {
+          "id": "pw-25",
+          "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › Direct message compose form handles validation and interactive feedback",
+          "file": "e2e/run-f734f054.spec.ts",
+          "status": "passed",
+          "durationMs": 597
+        },
+        {
+          "id": "pw-26",
+          "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › Global layout and interactive controls apply modern responsive design and smooth transition attributes",
+          "file": "e2e/run-f734f054.spec.ts",
+          "status": "failed",
+          "durationMs": 146,
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('feed-list').or(getByRole('main'))\nExpected: visible\nError: strict mode violation: getByTestId('feed-list').or(getByRole('main')) resolved to 2 elements:\n    1) <main class=\"x-main-col\">…</main> aka getByText('Pulse 社区邮箱登录最新动态热门精选FP0/4 图0')\n    2) <div class=\"feed-list\" data-testid=\"feed-list\">…</div> aka getByTestId('feed-list')\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('feed-list').or(getByRole('main')) with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('feed-list'"
+        },
+        {
+          "id": "pw-27",
+          "title": "e2e.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts validates auth, whitespace, missing fields, and publishes content",
+          "file": "e2e.spec.ts",
+          "status": "passed",
+          "durationMs": 37
+        },
+        {
+          "id": "pw-28",
+          "title": "e2e.spec.ts › Community API Contracts (Hardened) › GET /api/v1/feed enforces pagination boundaries and cursor consistency",
+          "file": "e2e.spec.ts",
+          "status": "passed",
+          "durationMs": 22
+        },
+        {
+          "id": "pw-29",
+          "title": "e2e.spec.ts › Community API Contracts (Hardened) › POST /api/v1/messages guarantees target user via seed and rejects invalid/missing recipients",
+          "file": "e2e.spec.ts",
+          "status": "passed",
+          "durationMs": 20
+        },
+        {
+          "id": "pw-30",
+          "title": "e2e.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts handles concurrent requests without ID collisions",
+          "file": "e2e.spec.ts",
+          "status": "passed",
+          "durationMs": 21
+        },
+        {
+          "id": "pw-31",
+          "title": "e2e.spec.ts › Community Web E2E (Hardened) › User publishes post with whitespace guard, double-click prevention, and reload persistence",
+          "file": "e2e.spec.ts",
+          "status": "failed",
+          "durationMs": 199,
+          "error": "Error: locator.isDisabled: Error: strict mode violation: getByRole('button', { name: /发布|发送|post|publish/i }) resolved to 3 elements:\n    1) <button type=\"submit\" class=\"btn btn-primary x-tweet-btn x-btn-active\">发布</button> aka getByRole('button', { name: '发布' })\n    2) <button type=\"button\" class=\"x-hot-item\">…</button> aka getByRole('button', { name: 'user_qa-fp-ha Comment Target' })\n    3) <button type=\"button\" class=\"x-hot-item\">…</button> aka getByRole('button', { name: 'user_qa-fp-ha Concurrent Post' })\n\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /发布|发送|post|publish/i })\u001b["
+        },
+        {
+          "id": "pw-32",
+          "title": "e2e.spec.ts › Community Web E2E (Hardened) › XSS payloads in post content are rendered safely without script execution",
+          "file": "e2e.spec.ts",
+          "status": "failed",
+          "durationMs": 196,
+          "error": "Error: locator.click: Error: strict mode violation: getByRole('button', { name: /发布|发送|post|publish/i }) resolved to 3 elements:\n    1) <button type=\"submit\" class=\"btn btn-primary x-tweet-btn x-btn-active\">发布</button> aka getByRole('button', { name: '发布' })\n    2) <button type=\"button\" class=\"x-hot-item\">…</button> aka getByRole('button', { name: 'user_qa-fp-ha Comment Target' })\n    3) <button type=\"button\" class=\"x-hot-item\">…</button> aka getByRole('button', { name: 'user_qa-fp-ha Concurrent Post' })\n\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /发布|发送|post|publish/i })\u001b[22m\n"
+        },
+        {
+          "id": "pw-33",
+          "title": "e2e.spec.ts › Community Web E2E (Hardened) › User submits private message and sees error feedback for missing recipient",
+          "file": "e2e.spec.ts",
+          "status": "passed",
+          "durationMs": 957
+        },
+        {
+          "id": "pw-34",
+          "title": "e2e.spec.ts › Community Web E2E (Hardened) › UI displays graceful error state and recovers when feed API returns 500_DB_ERROR",
+          "file": "e2e.spec.ts",
+          "status": "failed",
+          "durationMs": 144,
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/加载失败|服务异常|error|retry|重试/i)\nExpected: visible\nError: strict mode violation: getByText(/加载失败|服务异常|error|retry|重试/i) resolved to 2 elements:\n    1) <div class=\"error-title\">动态加载失败，服务异常 (500_DB_ERROR)</div> aka getByText('动态加载失败，服务异常 (500_DB_ERROR)')\n    2) <button type=\"button\" class=\"btn btn-secondary x-btn-active\">刷新重试</button> aka getByRole('button', { name: '刷新重试' })\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText(/加载失败|服务异常|error|retry|重试/i) with timeout 10000ms\u001b[22m\n\u001b[2m  - wait"
+        }
+      ],
+      "rawLogExcerpt": "ransforming...\n\u001b[32m✓\u001b[39m 2204 modules transformed.\nrendering chunks...\ncomputing gzip size...\n\u001b[2mdist/\u001b[22m\u001b[32mindex.html                 \u001b[39m\u001b[1m\u001b[2m  0.57 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   0.41 kB\u001b[22m\n\u001b[2mdist/\u001b[22m\u001b[2massets/\u001b[22m\u001b[35mindex-Ck8Jlcg-.css  \u001b[39m\u001b[1m\u001b[2m 35.88 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   6.72 kB\u001b[22m\n\u001b[2mdist/\u001b[22m\u001b[2massets/\u001b[22m\u001b[36mindex-BmbWrb6m.js   \u001b[39m\u001b[1m\u001b[2m360.26 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip: 109.50 kB\u001b[22m\n\u001b[32m✓ built in 1.57s\u001b[39m\n=== Playwright Blind E2E ===\n                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ^\\n  12 |\\n    at /data/home/actions-runner/_work/atd-v1/atd-v1/tests/e2e.spec.ts:11:8631\"\n                        }\n                      ],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-20T11:40:21.799Z\",\n                      \"annotations\": [],\n                      \"attachments\": [\n                        {\n                          \"name\": \"error-context\",\n                          \"contentType\": \"text/markdown\",\n                          \"path\": \"/data/home/actions-runner/_work/atd-v1/atd-v1/test-results/e2e-Community-Web-E2E-Hard-cef72-ed-API-returns-500-DB-ERROR-chromium/error-context.md\"\n                        }\n                      ],\n                      \"errorLocation\": {\n                        \"file\": \"/data/home/actions-runner/_work/atd-v1/atd-v1/tests/e2e.spec.ts\",\n                        \"column\": 8631,\n                        \"line\": 11\n                      }\n                    }\n                  ],\n                  \"status\": \"unexpected\"\n                }\n              ],\n              \"id\": \"b1c7859d981cc20c96be-b6d913637e19927031ed\",\n              \"file\": \"e2e.spec.ts\",\n              \"line\": 11,\n              \"column\": 8156\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"errors\": [],\n  \"stats\": {\n    \"startTime\": \"2026-11-20T11:40:07.961Z\",\n    \"duration\": 14057.137999999999,\n    \"expected\": 28,\n    \"skipped\": 0,\n    \"unexpected\": 6,\n    \"flaky\": 0\n  }\n}\n",
+      "agySessionId": "f36bdcb2-9b18-4245-a905-c4c170e9a3f5",
+      "agySessionReused": false,
+      "agyExitCode": 0
+    },
+    {
+      "id": "tr-gh-44727895990",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "actionsRunId": 44727895990,
+      "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44727895990",
+      "workflowName": "AutoDev AGY Coding Runner",
+      "branch": "main",
+      "kind": "build_check",
+      "status": "partial",
+      "total": 4,
+      "passed": 3,
+      "failed": 1,
+      "skipped": 0,
+      "passRate": 75,
+      "durationMs": 19000,
+      "executedAt": "2026-11-20T11:28:49Z",
+      "summary": "流水线步骤校验：3/4 步通过，1 步失败",
+      "cases": [
+        {
+          "id": "step-1",
+          "title": "Resolve Target Branch & Model Settings",
+          "status": "passed",
+          "durationMs": 0
+        },
+        {
+          "id": "step-2",
+          "title": "Checkout PR Branch",
+          "status": "passed",
+          "durationMs": 0
+        },
+        {
+          "id": "step-3",
+          "title": "Verify VPS AGY CLI, Capabilities, Git Push Auth & Dependencies",
+          "status": "passed",
+          "durationMs": 0
+        },
+        {
+          "id": "step-4",
+          "title": "Execute VPS AGY Coding (No Timeout + Direct Push) & Blind Independent E2E Verification",
+          "status": "failed",
+          "durationMs": 0,
+          "error": "Step conclusion: failure"
+        }
+      ],
+      "rawLogExcerpt": "et-all 'http.https://github.com/.extraheader' || :\"\n2026-11-20T11:28:46.0030559Z Removing includeIf entries pointing to credentials config files\n2026-11-20T11:28:46.0035131Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\\.gitdir:\n2026-11-20T11:28:46.0058455Z includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path\n2026-11-20T11:28:46.0058847Z includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-20T11:28:46.0059232Z includeif.gitdir:/github/workspace/.git.path\n2026-11-20T11:28:46.0059845Z includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-20T11:28:46.0064345Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path\n2026-11-20T11:28:46.0082366Z /data/home/actions-runner/_work/_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0097302Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path \\/data\\/home\\/actions\\-runner\\/_work\\/_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0117600Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-20T11:28:46.0135683Z /data/home/actions-runner/_work/_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0143325Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path \\/data\\/home\\/actions\\-runner\\/_work\\/_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0169548Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path\n2026-11-20T11:28:46.0190815Z /github/runner_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0202217Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \\/github\\/runner_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0221344Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-20T11:28:46.0238713Z /github/runner_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0242485Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \\/github\\/runner_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0267395Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url\n2026-11-20T11:28:46.0448640Z Removing credentials config '/data/home/actions-runner/_work/_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config'\n2026-11-20T11:28:46.0596082Z Cleaning up orphan processes\n"
+    },
+    {
+      "id": "tr-gh-44725451753",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "actionsRunId": 44725451753,
+      "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44725451753",
+      "workflowName": "AutoDev AGY Plan Pipeline",
+      "branch": "main",
+      "kind": "build_check",
+      "status": "passed",
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "passRate": 100,
+      "durationMs": 960000,
+      "executedAt": "2026-11-20T11:26:51Z",
+      "summary": "流水线步骤校验：2/2 步通过",
+      "cases": [
+        {
+          "id": "step-1",
+          "title": "Checkout Latest Base Branch (Full Codebase Context)",
+          "status": "passed",
+          "durationMs": 0
+        },
+        {
+          "id": "step-2",
+          "title": "Run 3-Stage Instabox AGY Planning (Architect -> QA Spec -> QA Critic)",
+          "status": "passed",
+          "durationMs": 0
+        }
+      ],
+      "rawLogExcerpt": "et-all 'http.https://github.com/.extraheader' || :\"\n2026-11-20T11:26:47.7410984Z Removing includeIf entries pointing to credentials config files\n2026-11-20T11:26:47.7422121Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\\.gitdir:\n2026-11-20T11:26:47.7468840Z includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path\n2026-11-20T11:26:47.7469495Z includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-20T11:26:47.7469992Z includeif.gitdir:/github/workspace/.git.path\n2026-11-20T11:26:47.7470322Z includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-20T11:26:47.7471754Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path\n2026-11-20T11:26:47.7502811Z /data/home/actions-runner/_work/_temp/git-credentials-338e2391-5291-4939-8d07-1ef414aba21f.config\n2026-11-20T11:26:47.7513911Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path \\/data\\/home\\/actions\\-runner\\/_work\\/_temp\\/git\\-credentials\\-338e2391\\-5291\\-4939\\-8d07\\-1ef414aba21f\\.config\n2026-11-20T11:26:47.7548236Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-20T11:26:47.7580540Z /data/home/actions-runner/_work/_temp/git-credentials-338e2391-5291-4939-8d07-1ef414aba21f.config\n2026-11-20T11:26:47.7587488Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path \\/data\\/home\\/actions\\-runner\\/_work\\/_temp\\/git\\-credentials\\-338e2391\\-5291\\-4939\\-8d07\\-1ef414aba21f\\.config\n2026-11-20T11:26:47.7621826Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path\n2026-11-20T11:26:47.7644704Z /github/runner_temp/git-credentials-338e2391-5291-4939-8d07-1ef414aba21f.config\n2026-11-20T11:26:47.7650218Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \\/github\\/runner_temp\\/git\\-credentials\\-338e2391\\-5291\\-4939\\-8d07\\-1ef414aba21f\\.config\n2026-11-20T11:26:47.7683968Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-20T11:26:47.7705234Z /github/runner_temp/git-credentials-338e2391-5291-4939-8d07-1ef414aba21f.config\n2026-11-20T11:26:47.7717169Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \\/github\\/runner_temp\\/git\\-credentials\\-338e2391\\-5291\\-4939\\-8d07\\-1ef414aba21f\\.config\n2026-11-20T11:26:47.7739384Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url\n2026-11-20T11:26:47.7962085Z Removing credentials config '/data/home/actions-runner/_work/_temp/git-credentials-338e2391-5291-4939-8d07-1ef414aba21f.config'\n2026-11-20T11:26:47.8130758Z Cleaning up orphan processes\n"
+    }
+  ],
   "incidents": [
+    {
+      "id": "inc-62b3c7ee",
+      "sourceRefKey": "actions:44727895990",
+      "source": "ci_env_error",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "title": "AutoDev AGY Coding Runner #44727895990 异常（failure）",
+      "errorSummary": "Execute VPS AGY Coding (No Timeout + Direct Push) & Blind Independent E2E Verification (Step conclusion: failure)",
+      "rawEvidence": "et-all 'http.https://github.com/.extraheader' || :\"\n2026-11-20T11:28:46.0030559Z Removing includeIf entries pointing to credentials config files\n2026-11-20T11:28:46.0035131Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\\.gitdir:\n2026-11-20T11:28:46.0058455Z includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path\n2026-11-20T11:28:46.0058847Z includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-20T11:28:46.0059232Z includeif.gitdir:/github/workspace/.git.path\n2026-11-20T11:28:46.0059845Z includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-20T11:28:46.0064345Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path\n2026-11-20T11:28:46.0082366Z /data/home/actions-runner/_work/_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0097302Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git.path \\/data\\/home\\/actions\\-runner\\/_work\\/_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0117600Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-20T11:28:46.0135683Z /data/home/actions-runner/_work/_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0143325Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner/_work/atd-v1/atd-v1/.git/worktrees/*.path \\/data\\/home\\/actions\\-runner\\/_work\\/_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0169548Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path\n2026-11-20T11:28:46.0190815Z /github/runner_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0202217Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \\/github\\/runner_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0221344Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-20T11:28:46.0238713Z /github/runner_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config\n2026-11-20T11:28:46.0242485Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \\/github\\/runner_temp\\/git\\-credentials\\-e6f64d96\\-58f7\\-4df2\\-973f\\-b81c11cd9456\\.config\n2026-11-20T11:28:46.0267395Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url\n2026-11-20T11:28:46.0448640Z Removing credentials config '/data/home/actions-runner/_work/_temp/git-credentials-e6f64d96-58f7-4df2-973f-b81c11cd9456.config'\n2026-11-20T11:28:46.0596082Z Cleaning up orphan processes\n",
+      "relatedActionsRunId": 44727895990,
+      "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44727895990",
+      "branch": "main",
+      "occurredAt": "2026-11-20T11:28:49Z",
+      "analysisStatus": "pending"
+    },
+    {
+      "id": "inc-603e6132",
+      "sourceRefKey": "actions:44728477037",
+      "source": "test_failure",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "title": "AutoDev AGY Coding Runner #44728477037 异常（failure）",
+      "errorSummary": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › UI displays graceful error state and recovers when feed API returns 500_DB_ERROR (Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/加载失败|服务异常|error|retry|重试/i)\nExpected: visible\nError: strict mode violation: getByText(/加载失败|服务异常|error|retry|重试/i) resolved to 3 elements:\n    1) <div class=\"error-title\">动态加载失败，服务异常 (500_DB_ERROR)</div> aka getByText('动态加载失败，服务异常 (500_DB_ERROR)')\n    2) <button type=\"button\" class=\"btn btn-secondary x-btn-active\">刷新重试</button> aka getByRole('butt",
+      "rawEvidence": "ransforming...\n\u001b[32m✓\u001b[39m 2204 modules transformed.\nrendering chunks...\ncomputing gzip size...\n\u001b[2mdist/\u001b[22m\u001b[32mindex.html                 \u001b[39m\u001b[1m\u001b[2m  0.57 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   0.41 kB\u001b[22m\n\u001b[2mdist/\u001b[22m\u001b[2massets/\u001b[22m\u001b[35mindex-Ck8Jlcg-.css  \u001b[39m\u001b[1m\u001b[2m 35.88 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   6.72 kB\u001b[22m\n\u001b[2mdist/\u001b[22m\u001b[2massets/\u001b[22m\u001b[36mindex-BmbWrb6m.js   \u001b[39m\u001b[1m\u001b[2m360.26 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip: 109.50 kB\u001b[22m\n\u001b[32m✓ built in 1.57s\u001b[39m\n=== Playwright Blind E2E ===\n                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ^\\n  12 |\\n    at /data/home/actions-runner/_work/atd-v1/atd-v1/tests/e2e.spec.ts:11:8631\"\n                        }\n                      ],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-20T11:40:21.799Z\",\n                      \"annotations\": [],\n                      \"attachments\": [\n                        {\n                          \"name\": \"error-context\",\n                          \"contentType\": \"text/markdown\",\n                          \"path\": \"/data/home/actions-runner/_work/atd-v1/atd-v1/test-results/e2e-Community-Web-E2E-Hard-cef72-ed-API-returns-500-DB-ERROR-chromium/error-context.md\"\n                        }\n                      ],\n                      \"errorLocation\": {\n                        \"file\": \"/data/home/actions-runner/_work/atd-v1/atd-v1/tests/e2e.spec.ts\",\n                        \"column\": 8631,\n                        \"line\": 11\n                      }\n                    }\n                  ],\n                  \"status\": \"unexpected\"\n                }\n              ],\n              \"id\": \"b1c7859d981cc20c96be-b6d913637e19927031ed\",\n              \"file\": \"e2e.spec.ts\",\n              \"line\": 11,\n              \"column\": 8156\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"errors\": [],\n  \"stats\": {\n    \"startTime\": \"2026-11-20T11:40:07.961Z\",\n    \"duration\": 14057.137999999999,\n    \"expected\": 28,\n    \"skipped\": 0,\n    \"unexpected\": 6,\n    \"flaky\": 0\n  }\n}\n",
+      "relatedActionsRunId": 44728477037,
+      "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44728477037",
+      "branch": "main",
+      "occurredAt": "2026-11-20T11:40:31Z",
+      "analysisStatus": "analyzing"
+    },
     {
       "id": "inc-bacf4991",
       "sourceRefKey": "plan-dispatch:job-4852d9d9",

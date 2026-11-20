@@ -1138,6 +1138,15 @@
       "migrationsApplied": true,
       "commitSha": "53447ce",
       "isIsolatedPreview": true
+    },
+    "lastAgySession": {
+      "sessionId": "f36bdcb2-9b18-4245-a905-c4c170e9a3f5",
+      "branchName": "autodev/feat-20261120-112741",
+      "actionsRunId": 44728477037,
+      "exitCode": 0,
+      "reused": false,
+      "consecutiveReuseCount": 0,
+      "updatedAt": "2026-11-20T11:40:22.057Z"
     }
   }
 ]
