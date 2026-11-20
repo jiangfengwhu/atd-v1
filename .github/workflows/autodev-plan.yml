@@ -50,7 +50,7 @@ jobs:
           ref: ${{ inputs.base_branch || 'main' }}
           fetch-depth: 0
 
-      - name: Run 3-Stage Instabox AGY Planning (Architect -> QA Spec -> QA Critic)
+      - name: Run Single-Turn Unified Instabox AGY Planning (Architect + QA Spec + QA Critic)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PLAN_REPO: ${{ github.repository }}
@@ -100,6 +100,8 @@ jobs:
           let model = requestedModel;
           const helpText = String(spawnSync('agy', ['--help'], { encoding: 'utf8', timeout: 15000 }).stdout || '');
           const supportsMode = helpText.includes('--mode');
+          const supportsStreamJson = helpText.includes('stream-json');
+          const supportsConversation = helpText.includes('--conversation');
           try {
             const mText = String(spawnSync('agy', ['models'], { encoding: 'utf8', timeout: 15000 }).stdout || '');
             const ids = [];
@@ -295,6 +297,7 @@ jobs:
           const state = {
             jobId,
             status: 'running',
+            mode: 'unified_single_turn',
             updatedAt: new Date().toISOString(),
             headSha,
             actionsRunId,
@@ -380,7 +383,7 @@ jobs:
             return { ok: false, error: 'Unknown stage: ' + stage };
           }
 
-          function invokeAgyAsync(promptText) {
+          function invokeAgyAsync(promptText, resumeSessionId, useStreamJsonFlag) {
             return new Promise((resolve) => {
               const args = [
                 '--dangerously-skip-permissions',
@@ -390,7 +393,13 @@ jobs:
               if (supportsMode && requestedMode) {
                 args.push('--mode', requestedMode);
               }
-              // NO --print-timeout: wait naturally until AGY completes the stage
+              if (useStreamJsonFlag) {
+                args.push('--output-format', 'stream-json');
+              }
+              if (resumeSessionId && supportsConversation) {
+                args.push('--conversation', resumeSessionId);
+              }
+              // NO --print-timeout: wait naturally until AGY completes the unified planning conversation
               args.push('--print=' + promptText);
 
               const child = spawn('agy', args, {
@@ -399,8 +408,61 @@ jobs:
               });
 
               const maxCapture = 4 * 1024 * 1024;
+              const startMs = Date.now();
               let stdout = '';
               let stderr = '';
+              let lineBuf = '';
+              let capturedSessionId = undefined;
+              let finalResponse = '';
+              let reportedInputTokens = 0;
+              let reportedOutputTokens = 0;
+              let reportedTotalTokens = 0;
+              let hasReportedTokens = false;
+
+              const captureUsage = (u) => {
+                if (!u || typeof u !== 'object') return;
+                const inp = Number(u.input_tokens ?? u.inputTokens ?? u.prompt_tokens ?? u.promptTokenCount ?? 0) || 0;
+                const out = Number(u.output_tokens ?? u.outputTokens ?? u.completion_tokens ?? u.candidatesTokenCount ?? 0) || 0;
+                const tot = Number(u.total_tokens ?? u.totalTokens ?? u.totalTokenCount ?? 0) || (inp + out);
+                if (tot > 0 || inp > 0 || out > 0) {
+                  hasReportedTokens = true;
+                  reportedInputTokens = Math.max(reportedInputTokens, inp);
+                  reportedOutputTokens = Math.max(reportedOutputTokens, out);
+                  reportedTotalTokens = Math.max(reportedTotalTokens, tot || (inp + out));
+                }
+              };
+
+              const parseStreamLine = (rawLine) => {
+                const trimmed = rawLine.trim();
+                if (!trimmed || !trimmed.startsWith('{')) return;
+                try {
+                  const ev = JSON.parse(trimmed);
+                  captureUsage(ev.usage);
+                  captureUsage(ev.token_usage);
+                  captureUsage(ev.result?.usage);
+                  captureUsage(ev.result?.token_usage);
+                  captureUsage(ev.message?.usage);
+                  captureUsage(ev.stats?.usage);
+                  const sid =
+                    ev.session_id ||
+                    ev.sessionId ||
+                    ev.conversation_id ||
+                    ev.conversationId ||
+                    ev.result?.conversation_id ||
+                    ev.result?.session_id;
+                  if (sid) capturedSessionId = String(sid).trim();
+                  const evType = String(ev.type || ev.event || '');
+                  if (evType === 'result' || evType === 'turn_complete' || evType === 'done') {
+                    const resp =
+                      typeof ev.result === 'string'
+                        ? ev.result
+                        : ev.result?.response || ev.result?.text || ev.response || '';
+                    if (typeof resp === 'string' && resp.trim()) {
+                      finalResponse = resp.trim();
+                    }
+                  }
+                } catch {}
+              };
 
               child.stdout.on('data', (chunk) => {
                 const text = chunk.toString('utf8');
@@ -408,6 +470,12 @@ jobs:
                 stdout += text;
                 if (stdout.length > maxCapture) {
                   stdout = stdout.slice(-maxCapture);
+                }
+                if (useStreamJsonFlag) {
+                  lineBuf += text;
+                  const lines = lineBuf.split('\n');
+                  lineBuf = lines.pop() || '';
+                  for (const l of lines) parseStreamLine(l);
                 }
               });
 
@@ -421,94 +489,221 @@ jobs:
               });
 
               child.on('error', (err) => {
-                resolve({ status: 1, stdout, stderr: stderr + '\n' + String(err) });
+                resolve({
+                  status: 1,
+                  stdout,
+                  stderr: stderr + '\n' + String(err),
+                  elapsedMs: Date.now() - startMs,
+                  capturedSessionId,
+                  finalResponse,
+                  tokenUsage: undefined,
+                });
               });
 
               child.on('close', (code) => {
-                resolve({ status: code ?? 1, stdout, stderr });
+                if (useStreamJsonFlag && lineBuf.trim()) {
+                  parseStreamLine(lineBuf);
+                }
+                const tokenUsage = hasReportedTokens
+                  ? {
+                      inputTokens: reportedInputTokens,
+                      outputTokens: reportedOutputTokens,
+                      totalTokens: reportedTotalTokens || (reportedInputTokens + reportedOutputTokens),
+                      source: 'reported',
+                      model,
+                    }
+                  : undefined;
+                resolve({
+                  status: code ?? 1,
+                  stdout,
+                  stderr,
+                  elapsedMs: Date.now() - startMs,
+                  capturedSessionId,
+                  finalResponse,
+                  tokenUsage,
+                });
               });
             });
           }
 
-          async function runStage(stage, basePrompt, summaryFn) {
+          async function runUnifiedPlanStage(basePrompt) {
             const startedMs = Date.now();
-            const relOutPath = '.autodev-plan-output/' + stage + '.json';
-            const absOutPath = path.join(process.cwd(), relOutPath);
-            const tmpOutPath = path.join(tmpDir, stage + '.json');
+            const startedIso = new Date().toISOString();
+            const relBundlePath = '.autodev-plan-output/plan-bundle.json';
+            const absBundlePath = path.join(process.cwd(), relBundlePath);
 
-            state.steps[stage] = {
+            state.steps.architect = {
               status: 'running',
-              startedAt: new Date().toISOString(),
-              message:
-                stage === 'architect'
-                  ? 'Instabox AGY 正在阅读当前仓库真实代码并拆解增量架构与任务树…'
-                  : stage === 'qa_spec'
-                    ? 'Instabox AGY 正在结合现有页面与历史测试生成独立 Playwright E2E 测试集…'
-                    : 'Instabox AGY 正在评审边界异常并锁定终版独立盲测回归集…',
+              startedAt: startedIso,
+              message: '单对话联合规划中：正在阅读代码库并一次性生成架构方案、API 契约与原子任务树…',
+            };
+            state.steps.qa_spec = {
+              status: 'running',
+              startedAt: startedIso,
+              message: '同会话同步产出接口测试清单与初版 Playwright E2E 脚本…',
+            };
+            state.steps.qa_critic = {
+              status: 'running',
+              startedAt: startedIso,
+              message: '同会话完成盲测安全评审并输出终版加固 E2E 套件…',
             };
             await syncState();
 
             let lastErr = '';
+            let activeSessionId = undefined;
+            let useStreamJsonFlag = supportsStreamJson;
+            let totalElapsedMs = 0;
+            const accTokens = { inputTokens: 0, outputTokens: 0, totalTokens: 0, reported: false };
+
             for (let attempt = 1; attempt <= 2; attempt++) {
               fs.mkdirSync(wsOutDir, { recursive: true });
               const prompt =
                 attempt === 1
                   ? basePrompt
-                  : basePrompt +
-                    '\n\n[RETRY CORRECTION] Your previous attempt failed validation with error: ' +
+                  : 'Your previous unified plan JSON failed validation with error: ' +
                     lastErr +
-                    '. Write ONLY valid JSON matching the exact required schema to ' +
-                    relOutPath +
+                    '. Fix the JSON and write ONLY a single valid JSON object with top-level keys "architect", "qa_spec", and "qa_critic" to ' +
+                    relBundlePath +
                     ' (do not modify any other repository files).';
 
-              console.log('=== Running stage:', stage, 'attempt:', attempt, '===');
-              const execRes = await invokeAgyAsync(prompt);
+              console.log('=== Running unified single-turn AGY plan, attempt:', attempt, activeSessionId ? '(resume ' + activeSessionId.slice(0, 8) + ')' : '(fresh)', '===');
+              let execRes = await invokeAgyAsync(prompt, attempt > 1 ? activeSessionId : undefined, useStreamJsonFlag);
 
-              let parsed = null;
+              if (useStreamJsonFlag && execRes.status !== 0 && execRes.elapsedMs < 20000) {
+                console.log('[Plan] stream-json exited quickly; retrying without stream-json.');
+                useStreamJsonFlag = false;
+                execRes = await invokeAgyAsync(prompt, undefined, false);
+              }
+
+              totalElapsedMs += Number(execRes.elapsedMs || 0);
+              if (execRes.capturedSessionId) {
+                activeSessionId = execRes.capturedSessionId;
+              }
+              if (execRes.tokenUsage && execRes.tokenUsage.totalTokens > 0) {
+                accTokens.reported = true;
+                accTokens.inputTokens += execRes.tokenUsage.inputTokens || 0;
+                accTokens.outputTokens += execRes.tokenUsage.outputTokens || 0;
+                accTokens.totalTokens += execRes.tokenUsage.totalTokens || 0;
+              }
+
+              let parsedBundle = null;
               try {
-                if (fs.existsSync(absOutPath)) {
-                  const fileContent = fs.readFileSync(absOutPath, 'utf8');
-                  parsed = extractJsonLoose(fileContent);
+                if (fs.existsSync(absBundlePath)) {
+                  const fileContent = fs.readFileSync(absBundlePath, 'utf8');
+                  parsedBundle = extractJsonLoose(fileContent);
+                } else if (execRes.finalResponse) {
+                  parsedBundle = extractJsonLoose(execRes.finalResponse);
                 } else {
-                  parsed = extractJsonLoose(execRes.stdout);
+                  parsedBundle = extractJsonLoose(execRes.stdout);
                 }
               } catch (parseErr) {
                 lastErr = 'JSON parse error: ' + (parseErr instanceof Error ? parseErr.message : String(parseErr));
-                parsed = null;
+                parsedBundle = null;
+              }
+
+              // Also support fallback if AGY wrote separate stage files in .autodev-plan-output/
+              if (!parsedBundle) {
+                try {
+                  const aPath = path.join(wsOutDir, 'architect.json');
+                  const sPath = path.join(wsOutDir, 'qa_spec.json');
+                  const cPath = path.join(wsOutDir, 'qa_critic.json');
+                  if (fs.existsSync(aPath) && fs.existsSync(sPath) && fs.existsSync(cPath)) {
+                    parsedBundle = {
+                      architect: extractJsonLoose(fs.readFileSync(aPath, 'utf8')),
+                      qa_spec: extractJsonLoose(fs.readFileSync(sPath, 'utf8')),
+                      qa_critic: extractJsonLoose(fs.readFileSync(cPath, 'utf8')),
+                    };
+                  }
+                } catch {}
               }
 
               resetWorkspaceClean();
 
-              if (parsed) {
-                const check = validateStage(stage, parsed);
-                if (check.ok) {
-                  fs.writeFileSync(tmpOutPath, JSON.stringify(check.data, null, 2), 'utf8');
-                  const outPath = await postStageOutput(stage, check.data);
+              if (parsedBundle && typeof parsedBundle === 'object') {
+                const archCheck = validateStage('architect', parsedBundle.architect);
+                const specCheck = validateStage('qa_spec', parsedBundle.qa_spec);
+                const criticCheck = validateStage('qa_critic', parsedBundle.qa_critic);
+
+                if (archCheck.ok && specCheck.ok && criticCheck.ok) {
+                  const [archFile, specFile, criticFile] = await Promise.all([
+                    postStageOutput('architect', archCheck.data),
+                    postStageOutput('qa_spec', specCheck.data),
+                    postStageOutput('qa_critic', criticCheck.data),
+                  ]);
+
+                  const completedIso = new Date().toISOString();
                   const durationMs = Date.now() - startedMs;
-                  state.outputFiles[stage] = outPath;
-                  state.steps[stage] = {
-                    status: 'completed',
-                    startedAt: state.steps[stage].startedAt,
-                    completedAt: new Date().toISOString(),
-                    durationMs,
-                    message: summaryFn(check.data),
+                  const estTotal = Math.round(Math.max(0.1, totalElapsedMs / 60000) * 14000);
+                  const estInput = Math.round(estTotal * 0.72);
+                  state.tokenUsage = accTokens.reported && accTokens.totalTokens > 0
+                    ? {
+                        inputTokens: accTokens.inputTokens,
+                        outputTokens: accTokens.outputTokens,
+                        totalTokens: accTokens.totalTokens,
+                        source: 'reported',
+                        model,
+                      }
+                    : {
+                        inputTokens: estInput,
+                        outputTokens: Math.max(0, estTotal - estInput),
+                        totalTokens: estTotal,
+                        source: 'estimated',
+                        model,
+                      };
+
+                  state.outputFiles = {
+                    architect: archFile,
+                    qa_spec: specFile,
+                    qa_critic: criticFile,
                   };
+                  state.steps.architect = {
+                    status: 'completed',
+                    startedAt: startedIso,
+                    completedAt: completedIso,
+                    durationMs,
+                    message: '单对话完成 · 识别 ' + archCheck.data.ambiguities.length + ' 项歧义、' + archCheck.data.tasks.length + ' 项增量任务',
+                  };
+                  state.steps.qa_spec = {
+                    status: 'completed',
+                    startedAt: startedIso,
+                    completedAt: completedIso,
+                    durationMs,
+                    message: '单对话完成 · 生成 ' + specCheck.data.apiTestChecklist.length + ' 条接口用例与初版 E2E 测试',
+                  };
+                  state.steps.qa_critic = {
+                    status: 'completed',
+                    startedAt: startedIso,
+                    completedAt: completedIso,
+                    durationMs,
+                    message: '单对话完成 · 提出 ' + criticCheck.data.findings.length + ' 项加固意见并锁定盲测 E2E 测试集',
+                  };
+                  state.status = 'completed';
                   await syncState();
-                  return check.data;
-                } else {
-                  lastErr = check.error;
+                  return {
+                    architect: archCheck.data,
+                    qaSpec: specCheck.data,
+                    qaCritic: criticCheck.data,
+                  };
                 }
+
+                const errs = [];
+                if (!archCheck.ok) errs.push('architect: ' + archCheck.error);
+                if (!specCheck.ok) errs.push('qa_spec: ' + specCheck.error);
+                if (!criticCheck.ok) errs.push('qa_critic: ' + criticCheck.error);
+                lastErr = errs.join('; ');
               } else if (execRes.status !== 0 && !lastErr) {
                 lastErr = 'AGY exited with code ' + execRes.status;
               }
             }
 
-            const finalErr = 'Stage ' + stage + ' failed after retry: ' + (lastErr || 'unknown error');
-            state.steps[stage] = {
-              ...state.steps[stage],
-              status: 'error',
-              message: finalErr,
-            };
+            const finalErr = 'Unified single-turn planning failed after retry: ' + (lastErr || 'unknown error');
+            for (const key of ['architect', 'qa_spec', 'qa_critic']) {
+              state.steps[key] = {
+                ...state.steps[key],
+                status: 'error',
+                message: finalErr,
+              };
+            }
             state.status = 'error';
             state.error = finalErr;
             await syncState();
@@ -526,17 +721,24 @@ jobs:
               ? 'Default Cloudflare Workers + Hono + D1 + KV + React/Vite stack. Inspect existing wrangler.toml, migrations/, src/, and client/ first!'
               : 'User specified tech stack: ' + input.effectiveTechStack;
 
-            const rsiArchitectBlock = input.rsiSystemPrompts && input.rsiSystemPrompts.architect ? '\n' + input.rsiSystemPrompts.architect + '\n' : '';
-            const rsiQaSpecBlock = input.rsiSystemPrompts && input.rsiSystemPrompts.qa_spec ? '\n' + input.rsiSystemPrompts.qa_spec + '\n' : '';
-            const rsiQaCriticBlock = input.rsiSystemPrompts && input.rsiSystemPrompts.qa_critic ? '\n' + input.rsiSystemPrompts.qa_critic + '\n' : '';
+            const rsiBlocks = [
+              input.rsiSystemPrompts?.architect,
+              input.rsiSystemPrompts?.qa_spec,
+              input.rsiSystemPrompts?.qa_critic,
+            ]
+              .filter(Boolean)
+              .join('\n\n');
 
-            // Stage 1: Architect Agent
-            const architectPrompt = [
-              'You are Step 1 (Architect Agent) in AutoDev Studio running directly inside the real repository on branch ' + baseBranch + ' (HEAD ' + headSha.slice(0, 7) + ').',
-              'STRICT READ-ONLY RULE: Do NOT modify, create, or delete any repository source files, package.json, migrations, or tests. ONLY write your final JSON result to .autodev-plan-output/architect.json.',
-              'INCREMENTAL ITERATION RULE: If the repository already has working code, design INCREMENTAL changes on top of the existing architecture. NEVER delete or rewrite working unrelated modules or already-applied migrations (append sequentially numbered SQL migrations only when schema changes are genuinely needed).',
-              'LANGUAGE: All Chinese text fields (titles, descriptions, summaries, ambiguity details, acceptanceCriteria) MUST be written in concise, professional Simplified Chinese.',
-              ...(rsiArchitectBlock ? [rsiArchitectBlock] : []),
+            const unifiedPrompt = [
+              'You are the Unified AutoDev Studio Planning Engine (combining Architect + QA Spec + QA Critic in ONE single conversation) running directly inside the real repository on branch ' + baseBranch + ' (HEAD ' + headSha.slice(0, 7) + ').',
+              'STRICT READ-ONLY RULE: Do NOT modify, create, or delete any repository source files, package.json, migrations, or tests. ONLY write your final unified JSON bundle to .autodev-plan-output/plan-bundle.json.',
+              'INCREMENTAL ITERATION RULE: Inspect the existing repository first. If working code already exists, design INCREMENTAL changes on top of the existing architecture without deleting working modules or rewriting already-applied SQL migrations.',
+              'PLAYWRIGHT STRICT-MODE HYGIENE & BLIND-TEST AUDIT (CRITICAL):',
+              '- Because `qa_critic.finalE2eTestCode` will be stored in a Blind Verification Vault (the coding agent will NOT see it!), EVERY assertion must test real PRD behavior via resilient user-facing selectors (roles, labels, placeholders, visible text) and API contracts rather than guessing arbitrary CSS class names.',
+              '- NEVER write bare `locatorA.or(locatorB)` without appending `.first()` (ALWAYS write `locatorA.or(locatorB).first()`) to prevent Playwright strict mode violations!',
+              '- Self-critique your draft `qa_spec` inside `qa_critic`: identify boundary/invalid_input/ui_interaction/security/concurrency gaps in `findings`, and produce the hardened `finalApiTestChecklist` and `finalE2eTestCode`.',
+              'LANGUAGE: All Chinese text fields (titles, descriptions, summaries, ambiguity details, acceptanceCriteria, reviewSummary, findings, scenarios) MUST be written in concise, professional Simplified Chinese.',
+              ...(rsiBlocks ? ['', rsiBlocks] : []),
               '',
               'Repository Digest:',
               repoDigest,
@@ -547,83 +749,34 @@ jobs:
               'PRD Content:',
               input.prdContent,
               '',
-              'Write ONLY a valid JSON object to .autodev-plan-output/architect.json with this EXACT schema:',
+              'Write ONLY a single valid JSON object to .autodev-plan-output/plan-bundle.json with this EXACT schema:',
               '{',
-              '  "ambiguities": [{ "id": "AMB-1", "severity": "high|medium|low", "title": "...", "detail": "...", "clarificationSuggestion": "..." }],',
-              '  "architectureSummary": "Concise Chinese technical architecture summary grounded in the real codebase",',
-              '  "techDecisions": ["Decision 1", "Decision 2"],',
-              '  "apiContracts": [{ "id": "API-1", "method": "GET|POST|PUT|PATCH|DELETE", "path": "/api/...", "summary": "...", "requestSchema": "...", "responseSchema": "...", "errorCodes": ["400", "404"] }],',
-              '  "tasks": [{ "id": "T-01", "title": "...", "module": "...", "description": "...", "dependsOn": [], "acceptanceCriteria": ["..."], "estimatedComplexity": "S|M|L" }]',
+              '  "architect": {',
+              '    "ambiguities": [{ "id": "AMB-1", "severity": "high|medium|low", "title": "...", "detail": "...", "clarificationSuggestion": "..." }],',
+              '    "architectureSummary": "Concise Chinese technical architecture summary grounded in the real codebase",',
+              '    "techDecisions": ["Decision 1", "Decision 2"],',
+              '    "apiContracts": [{ "id": "API-1", "method": "GET|POST|PUT|PATCH|DELETE", "path": "/api/...", "summary": "...", "requestSchema": "...", "responseSchema": "...", "errorCodes": ["400", "404"] }],',
+              '    "tasks": [{ "id": "T-01", "title": "...", "module": "...", "description": "...", "dependsOn": [], "acceptanceCriteria": ["..."], "estimatedComplexity": "S|M|L" }]',
+              '  },',
+              '  "qa_spec": {',
+              '    "apiTestChecklist": [{ "id": "TC-01", "endpoint": "/api/...", "method": "GET|POST|...", "scenario": "...", "expectedStatus": 200, "assertion": "..." }],',
+              '    "e2eTestCode": "Complete runnable TypeScript Playwright test file importing test and expect from @playwright/test",',
+              '    "coverageNotes": ["Coverage note 1"]',
+              '  },',
+              '  "qa_critic": {',
+              '    "reviewSummary": "Concise Chinese critic review conclusion",',
+              '    "findings": [{ "id": "CRIT-01", "category": "boundary|invalid_input|ui_interaction|security|concurrency", "severity": "high|medium|low", "issue": "...", "recommendation": "..." }],',
+              '    "finalApiTestChecklist": [{ "id": "TC-01", "endpoint": "/api/...", "method": "GET|POST|...", "scenario": "...", "expectedStatus": 200, "assertion": "..." }],',
+              '    "finalE2eTestCode": "Complete hardened TypeScript Playwright test code"',
+              '  }',
               '}',
               'Keep tasks focused, atomic, and strictly scoped to the PRD (typically 3-6 tasks for incremental features).',
             ].join('\n');
 
-            const architectData = await runStage('architect', architectPrompt, (d) =>
-              '完成 · 识别 ' + d.ambiguities.length + ' 项歧义、' + d.tasks.length + ' 项增量任务'
-            );
+            await runUnifiedPlanStage(unifiedPrompt);
 
-            // Stage 2: QA Spec Agent
-            const qaSpecPrompt = [
-              'You are Step 2 (QA Spec Agent) in AutoDev Studio running in the real repository on branch ' + baseBranch + '.',
-              'STRICT READ-ONLY RULE: Do NOT modify any repository files. ONLY write your final JSON result to .autodev-plan-output/qa_spec.json.',
-              'PLAYWRIGHT STRICT-MODE HYGIENE (CRITICAL): NEVER write bare `locatorA.or(locatorB)` without appending `.first()` on the combined expression (i.e. ALWAYS write `locatorA.or(locatorB).first()`) because Playwright strict mode fails if both branches match simultaneously! Also avoid assuming undocumented CSS class names when semantic roles/placeholders/text work.',
-              'LANGUAGE: All Chinese scenario descriptions, assertions, and coverageNotes MUST be in Simplified Chinese.',
-              ...(rsiQaSpecBlock ? [rsiQaSpecBlock] : []),
-              '',
-              'PRD Title: ' + input.prdTitle,
-              'PRD Content:',
-              input.prdContent,
-              '',
-              'Architect API Contracts & Tasks (from Stage 1):',
-              JSON.stringify({ apiContracts: architectData.apiContracts, tasks: architectData.tasks }, null, 2),
-              '',
-              'Write ONLY a valid JSON object to .autodev-plan-output/qa_spec.json with this EXACT schema:',
-              '{',
-              '  "apiTestChecklist": [{ "id": "TC-01", "endpoint": "/api/...", "method": "GET|POST|...", "scenario": "...", "expectedStatus": 200, "assertion": "..." }],',
-              '  "e2eTestCode": "Complete runnable TypeScript Playwright test file importing test and expect from @playwright/test",',
-              '  "coverageNotes": ["Coverage note 1"]',
-              '}',
-            ].join('\n');
-
-            const qaSpecData = await runStage('qa_spec', qaSpecPrompt, (d) =>
-              '完成 · 生成 ' + d.apiTestChecklist.length + ' 条接口用例与初版 E2E 测试'
-            );
-
-            // Stage 3: QA Critic Agent
-            const qaCriticPrompt = [
-              'You are Step 3 (QA Critic Agent) in AutoDev Studio running in the real repository on branch ' + baseBranch + '.',
-              'STRICT READ-ONLY RULE: Do NOT modify any repository files. ONLY write your final JSON result to .autodev-plan-output/qa_critic.json.',
-              'CRITICAL BLIND-TEST AUDIT: Because this E2E test suite will be stored in a Blind Verification Vault (the coding agent will NOT see this test code!), audit EVERY assertion to ensure it tests real PRD behavior via resilient user-facing selectors and API contracts rather than guessing arbitrary CSS classes or exact copy. MUST FIX any bare `locA.or(locB)` to `locA.or(locB).first()` to prevent Playwright strict mode violations!',
-              'LANGUAGE: All reviewSummary, finding issues, recommendations, and checklist text MUST be in Simplified Chinese.',
-              ...(rsiQaCriticBlock ? [rsiQaCriticBlock] : []),
-              '',
-              'PRD Title: ' + input.prdTitle,
-              'PRD Content:',
-              input.prdContent,
-              '',
-              'Stage 1 API Contracts:',
-              JSON.stringify(architectData.apiContracts, null, 2),
-              '',
-              'Stage 2 Draft QA Spec:',
-              JSON.stringify(qaSpecData, null, 2),
-              '',
-              'Write ONLY a valid JSON object to .autodev-plan-output/qa_critic.json with this EXACT schema:',
-              '{',
-              '  "reviewSummary": "Concise Chinese critic review conclusion",',
-              '  "findings": [{ "id": "CRIT-01", "category": "boundary|invalid_input|ui_interaction|security|concurrency", "severity": "high|medium|low", "issue": "...", "recommendation": "..." }],',
-              '  "finalApiTestChecklist": [{ "id": "TC-01", "endpoint": "/api/...", "method": "GET|POST|...", "scenario": "...", "expectedStatus": 200, "assertion": "..." }],',
-              '  "finalE2eTestCode": "Complete hardened TypeScript Playwright test code"',
-              '}',
-            ].join('\n');
-
-            await runStage('qa_critic', qaCriticPrompt, (d) =>
-              '完成 · 提出 ' + d.findings.length + ' 项加固意见并锁定盲测 E2E 测试集'
-            );
-
-            state.status = 'completed';
-            await syncState();
             fs.rmSync(tmpDir, { recursive: true, force: true });
-            console.log('=== All 3 Instabox AGY planning stages completed successfully ===');
+            console.log('=== Single-turn unified Instabox AGY planning completed successfully ===');
           }
 
           main().catch(async (err) => {
