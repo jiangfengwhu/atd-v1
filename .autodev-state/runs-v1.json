@@ -1132,11 +1132,11 @@
       "url": "https://atd-v1-preview.809740942.workers.dev",
       "workerName": "atd-v1-preview",
       "branchName": "autodev/feat-20261120-112741",
-      "deployedAt": "2026-11-20T11:42:07.915Z",
+      "deployedAt": "2026-11-20T12:43:30.826Z",
       "d1DatabaseName": "community_db-preview",
       "d1DatabaseId": "b2b6e2f7-eaf0-4fcd-ac6e-bc04f632fa21",
       "migrationsApplied": true,
-      "commitSha": "53447ce",
+      "commitSha": "095ee15",
       "isIsolatedPreview": true
     },
     "lastAgySession": {
