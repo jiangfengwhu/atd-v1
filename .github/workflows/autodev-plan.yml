@@ -18,16 +18,15 @@ on:
         default: 'autodev-plan-channel'
         type: string
       agy_model:
-        description: 'AGY model ID configured on the VPS'
+        description: 'AGY model ID configured on the VPS (supports Gemini 4 & live synced models)'
         required: false
-        default: 'gemini-3.8-flash-high'
-        type: choice
-        options:
-          - gemini-3.8-flash-high
-          - gemini-3.8-flash-medium
-          - claude-sonnet-4-6
-          - claude-opus-4-6-thinking
-          - gpt-oss-120b-medium
+        default: 'gemini-4-pro-high'
+        type: string
+      agy_mode:
+        description: 'AGY execution mode (--mode: auto, accept-edits, plan)'
+        required: false
+        default: 'auto'
+        type: string
 
 # Writes ONLY to dedicated orphan branch autodev-plan-channel via REST API; never modifies base_branch/main
 permissions:
@@ -42,7 +41,7 @@ jobs:
   agy-plan:
     if: github.actor == 'jiangfengwhu'
     runs-on: [self-hosted, linux, x64, vps-agy]
-    timeout-minutes: 30
+    timeout-minutes: 90
 
     steps:
       - name: Checkout Latest Base Branch (Full Codebase Context)
@@ -59,7 +58,8 @@ jobs:
           PLAN_JOB_ID: ${{ inputs.job_id }}
           PLAN_BASE_BRANCH: ${{ inputs.base_branch || 'main' }}
           PLAN_CHANNEL_BRANCH: ${{ inputs.channel_branch || 'autodev-plan-channel' }}
-          PLAN_MODEL: ${{ inputs.agy_model || 'gemini-3.8-flash-high' }}
+          PLAN_MODEL: ${{ inputs.agy_model || 'gemini-4-pro-high' }}
+          PLAN_MODE: ${{ inputs.agy_mode || 'auto' }}
         shell: bash
         run: |
           export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
@@ -70,7 +70,7 @@ jobs:
           cat > /tmp/autodev-plan-runner.mjs <<'PLAN_RUNNER_EOF'
           import fs from 'fs';
           import path from 'path';
-          import { execSync, spawn } from 'child_process';
+          import { execSync, spawn, spawnSync } from 'child_process';
 
           const token = process.env.GH_TOKEN;
           const repo = process.env.PLAN_REPO;
@@ -79,7 +79,8 @@ jobs:
           const safeJobId = String(jobId || 'unknown').replace(/[^a-zA-Z0-9._-]/g, '_');
           const baseBranch = process.env.PLAN_BASE_BRANCH || 'main';
           const channelBranch = process.env.PLAN_CHANNEL_BRANCH || 'autodev-plan-channel';
-          const model = process.env.PLAN_MODEL || 'gemini-3.8-flash-high';
+          const requestedModel = (process.env.PLAN_MODEL || 'gemini-4-pro-high').trim();
+          const requestedMode = (process.env.PLAN_MODE || 'auto').trim();
           const actionsUrl = 'https://github.com/' + repo + '/actions/runs/' + actionsRunId;
 
           if (!channelBranch || channelBranch === baseBranch || channelBranch === 'main' || channelBranch === 'master') {
@@ -93,6 +94,32 @@ jobs:
           let headSha = '';
           try {
             headSha = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+          } catch {}
+
+          // Resolve requested model against live VPS agy models
+          let model = requestedModel;
+          const helpText = String(spawnSync('agy', ['--help'], { encoding: 'utf8', timeout: 15000 }).stdout || '');
+          const supportsMode = helpText.includes('--mode');
+          try {
+            const mText = String(spawnSync('agy', ['models'], { encoding: 'utf8', timeout: 15000 }).stdout || '');
+            const ids = [];
+            for (const line of mText.split('\n')) {
+              const clean = line.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').trim();
+              if (!clean || /^(available|models|name|id|---)/i.test(clean)) continue;
+              const m = clean.match(/^[-*•]?\s*([a-z0-9][a-z0-9._-]{2,64})\b/i);
+              if (m && !ids.includes(m[1])) ids.push(m[1]);
+            }
+            if (ids.length > 0 && !ids.includes(requestedModel)) {
+              const lower = requestedModel.toLowerCase();
+              const fuzzy =
+                ids.find((id) => id.toLowerCase() === lower) ||
+                (lower.includes('gemini-4') ? ids.find((id) => /gemini-4/i.test(id)) : null) ||
+                ids[0];
+              if (fuzzy) {
+                console.log('[Plan] Resolved model "' + requestedModel + '" -> "' + fuzzy + '"');
+                model = fuzzy;
+              }
+            }
           } catch {}
 
           const headers = {
@@ -144,7 +171,6 @@ jobs:
                 return text ? JSON.parse(text) : null;
               } catch (err) {
                 lastErr = err;
-                // Do not retry non-retryable 4xx API errors (400/401/403/404/409/422)
                 if (err && typeof err.status === 'number' && err.status >= 400 && err.status < 500 && err.status !== 429) {
                   throw err;
                 }
@@ -354,23 +380,23 @@ jobs:
             return { ok: false, error: 'Unknown stage: ' + stage };
           }
 
-          function invokeAgyAsync(promptText, timeoutStr = '10m') {
+          function invokeAgyAsync(promptText) {
             return new Promise((resolve) => {
-              const child = spawn(
-                'agy',
-                [
-                  '--dangerously-skip-permissions',
-                  '--model',
-                  model,
-                  '--print-timeout',
-                  timeoutStr,
-                  '--print=' + promptText,
-                ],
-                {
-                  cwd: process.cwd(),
-                  stdio: ['ignore', 'pipe', 'pipe'],
-                }
-              );
+              const args = [
+                '--dangerously-skip-permissions',
+                '--model',
+                model,
+              ];
+              if (supportsMode && requestedMode) {
+                args.push('--mode', requestedMode);
+              }
+              // NO --print-timeout: wait naturally until AGY completes the stage
+              args.push('--print=' + promptText);
+
+              const child = spawn('agy', args, {
+                cwd: process.cwd(),
+                stdio: ['ignore', 'pipe', 'pipe'],
+              });
 
               const maxCapture = 4 * 1024 * 1024;
               let stdout = '';
@@ -418,7 +444,7 @@ jobs:
                   ? 'Instabox AGY 正在阅读当前仓库真实代码并拆解增量架构与任务树…'
                   : stage === 'qa_spec'
                     ? 'Instabox AGY 正在结合现有页面与历史测试生成独立 Playwright E2E 测试集…'
-                    : 'Instabox AGY 正在评审边界异常并锁定终版只读回归测试集…',
+                    : 'Instabox AGY 正在评审边界异常并锁定终版独立盲测回归集…',
             };
             await syncState();
 
@@ -436,7 +462,7 @@ jobs:
                     ' (do not modify any other repository files).';
 
               console.log('=== Running stage:', stage, 'attempt:', attempt, '===');
-              const execRes = await invokeAgyAsync(prompt, '10m');
+              const execRes = await invokeAgyAsync(prompt);
 
               let parsed = null;
               try {
@@ -451,7 +477,6 @@ jobs:
                 parsed = null;
               }
 
-              // Always reset repository working tree immediately after AGY finishes
               resetWorkspaceClean();
 
               if (parsed) {
@@ -509,7 +534,6 @@ jobs:
             const architectPrompt = [
               'You are Step 1 (Architect Agent) in AutoDev Studio running directly inside the real repository on branch ' + baseBranch + ' (HEAD ' + headSha.slice(0, 7) + ').',
               'STRICT READ-ONLY RULE: Do NOT modify, create, or delete any repository source files, package.json, migrations, or tests. ONLY write your final JSON result to .autodev-plan-output/architect.json.',
-              'SPEED & FOCUS RULE: Use the pre-collected repository digest below as your map; inspect only the 3-6 most relevant source files directly and write .autodev-plan-output/architect.json promptly (aim for under 90 seconds).',
               'INCREMENTAL ITERATION RULE: If the repository already has working code, design INCREMENTAL changes on top of the existing architecture. NEVER delete or rewrite working unrelated modules or already-applied migrations (append sequentially numbered SQL migrations only when schema changes are genuinely needed).',
               'LANGUAGE: All Chinese text fields (titles, descriptions, summaries, ambiguity details, acceptanceCriteria) MUST be written in concise, professional Simplified Chinese.',
               ...(rsiArchitectBlock ? [rsiArchitectBlock] : []),
@@ -542,7 +566,7 @@ jobs:
             const qaSpecPrompt = [
               'You are Step 2 (QA Spec Agent) in AutoDev Studio running in the real repository on branch ' + baseBranch + '.',
               'STRICT READ-ONLY RULE: Do NOT modify any repository files. ONLY write your final JSON result to .autodev-plan-output/qa_spec.json.',
-              'SPEED & FOCUS RULE: Inspect existing tests/e2e* and playwright.config.ts plus the main UI entry file only, then write .autodev-plan-output/qa_spec.json promptly (aim for under 90 seconds). Do NOT duplicate or break historical regression tests.',
+              'PLAYWRIGHT STRICT-MODE HYGIENE (CRITICAL): NEVER write bare `locatorA.or(locatorB)` without appending `.first()` on the combined expression (i.e. ALWAYS write `locatorA.or(locatorB).first()`) because Playwright strict mode fails if both branches match simultaneously! Also avoid assuming undocumented CSS class names when semantic roles/placeholders/text work.',
               'LANGUAGE: All Chinese scenario descriptions, assertions, and coverageNotes MUST be in Simplified Chinese.',
               ...(rsiQaSpecBlock ? [rsiQaSpecBlock] : []),
               '',
@@ -569,8 +593,7 @@ jobs:
             const qaCriticPrompt = [
               'You are Step 3 (QA Critic Agent) in AutoDev Studio running in the real repository on branch ' + baseBranch + '.',
               'STRICT READ-ONLY RULE: Do NOT modify any repository files. ONLY write your final JSON result to .autodev-plan-output/qa_critic.json.',
-              'SPEED & FOCUS RULE: Review Stage 2 QA Spec directly against the PRD and real repository routes/selectors, harden edge cases, and write .autodev-plan-output/qa_critic.json promptly (aim for under 90 seconds).',
-              'Produce a hardened, deterministic final Playwright E2E test suite (finalE2eTestCode) and final API checklist (finalApiTestChecklist) that is realistic, fast, and aligned with the real app.',
+              'CRITICAL BLIND-TEST AUDIT: Because this E2E test suite will be stored in a Blind Verification Vault (the coding agent will NOT see this test code!), audit EVERY assertion to ensure it tests real PRD behavior via resilient user-facing selectors and API contracts rather than guessing arbitrary CSS classes or exact copy. MUST FIX any bare `locA.or(locB)` to `locA.or(locB).first()` to prevent Playwright strict mode violations!',
               'LANGUAGE: All reviewSummary, finding issues, recommendations, and checklist text MUST be in Simplified Chinese.',
               ...(rsiQaCriticBlock ? [rsiQaCriticBlock] : []),
               '',
@@ -594,7 +617,7 @@ jobs:
             ].join('\n');
 
             await runStage('qa_critic', qaCriticPrompt, (d) =>
-              '完成 · 提出 ' + d.findings.length + ' 项加固意见并锁定终版只读测试'
+              '完成 · 提出 ' + d.findings.length + ' 项加固意见并锁定盲测 E2E 测试集'
             );
 
             state.status = 'completed';
