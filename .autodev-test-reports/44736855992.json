@@ -1,0 +1,268 @@
+{
+  "runId": "run-ec6c3c00",
+  "actionsRunId": 44736855992,
+  "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44736855992",
+  "workflowName": "AutoDev AGY Coding Runner",
+  "branch": "autodev/feat-20261120-112741",
+  "prNumber": 7,
+  "kind": "e2e",
+  "status": "passed",
+  "total": 35,
+  "passed": 35,
+  "failed": 0,
+  "skipped": 0,
+  "durationMs": 16032,
+  "executedAt": "2026-11-20T12:39:17.942Z",
+  "summary": "独立盲测验证（gemini-4-hydrogen-high / auto · 自动返工 2 轮）：35 通过 / 0 失败 / 0 跳过",
+  "cases": [
+    {
+      "id": "check-build",
+      "title": "生产构建检查 (npm run build)",
+      "status": "passed",
+      "durationMs": 3509
+    },
+    {
+      "id": "pw-1",
+      "title": "e2e/run-ec6c3c00.spec.ts › Community V2: Media Upload & Image-Text Posts API › POST /api/v1/media/upload & GET /api/v1/media/:id validate auth, MIME, size, traversal, and concurrency",
+      "file": "e2e/run-ec6c3c00.spec.ts",
+      "status": "passed",
+      "durationMs": 89
+    },
+    {
+      "id": "pw-2",
+      "title": "e2e/run-ec6c3c00.spec.ts › Community V2: Media Upload & Image-Text Posts API › POST /api/v1/posts supports image-only and multi-image posts while rejecting empty or invalid media",
+      "file": "e2e/run-ec6c3c00.spec.ts",
+      "status": "passed",
+      "durationMs": 44
+    },
+    {
+      "id": "pw-3",
+      "title": "e2e/run-ec6c3c00.spec.ts › Community V2: Real 4D Stats, Atomic Concurrency & Overview API › Like, repost, concurrent atomic clicks, comments, and stats overview reflect persisted real counts",
+      "file": "e2e/run-ec6c3c00.spec.ts",
+      "status": "passed",
+      "durationMs": 62
+    },
+    {
+      "id": "pw-4",
+      "title": "e2e/run-ec6c3c00.spec.ts › Community V2: Email OTP Auth API Contracts › Auth routes validate email format, malformed codes, invalid tokens, /me dual auth, and logout",
+      "file": "e2e/run-ec6c3c00.spec.ts",
+      "status": "passed",
+      "durationMs": 20
+    },
+    {
+      "id": "pw-5",
+      "title": "e2e/run-ec6c3c00.spec.ts › Community V2 Web E2E: Image-Text Feed, Real Stats & Email Login › Public community page exposes no /admin entry links or buttons and removes legacy mock widgets",
+      "file": "e2e/run-ec6c3c00.spec.ts",
+      "status": "passed",
+      "durationMs": 138
+    },
+    {
+      "id": "pw-6",
+      "title": "e2e/run-ec6c3c00.spec.ts › Community V2 Web E2E: Image-Text Feed, Real Stats & Email Login › User uploads image with text, safely escapes XSS, and persists image post across reload",
+      "file": "e2e/run-ec6c3c00.spec.ts",
+      "status": "passed",
+      "durationMs": 302
+    },
+    {
+      "id": "pw-7",
+      "title": "e2e/run-ec6c3c00.spec.ts › Community V2 Web E2E: Image-Text Feed, Real Stats & Email Login › User likes, reposts, and comments on a post with real backend persistence after reload",
+      "file": "e2e/run-ec6c3c00.spec.ts",
+      "status": "passed",
+      "durationMs": 1146
+    },
+    {
+      "id": "pw-8",
+      "title": "e2e/run-ec6c3c00.spec.ts › Community V2 Web E2E: Image-Text Feed, Real Stats & Email Login › Email OTP login sends code, verifies 6-digit OTP, shows logged-in email, and logs out",
+      "file": "e2e/run-ec6c3c00.spec.ts",
+      "status": "passed",
+      "durationMs": 750
+    },
+    {
+      "id": "pw-9",
+      "title": "e2e/run-ec6c3c00.spec.ts › Hidden Admin Console & Resend Config E2E › Admin API enforces strict auth isolation and supports default admin/admin login",
+      "file": "e2e/run-ec6c3c00.spec.ts",
+      "status": "passed",
+      "durationMs": 62
+    },
+    {
+      "id": "pw-10",
+      "title": "e2e/run-ec6c3c00.spec.ts › Hidden Admin Console & Resend Config E2E › Admin settings API manages Resend key with masking, empty preservation, clear, and live email wiring",
+      "file": "e2e/run-ec6c3c00.spec.ts",
+      "status": "passed",
+      "durationMs": 269
+    },
+    {
+      "id": "pw-11",
+      "title": "e2e/run-ec6c3c00.spec.ts › Hidden Admin Console & Resend Config E2E › Hidden /admin page allows admin/admin login, displays dashboard, and persists masked Resend config",
+      "file": "e2e/run-ec6c3c00.spec.ts",
+      "status": "passed",
+      "durationMs": 281
+    },
+    {
+      "id": "pw-12",
+      "title": "e2e/run-ec6c3c00.spec.ts › Hidden Admin Console & Resend Config E2E › Admin credentials update invalidates default admin password and allows re-login with new credentials",
+      "file": "e2e/run-ec6c3c00.spec.ts",
+      "status": "passed",
+      "durationMs": 250
+    },
+    {
+      "id": "pw-13",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts validates auth, whitespace, missing fields, and publishes content",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 14
+    },
+    {
+      "id": "pw-14",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › GET /api/v1/feed enforces pagination boundaries and cursor consistency",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 10
+    },
+    {
+      "id": "pw-15",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST /api/v1/messages guarantees target user via seed and rejects invalid/missing recipients",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 13
+    },
+    {
+      "id": "pw-16",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › GET /api/v1/messages retrieves user direct message history with authentication",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 5
+    },
+    {
+      "id": "pw-17",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts handles concurrent requests without ID collisions",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 12
+    },
+    {
+      "id": "pw-18",
+      "title": "e2e/run-f734f054.spec.ts › Community API Contracts (Hardened) › POST and GET /api/v1/posts/:postId/comments validates auth, empty content, and retrieves comments thread including parent_id replies",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 15
+    },
+    {
+      "id": "pw-19",
+      "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › User publishes post with whitespace guard, double-click prevention, and reload persistence",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 1673
+    },
+    {
+      "id": "pw-20",
+      "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › XSS payloads in post content are rendered safely without script execution",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 220
+    },
+    {
+      "id": "pw-21",
+      "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › User submits private message and sees error feedback for missing recipient",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 915
+    },
+    {
+      "id": "pw-22",
+      "title": "e2e/run-f734f054.spec.ts › Community Web E2E (Hardened) › UI displays graceful error state and recovers when feed API returns 500_DB_ERROR",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 509
+    },
+    {
+      "id": "pw-23",
+      "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › X.com responsive navigation preserves view switching, active state indicators, and identity status",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 224
+    },
+    {
+      "id": "pw-24",
+      "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › User can expand tweet comments thread and post a reply smoothly with scoped selectors",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 972
+    },
+    {
+      "id": "pw-25",
+      "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › Direct message compose form handles validation and interactive feedback",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 547
+    },
+    {
+      "id": "pw-26",
+      "title": "e2e/run-f734f054.spec.ts › X.com UI Redesign & Micro-interactions › Global layout and interactive controls apply modern responsive design and smooth transition attributes",
+      "file": "e2e/run-f734f054.spec.ts",
+      "status": "passed",
+      "durationMs": 136
+    },
+    {
+      "id": "pw-27",
+      "title": "e2e.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts validates auth, whitespace, missing fields, and publishes content",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 14
+    },
+    {
+      "id": "pw-28",
+      "title": "e2e.spec.ts › Community API Contracts (Hardened) › GET /api/v1/feed enforces pagination boundaries and cursor consistency",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 12
+    },
+    {
+      "id": "pw-29",
+      "title": "e2e.spec.ts › Community API Contracts (Hardened) › POST /api/v1/messages guarantees target user via seed and rejects invalid/missing recipients",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 12
+    },
+    {
+      "id": "pw-30",
+      "title": "e2e.spec.ts › Community API Contracts (Hardened) › POST /api/v1/posts handles concurrent requests without ID collisions",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 11
+    },
+    {
+      "id": "pw-31",
+      "title": "e2e.spec.ts › Community Web E2E (Hardened) › User publishes post with whitespace guard, double-click prevention, and reload persistence",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 1162
+    },
+    {
+      "id": "pw-32",
+      "title": "e2e.spec.ts › Community Web E2E (Hardened) › XSS payloads in post content are rendered safely without script execution",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 179
+    },
+    {
+      "id": "pw-33",
+      "title": "e2e.spec.ts › Community Web E2E (Hardened) › User submits private message and sees error feedback for missing recipient",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 887
+    },
+    {
+      "id": "pw-34",
+      "title": "e2e.spec.ts › Community Web E2E (Hardened) › UI displays graceful error state and recovers when feed API returns 500_DB_ERROR",
+      "file": "e2e.spec.ts",
+      "status": "passed",
+      "durationMs": 139
+    }
+  ],
+  "rawLogExcerpt": "ransforming...\n\u001b[32m✓\u001b[39m 2204 modules transformed.\nrendering chunks...\ncomputing gzip size...\n\u001b[2mdist/\u001b[22m\u001b[32mindex.html                 \u001b[39m\u001b[1m\u001b[2m  0.57 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   0.41 kB\u001b[22m\n\u001b[2mdist/\u001b[22m\u001b[2massets/\u001b[22m\u001b[35mindex-Ck8Jlcg-.css  \u001b[39m\u001b[1m\u001b[2m 35.88 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   6.72 kB\u001b[22m\n\u001b[2mdist/\u001b[22m\u001b[2massets/\u001b[22m\u001b[36mindex-DWAd3-1q.js   \u001b[39m\u001b[1m\u001b[2m360.50 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip: 109.60 kB\u001b[22m\n\u001b[32m✓ built in 1.41s\u001b[39m\n=== Playwright Blind E2E ===\n            \"tags\": [],\n              \"tests\": [\n                {\n                  \"timeout\": 30000,\n                  \"annotations\": [],\n                  \"expectedStatus\": \"passed\",\n                  \"projectId\": \"chromium\",\n                  \"projectName\": \"chromium\",\n                  \"results\": [\n                    {\n                      \"workerIndex\": 0,\n                      \"parallelIndex\": 0,\n                      \"status\": \"passed\",\n                      \"duration\": 887,\n                      \"errors\": [],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-20T12:39:16.824Z\",\n                      \"annotations\": [],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"b1c7859d981cc20c96be-3100a1f292e71522a9b9\",\n              \"file\": \"e2e.spec.ts\",\n              \"line\": 11,\n              \"column\": 6854\n            },\n            {\n              \"title\": \"UI displays graceful error state and recovers when feed API returns 500_DB_ERROR\",\n              \"ok\": true,\n              \"tags\": [],\n              \"tests\": [\n                {\n                  \"timeout\": 30000,\n                  \"annotations\": [],\n                  \"expectedStatus\": \"passed\",\n                  \"projectId\": \"chromium\",\n                  \"projectName\": \"chromium\",\n                  \"results\": [\n                    {\n                      \"workerIndex\": 0,\n                      \"parallelIndex\": 0,\n                      \"status\": \"passed\",\n                      \"duration\": 139,\n                      \"errors\": [],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-20T12:39:17.716Z\",\n                      \"annotations\": [],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"b1c7859d981cc20c96be-b6d913637e19927031ed\",\n              \"file\": \"e2e.spec.ts\",\n              \"line\": 11,\n              \"column\": 8156\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"errors\": [],\n  \"stats\": {\n    \"startTime\": \"2026-11-20T12:39:05.860Z\",\n    \"duration\": 12058.205,\n    \"expected\": 34,\n    \"skipped\": 0,\n    \"unexpected\": 0,\n    \"flaky\": 0\n  }\n}\n",
+  "agySessionId": "f36bdcb2-9b18-4245-a905-c4c170e9a3f5",
+  "agySessionReused": true,
+  "agyExitCode": 0,
+  "repairRounds": 2
+}
