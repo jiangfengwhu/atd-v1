@@ -1,0 +1,19 @@
+{
+  "jobId": "job-a954c517",
+  "status": "queued",
+  "updatedAt": "2026-11-20T11:10:47.847Z",
+  "model": "gemini-4-neon-high",
+  "steps": {
+    "architect": {
+      "status": "running",
+      "message": "已入队，等待 Instabox AGY Runner 接单并检出最新代码…"
+    },
+    "qa_spec": {
+      "status": "idle"
+    },
+    "qa_critic": {
+      "status": "idle"
+    }
+  },
+  "outputFiles": {}
+}
