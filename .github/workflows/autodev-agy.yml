@@ -184,6 +184,7 @@ jobs:
           let commentId = null;
           let currentPhaseLabel = 'PREPARING';
           let resolvedModel = requestedModel;
+          let latestFinalChatMessage = '';
 
           function appendLog(line) {
             const text = String(line || '');
@@ -294,6 +295,15 @@ jobs:
             const outputSection =
               logText.trim() ||
               '(AutoDev VPS AGY 已启动，正在等待 AGY 完整执行并直接推送代码…)';
+            const finalChatSection = latestFinalChatMessage
+              ? [
+                  '',
+                  '#### Coding Agent Final Chat Message',
+                  '<!-- AUTODEV-FINAL-CHAT-START -->',
+                  latestFinalChatMessage.replace(/~~~~/g, '----').slice(0, 16000),
+                  '<!-- AUTODEV-FINAL-CHAT-END -->',
+                ]
+              : [];
             return [
               marker,
               '### AutoDev VPS AGY Live Stream',
@@ -306,6 +316,7 @@ jobs:
               '- Workspace: ' + process.cwd(),
               '- Elapsed: ' + elapsedSec + 's',
               '- Updated: ' + new Date().toISOString(),
+              ...finalChatSection,
               '',
               '#### Changed Files (git status --short)',
               '~~~~text',
@@ -630,7 +641,8 @@ jobs:
               let lineBuf = '';
               let directCapturedSessionId = undefined;
               let finalResponseText = '';
-              const assistantTextChunks = [];
+              let currentAssistantTurnBlocks = [];
+              let lastCompletedAssistantMessage = '';
               let reportedInputTokens = 0;
               let reportedOutputTokens = 0;
               let reportedTotalTokens = 0;
@@ -647,6 +659,14 @@ jobs:
                   reportedInputTokens = Math.max(reportedInputTokens, inp);
                   reportedOutputTokens = Math.max(reportedOutputTokens, out);
                   reportedTotalTokens = Math.max(reportedTotalTokens, tot || (inp + out));
+                }
+              };
+
+              const flushAssistantTurnBeforeTool = () => {
+                if (currentAssistantTurnBlocks.length > 0) {
+                  const joined = currentAssistantTurnBlocks.join('').trim();
+                  if (joined) lastCompletedAssistantMessage = joined;
+                  currentAssistantTurnBlocks = [];
                 }
               };
 
@@ -686,12 +706,13 @@ jobs:
                         ? ev.result
                         : ev.result?.response || ev.result?.text || ev.result?.content || ev.response || ev.text || '') || '';
                     if (typeof fullResp === 'string' && fullResp.trim()) {
-                      finalResponseText = fullResp.trim().slice(0, 40000);
+                      finalResponseText = stripAnsi(fullResp).trim().slice(0, 40000);
                     }
                     const msg = typeof ev.result === 'string' ? ev.result.slice(0, 300) : JSON.stringify(ev).slice(0, 300);
                     return '[agy:result] ' + msg;
                   }
                   if (evType === 'tool_use' || evType === 'tool_call' || ev.tool_name || ev.name) {
+                    flushAssistantTurnBeforeTool();
                     const toolName = String(ev.tool_name || ev.name || ev.tool?.name || 'tool');
                     const inputPreview = JSON.stringify(ev.input || ev.arguments || ev.args || {}).slice(0, 180);
                     return '[agy:tool] ' + toolName + ' ' + inputPreview;
@@ -699,20 +720,37 @@ jobs:
                   if (evType === 'assistant' && ev.message) {
                     const blocks = Array.isArray(ev.message.content) ? ev.message.content : [];
                     const parts = [];
+                    const hasToolBlock = blocks.some((b) => b?.type === 'tool_use');
+                    const turnTexts = [];
                     for (const b of blocks) {
                       if (b?.type === 'tool_use') {
                         parts.push('[agy:tool] ' + String(b.name || 'tool') + ' ' + JSON.stringify(b.input || {}).slice(0, 160));
                       } else if (b?.type === 'text' && b.text) {
-                        assistantTextChunks.push(String(b.text));
-                        parts.push('[agy] ' + String(b.text).replace(/\s+/g, ' ').slice(0, 240));
+                        const cleanText = stripAnsi(String(b.text));
+                        turnTexts.push(cleanText);
+                        parts.push('[agy] ' + cleanText.replace(/\s+/g, ' ').slice(0, 240));
                       }
+                    }
+                    if (turnTexts.length > 0) {
+                      const joinedTurn = turnTexts.join('\n\n').trim();
+                      if (joinedTurn) {
+                        lastCompletedAssistantMessage = joinedTurn;
+                        currentAssistantTurnBlocks = hasToolBlock ? [] : [joinedTurn];
+                      }
+                    } else if (hasToolBlock) {
+                      flushAssistantTurnBeforeTool();
                     }
                     if (parts.length > 0) return parts.join('\n');
                   }
                   if (evType === 'text' || evType === 'delta' || typeof ev.text === 'string' || typeof ev.delta === 'string') {
-                    const t = String(ev.text || ev.delta || '').trim();
-                    if (t) assistantTextChunks.push(t);
-                    return t ? '[agy] ' + t.slice(0, 240) : '';
+                    const rawDelta = stripAnsi(String(ev.text ?? ev.delta ?? ''));
+                    if (rawDelta) {
+                      currentAssistantTurnBlocks.push(rawDelta);
+                      const assembled = currentAssistantTurnBlocks.join('').trim();
+                      if (assembled) lastCompletedAssistantMessage = assembled;
+                    }
+                    const trimmedDelta = rawDelta.trim();
+                    return trimmedDelta ? '[agy] ' + trimmedDelta.slice(0, 240) : '';
                   }
                   if (evType === 'error' || ev.error) {
                     return '[agy:error] ' + String(ev.error?.message || ev.error || trimmed).slice(0, 300);
@@ -774,10 +812,13 @@ jobs:
                   }
                 }
                 const sessionMatch = combinedOut.match(/(?:session[_ -]?id|sessionId|conversation[_ -]?id|conversationId)["'\s:=]+([A-Za-z0-9_-]{8,64})/i);
+                const finalTurnAssistantText = currentAssistantTurnBlocks.join('').trim();
+                // Prefer the agent's final chat window reply (after all tool calls finished) — never raw runner/terminal logs
                 const resolvedResponse =
                   finalResponseText ||
-                  assistantTextChunks.join('\n\n').trim().slice(-20000) ||
-                  (!useStreamJson ? stripAnsi(combinedOut).trim().slice(-12000) : '');
+                  finalTurnAssistantText ||
+                  lastCompletedAssistantMessage ||
+                  '';
                 const tokenUsage = hasReportedTokens
                   ? {
                       inputTokens: reportedInputTokens,
@@ -1136,12 +1177,13 @@ jobs:
               cleanupHydratedVaultTests(hydratedVaultFiles);
             }
 
-            const combinedCodingFinalOutput = codingOutputSections.length <= 1
-              ? (codingOutputSections[0]?.text || '').slice(0, 40000)
-              : codingOutputSections
-                  .map((s, idx) => '### Round ' + (idx + 1) + ' (' + s.label + ')\n\n' + s.text)
-                  .join('\n\n---\n\n')
-                  .slice(-40000);
+            // Surface ONLY the final round's assistant chat window reply to the user (not multi-round runner logs)
+            const combinedCodingFinalOutput = codingOutputSections.length > 0
+              ? String(codingOutputSections[codingOutputSections.length - 1].text || '').trim().slice(0, 40000)
+              : '';
+            if (combinedCodingFinalOutput) {
+              latestFinalChatMessage = combinedCodingFinalOutput;
+            }
 
             const totalElapsedMin = Math.max(0.1, totalAgyElapsedMs / 60000);
             const estTotal = Math.round(totalElapsedMin * 22000);
