@@ -1,0 +1,293 @@
+{
+  "apiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/api/v1/auth/send-code",
+      "method": "POST",
+      "scenario": "提交非法邮箱格式请求发送登录验证码",
+      "expectedStatus": 400,
+      "assertion": "响应状态码为 400，错误体包含 400_INVALID_EMAIL，不写入验证码记录也不调用发信服务"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/api/v1/auth/send-code",
+      "method": "POST",
+      "scenario": "管理员未配置 Resend API Key 时请求发送邮箱验证码",
+      "expectedStatus": 503,
+      "assertion": "响应状态码为 503，错误体包含 503_EMAIL_NOT_CONFIGURED，明确提示邮件服务未配置"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/v1/auth/send-code",
+      "method": "POST",
+      "scenario": "Resend 服务配置有效且邮箱格式合法时发送 6 位登录验证码",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，返回 sent 为 true、expires_in_seconds 为 600、cooldown_seconds 为 60，并将 6 位验证码哈希入库"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/api/v1/auth/send-code",
+      "method": "POST",
+      "scenario": "60 秒冷却期内对同一邮箱重复请求发送验证码",
+      "expectedStatus": 429,
+      "assertion": "响应状态码为 429，错误体包含 429_RATE_LIMITED，拦截高频重复发信"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/v1/auth/send-code",
+      "method": "POST",
+      "scenario": "已配置 Resend 占位 Key 但上游 Resend 接口返回拒绝或网络异常",
+      "expectedStatus": 502,
+      "assertion": "响应状态码为 502，错误体包含 502_EMAIL_SEND_FAILED，不返回 503_EMAIL_NOT_CONFIGURED"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/api/v1/auth/verify-code",
+      "method": "POST",
+      "scenario": "提交格式错误或与邮箱不匹配的 6 位验证码",
+      "expectedStatus": 400,
+      "assertion": "响应状态码为 400，错误体包含 400_INVALID_CODE，不签发会话令牌"
+    },
+    {
+      "id": "TC-07",
+      "endpoint": "/api/v1/auth/verify-code",
+      "method": "POST",
+      "scenario": "提交已超过 10 分钟有效期的历史验证码",
+      "expectedStatus": 410,
+      "assertion": "响应状态码为 410，错误体包含 410_CODE_EXPIRED，拒绝过期验证码登录"
+    },
+    {
+      "id": "TC-08",
+      "endpoint": "/api/v1/auth/verify-code",
+      "method": "POST",
+      "scenario": "同一验证码连续输错超过 5 次触发暴力破解防护锁定",
+      "expectedStatus": 429,
+      "assertion": "响应状态码为 429，错误体包含 429_TOO_MANY_ATTEMPTS，拒绝继续校验"
+    },
+    {
+      "id": "TC-09",
+      "endpoint": "/api/v1/auth/verify-code",
+      "method": "POST",
+      "scenario": "提交合法邮箱与正确 6 位验证码完成登录或自动注册",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，返回非空 token 与 user(id, username, email, created_at)，并在响应头设置 HttpOnly session_token Cookie"
+    },
+    {
+      "id": "TC-10",
+      "endpoint": "/api/v1/auth/me",
+      "method": "GET",
+      "scenario": "未携带 Bearer Token、会话 Cookie 或浏览器指纹头查询当前登录态",
+      "expectedStatus": 401,
+      "assertion": "响应状态码为 401，错误体包含 401_UNAUTHORIZED"
+    },
+    {
+      "id": "TC-11",
+      "endpoint": "/api/v1/auth/me",
+      "method": "GET",
+      "scenario": "携带存量 x-browser-fingerprint 请求头查询当前身份状态",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，返回 authenticated 为 true、auth_type 为 fingerprint，并包含有效 user 对象"
+    },
+    {
+      "id": "TC-12",
+      "endpoint": "/api/v1/auth/me",
+      "method": "GET",
+      "scenario": "携带有效邮箱登录会话令牌或 Cookie 查询当前身份状态",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，返回 authenticated 为 true、auth_type 为 email，user.email 为已绑定邮箱"
+    },
+    {
+      "id": "TC-13",
+      "endpoint": "/api/v1/auth/logout",
+      "method": "POST",
+      "scenario": "退出登录并吊销当前邮箱会话令牌与客户端 Cookie",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，返回 success 为 true；吊销后使用原令牌请求 /api/v1/auth/me 返回 401"
+    },
+    {
+      "id": "TC-14",
+      "endpoint": "/api/v1/media/upload",
+      "method": "POST",
+      "scenario": "未登录且未携带指纹头直接上传图片",
+      "expectedStatus": 401,
+      "assertion": "响应状态码为 401，错误体包含 401_UNAUTHORIZED"
+    },
+    {
+      "id": "TC-15",
+      "endpoint": "/api/v1/media/upload",
+      "method": "POST",
+      "scenario": "已认证用户通过 multipart/form-data 上传合法 PNG 图片",
+      "expectedStatus": 201,
+      "assertion": "响应状态码为 201（或 200），返回 id、以 /api/v1/media/ 开头的 url、image/png 的 mime_type 以及大于 0 的 size_bytes"
+    },
+    {
+      "id": "TC-16",
+      "endpoint": "/api/v1/media/upload",
+      "method": "POST",
+      "scenario": "已认证用户通过 JSON data_url 方式上传合法图片",
+      "expectedStatus": 201,
+      "assertion": "响应状态码为 201（或 200），成功解码持久化并返回可访问的 /api/v1/media/:id"
+    },
+    {
+      "id": "TC-17",
+      "endpoint": "/api/v1/media/upload",
+      "method": "POST",
+      "scenario": "上传不在 MIME 白名单内的文件（如 text/plain 或 image/svg+xml）",
+      "expectedStatus": 400,
+      "assertion": "响应状态码为 400，错误体包含 400_INVALID_MEDIA，拒绝非白名单图片及潜在 XSS 矢量文件"
+    },
+    {
+      "id": "TC-18",
+      "endpoint": "/api/v1/media/upload",
+      "method": "POST",
+      "scenario": "上传超出单图体积上限的大文件",
+      "expectedStatus": 413,
+      "assertion": "响应状态码为 413，错误体包含 413_MEDIA_TOO_LARGE"
+    },
+    {
+      "id": "TC-19",
+      "endpoint": "/api/v1/media/:id",
+      "method": "GET",
+      "scenario": "按有效媒体 ID 获取已上传图片二进制流",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，返回非空二进制图片内容，响应头包含正确的 Content-Type、Cache-Control 及 X-Content-Type-Options: nosniff"
+    },
+    {
+      "id": "TC-20",
+      "endpoint": "/api/v1/media/:id",
+      "method": "GET",
+      "scenario": "请求不存在的媒体 ID",
+      "expectedStatus": 404,
+      "assertion": "响应状态码为 404，错误体包含 404_MEDIA_NOT_FOUND"
+    },
+    {
+      "id": "TC-21",
+      "endpoint": "/api/v1/posts",
+      "method": "POST",
+      "scenario": "发布无正文且无图片附件的空白动态",
+      "expectedStatus": 400,
+      "assertion": "响应状态码为 400，错误体包含 400_INVALID_CONTENT，保持对存量空内容校验契约的兼容"
+    },
+    {
+      "id": "TC-22",
+      "endpoint": "/api/v1/posts",
+      "method": "POST",
+      "scenario": "发布纯图片动态或图文混排动态（关联 1 至 4 张已上传图片）",
+      "expectedStatus": 201,
+      "assertion": "响应状态码为 201（或 200），返回帖子 id、created_at 与包含完整 id/url/mime_type 的 images 数组"
+    },
+    {
+      "id": "TC-23",
+      "endpoint": "/api/v1/posts",
+      "method": "POST",
+      "scenario": "发布动态时关联超过 4 张图片或传入不存在的 media_ids",
+      "expectedStatus": 400,
+      "assertion": "响应状态码为 400，错误体包含 400_INVALID_MEDIA"
+    },
+    {
+      "id": "TC-24",
+      "endpoint": "/api/v1/feed",
+      "method": "GET",
+      "scenario": "按游标分页、排序（latest/hot）与关键词 q 获取图文动态流",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，每条动态包含 author_name、images 数组以及真实的 clicks_count、views_count、likes_count、reposts_count、comments_count、user_liked、user_reposted 字段"
+    },
+    {
+      "id": "TC-25",
+      "endpoint": "/api/v1/posts/:id/like",
+      "method": "POST",
+      "scenario": "已认证用户对指定帖子连续两次调用点赞切换接口",
+      "expectedStatus": 200,
+      "assertion": "首次调用返回 liked 为 true 且 likes_count 递增 1，再次调用返回 liked 为 false 且 likes_count 减 1，实现单用户幂等防刷；未登录返回 401，帖子不存在返回 404"
+    },
+    {
+      "id": "TC-26",
+      "endpoint": "/api/v1/posts/:id/repost",
+      "method": "POST",
+      "scenario": "已认证用户对指定帖子连续两次调用转发切换接口",
+      "expectedStatus": 200,
+      "assertion": "首次调用返回 reposted 为 true 且 reposts_count 递增 1，再次调用返回 reposted 为 false 且 reposts_count 减 1；未登录返回 401，帖子不存在返回 404"
+    },
+    {
+      "id": "TC-27",
+      "endpoint": "/api/v1/posts/:id/click",
+      "method": "POST",
+      "scenario": "对指定帖子多次触发点击/浏览计数递增",
+      "expectedStatus": 200,
+      "assertion": "每次调用原子递增 clicks_count 与 views_count 并持久化落库；帖子不存在时返回 404_POST_NOT_FOUND"
+    },
+    {
+      "id": "TC-28",
+      "endpoint": "/api/v1/stats/overview",
+      "method": "GET",
+      "scenario": "获取社区真实汇总统计与热门动态摘要",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，totals 中 posts/users/comments/likes/reposts/clicks 与数据库真实增量一致，hot_posts 返回真实动态而非硬编码 Mock 数据"
+    },
+    {
+      "id": "TC-29",
+      "endpoint": "/api/v1/admin/login",
+      "method": "POST",
+      "scenario": "系统首次启动使用默认账号 admin 与默认密码 admin 登录管理员后台",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，自动完成默认管理员初始化并返回独立管理员 token 与 admin(username: admin, must_change_password: true)；错误凭据返回 401_INVALID_CREDENTIALS"
+    },
+    {
+      "id": "TC-30",
+      "endpoint": "/api/v1/admin/settings",
+      "method": "GET",
+      "scenario": "未授权请求或普通社区用户凭据越权访问管理员配置接口",
+      "expectedStatus": 401,
+      "assertion": "响应状态码为 401，错误体包含 401_ADMIN_UNAUTHORIZED，确保管理员会话与普通用户严格隔离"
+    },
+    {
+      "id": "TC-31",
+      "endpoint": "/api/v1/admin/settings",
+      "method": "GET",
+      "scenario": "管理员携带有效管理员令牌获取后台系统配置与统计看板",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，返回 settings 与真实 stats，Resend API Key 仅返回 configured 布尔值与脱敏掩码，绝不暴露明文"
+    },
+    {
+      "id": "TC-32",
+      "endpoint": "/api/v1/admin/settings",
+      "method": "PUT",
+      "scenario": "管理员保存、保留留空及显式清空 Resend API Key 与站点配置参数",
+      "expectedStatus": 200,
+      "assertion": "保存占位 Key 后 configured 为 true 且仅返回脱敏掩码；后续留空提交不覆盖原 Key；clear_resend_api_key 为 true 时成功清空；非法邮箱或越界数量返回 400_INVALID_SETTINGS"
+    },
+    {
+      "id": "TC-33",
+      "endpoint": "/api/v1/admin/settings/test-email",
+      "method": "POST",
+      "scenario": "管理员在未配置 Resend API Key 时触发测试发信",
+      "expectedStatus": 503,
+      "assertion": "响应状态码为 503，错误体包含 503_EMAIL_NOT_CONFIGURED；邮箱格式错误返回 400_INVALID_EMAIL；配置占位 Key 后尝试调用 Resend 返回 502_EMAIL_SEND_FAILED"
+    },
+    {
+      "id": "TC-34",
+      "endpoint": "/api/v1/admin/credentials",
+      "method": "PUT",
+      "scenario": "管理员提供错误的当前密码尝试修改账号密码",
+      "expectedStatus": 403,
+      "assertion": "响应状态码为 403，错误体包含 403_WRONG_PASSWORD，拒绝修改"
+    },
+    {
+      "id": "TC-35",
+      "endpoint": "/api/v1/admin/credentials",
+      "method": "PUT",
+      "scenario": "管理员校验当前密码后成功修改登录用户名与新密码（至少 6 位）",
+      "expectedStatus": 200,
+      "assertion": "响应状态码为 200，返回 success 为 true 且 must_change_password 置为 false；旧密码 admin 立即失效（401），新凭据可正常登录"
+    }
+  ],
+  "e2eTestCode": "import { test, expect } from '@playwright/test';\n\nconst USER_A_HEADERS = { 'x-browser-fingerprint': 'qa-v2-user-a-001' };\nconst USER_B_HEADERS = { 'x-browser-fingerprint': 'qa-v2-user-b-002' };\n\n// Valid 1x1 PNG binary fixture (no external file dependency)\nconst TINY_PNG_BASE64 =\n  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';\nconst TINY_PNG_BUFFER = Buffer.from(TINY_PNG_BASE64, 'base64');\n\n// Safe placeholder API key strings without any secret-scanning prefix patterns\nconst PLACEHOLDER_RESEND_KEY_API = 'YOUR_RESEND_API_KEY_PLACEHOLDER_9876';\nconst PLACEHOLDER_RESEND_KEY_UI = 'YOUR_RESEND_API_KEY_PLACEHOLDER_4321';\n\ntest.describe('Community V2: Media Upload & Image-Text Posts API', () => {\n  test('POST /api/v1/media/upload & GET /api/v1/media/:id validate auth, MIME, size, and serve safe image streams', async ({\n    request,\n  }) => {\n    // 1. Unauthenticated upload rejected\n    const unauthRes = await request.post('/api/v1/media/upload', {\n      data: {\n        data_url: `data:image/png;base64,${TINY_PNG_BASE64}`,\n        filename: 'unauth.png',\n      },\n    });\n    expect(unauthRes.status()).toBe(401);\n    expect(JSON.stringify(await unauthRes.json())).toContain('401_UNAUTHORIZED');\n\n    // 2. Non-image / SVG MIME rejected\n    const invalidMimeRes = await request.post('/api/v1/media/upload', {\n      headers: USER_A_HEADERS,\n      multipart: {\n        file: {\n          name: 'malicious.svg',\n          mimeType: 'image/svg+xml',\n          buffer: Buffer.from('<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>'),\n        },\n      },\n    });\n    expect(invalidMimeRes.status()).toBe(400);\n    expect(JSON.stringify(await invalidMimeRes.json())).toContain('400_INVALID_MEDIA');\n\n    // 3. Oversized payload (6MB) rejected with 413\n    const oversizedBuffer = Buffer.alloc(6 * 1024 * 1024, 0);\n    TINY_PNG_BUFFER.copy(oversizedBuffer);\n    const tooLargeRes = await request.post('/api/v1/media/upload', {\n      headers: USER_A_HEADERS,\n      multipart: {\n        file: {\n          name: 'too-large.png',\n          mimeType: 'image/png',\n          buffer: oversizedBuffer,\n        },\n      },\n    });\n    expect(tooLargeRes.status()).toBe(413);\n    expect(JSON.stringify(await tooLargeRes.json())).toContain('413_MEDIA_TOO_LARGE');\n\n    // 4. Valid multipart PNG upload\n    const multipartRes = await request.post('/api/v1/media/upload', {\n      headers: USER_A_HEADERS,\n      multipart: {\n        file: {\n          name: 'sample.png',\n          mimeType: 'image/png',\n          buffer: TINY_PNG_BUFFER,\n        },\n      },\n    });\n    expect([200, 201]).toContain(multipartRes.status());\n    const multipartBody = await multipartRes.json();\n    expect(typeof multipartBody.id).toBe('string');\n    expect(multipartBody.id.length).toBeGreaterThan(0);\n    expect(multipartBody.url).toBe(`/api/v1/media/${multipartBody.id}`);\n    expect(multipartBody.mime_type).toBe('image/png');\n    expect(multipartBody.size_bytes).toBeGreaterThan(0);\n\n    // 5. Valid JSON data_url upload\n    const jsonUploadRes = await request.post('/api/v1/media/upload', {\n      headers: USER_A_HEADERS,\n      data: {\n        data_url: `data:image/png;base64,${TINY_PNG_BASE64}`,\n        filename: 'sample-data-url.png',\n      },\n    });\n    expect([200, 201]).toContain(jsonUploadRes.status());\n    const jsonUploadBody = await jsonUploadRes.json();\n    expect(typeof jsonUploadBody.id).toBe('string');\n    expect(jsonUploadBody.url).toBe(`/api/v1/media/${jsonUploadBody.id}`);\n\n    // 6. GET /api/v1/media/:id serves binary image with security headers\n    const fetchMediaRes = await request.get(multipartBody.url);\n    expect(fetchMediaRes.status()).toBe(200);\n    expect(fetchMediaRes.headers()['content-type']).toContain('image/png');\n    expect(fetchMediaRes.headers()['x-content-type-options']).toContain('nosniff');\n    expect(fetchMediaRes.headers()['cache-control']).toBeTruthy();\n    const fetchedBytes = await fetchMediaRes.body();\n    expect(fetchedBytes.byteLength).toBeGreaterThan(0);\n\n    // 7. Non-existent media ID returns 404\n    const missingMediaRes = await request.get('/api/v1/media/non-existent-media-id-99999');\n    expect(missingMediaRes.status()).toBe(404);\n    expect(JSON.stringify(await missingMediaRes.json())).toContain('404_MEDIA_NOT_FOUND');\n  });\n\n  test('POST /api/v1/posts supports image-only and multi-image posts while rejecting empty or invalid media', async ({\n    request,\n  }) => {\n    const uploadedIds: string[] = [];\n    for (let i = 0; i < 5; i++) {\n      const res = await request.post('/api/v1/media/upload', {\n        headers: USER_A_HEADERS,\n        data: {\n          data_url: `data:image/png;base64,${TINY_PNG_BASE64}`,\n          filename: `img-${i}.png`,\n        },\n      });\n      expect([200, 201]).toContain(res.status());\n      const body = await res.json();\n      uploadedIds.push(body.id);\n    }\n\n    // Empty content with no media rejected\n    const emptyRes = await request.post('/api/v1/posts', {\n      headers: USER_A_HEADERS,\n      data: { content: '   ', media_ids: [] },\n    });\n    expect(emptyRes.status()).toBe(400);\n    expect(JSON.stringify(await emptyRes.json())).toContain('400_INVALID_CONTENT');\n\n    // More than 4 images rejected\n    const tooManyImagesRes = await request.post('/api/v1/posts', {\n      headers: USER_A_HEADERS,\n      data: { content: 'Too many images', media_ids: uploadedIds },\n    });\n    expect(tooManyImagesRes.status()).toBe(400);\n    expect(JSON.stringify(await tooManyImagesRes.json())).toContain('400_INVALID_MEDIA');\n\n    // Non-existent media_id rejected\n    const badMediaRes = await request.post('/api/v1/posts', {\n      headers: USER_A_HEADERS,\n      data: { content: 'Bad media ref', media_ids: ['non-existent-media-xyz'] },\n    });\n    expect(badMediaRes.status()).toBe(400);\n    expect(JSON.stringify(await badMediaRes.json())).toContain('400_INVALID_MEDIA');\n\n    // Image-only post succeeds\n    const imageOnlyRes = await request.post('/api/v1/posts', {\n      headers: USER_A_HEADERS,\n      data: { content: '', media_ids: [uploadedIds[0]] },\n    });\n    expect([200, 201]).toContain(imageOnlyRes.status());\n    const imageOnlyBody = await imageOnlyRes.json();\n    expect(typeof imageOnlyBody.id).toBe('string');\n    expect(Array.isArray(imageOnlyBody.images)).toBe(true);\n    expect(imageOnlyBody.images.length).toBe(1);\n    expect(imageOnlyBody.images[0].id).toBe(uploadedIds[0]);\n\n    // Mixed text + 2 images post succeeds and appears in feed\n    const mixedMarker = `MixedImagePost-${Date.now()}`;\n    const mixedRes = await request.post('/api/v1/posts', {\n      headers: USER_A_HEADERS,\n      data: { content: mixedMarker, media_ids: [uploadedIds[1], uploadedIds[2]] },\n    });\n    expect([200, 201]).toContain(mixedRes.status());\n    const mixedBody = await mixedRes.json();\n    expect(mixedBody.images.length).toBe(2);\n\n    // Verify GET /api/v1/feed search & enriched schema\n    const feedRes = await request.get('/api/v1/feed', {\n      headers: USER_A_HEADERS,\n      params: { q: mixedMarker, sort: 'latest', limit: 10 },\n    });\n    expect(feedRes.status()).toBe(200);\n    const feedBody = await feedRes.json();\n    const found = feedBody.posts.find((p: { id: string }) => p.id === mixedBody.id);\n    expect(found).toBeTruthy();\n    expect(typeof found.author_name).toBe('string');\n    expect(Array.isArray(found.images)).toBe(true);\n    expect(found.images.length).toBe(2);\n    expect(typeof found.clicks_count).toBe('number');\n    expect(typeof found.views_count).toBe('number');\n    expect(typeof found.likes_count).toBe('number');\n    expect(typeof found.reposts_count).toBe('number');\n    expect(typeof found.comments_count).toBe('number');\n    expect(typeof found.user_liked).toBe('boolean');\n    expect(typeof found.user_reposted).toBe('boolean');\n  });\n});\n\ntest.describe('Community V2: Real 4D Stats & Overview API', () => {\n  test('Like, repost, click, and stats overview reflect persisted real database counts', async ({\n    request,\n  }) => {\n    const overviewBeforeRes = await request.get('/api/v1/stats/overview');\n    expect(overviewBeforeRes.status()).toBe(200);\n    const overviewBefore = await overviewBeforeRes.json();\n    expect(typeof overviewBefore.totals.posts).toBe('number');\n    expect(typeof overviewBefore.totals.likes).toBe('number');\n    expect(typeof overviewBefore.totals.reposts).toBe('number');\n    expect(typeof overviewBefore.totals.clicks).toBe('number');\n    expect(typeof overviewBefore.totals.comments).toBe('number');\n\n    // Seed target post\n    const uniqueContent = `StatsTarget-${Date.now()}`;\n    const createRes = await request.post('/api/v1/posts', {\n      headers: USER_A_HEADERS,\n      data: { content: uniqueContent },\n    });\n    expect([200, 201]).toContain(createRes.status());\n    const { id: postId } = await createRes.json();\n\n    // Auth and 404 checks\n    expect((await request.post(`/api/v1/posts/${postId}/like`)).status()).toBe(401);\n    expect((await request.post(`/api/v1/posts/${postId}/repost`)).status()).toBe(401);\n    expect(\n      (await request.post('/api/v1/posts/non-existent-post-999/like', { headers: USER_A_HEADERS })).status()\n    ).toBe(404);\n    expect(\n      (await request.post('/api/v1/posts/non-existent-post-999/repost', { headers: USER_A_HEADERS })).status()\n    ).toBe(404);\n    expect((await request.post('/api/v1/posts/non-existent-post-999/click')).status()).toBe(404);\n\n    // Like toggle across two users\n    const likeA1 = await request.post(`/api/v1/posts/${postId}/like`, { headers: USER_A_HEADERS });\n    expect(likeA1.status()).toBe(200);\n    expect(await likeA1.json()).toMatchObject({ post_id: postId, liked: true, likes_count: 1 });\n\n    const likeB1 = await request.post(`/api/v1/posts/${postId}/like`, { headers: USER_B_HEADERS });\n    expect(likeB1.status()).toBe(200);\n    expect(await likeB1.json()).toMatchObject({ post_id: postId, liked: true, likes_count: 2 });\n\n    const likeA2 = await request.post(`/api/v1/posts/${postId}/like`, { headers: USER_A_HEADERS });\n    expect(likeA2.status()).toBe(200);\n    expect(await likeA2.json()).toMatchObject({ post_id: postId, liked: false, likes_count: 1 });\n\n    // Repost toggle\n    const repostA1 = await request.post(`/api/v1/posts/${postId}/repost`, { headers: USER_A_HEADERS });\n    expect(repostA1.status()).toBe(200);\n    expect(await repostA1.json()).toMatchObject({ post_id: postId, reposted: true, reposts_count: 1 });\n\n    const repostA2 = await request.post(`/api/v1/posts/${postId}/repost`, { headers: USER_A_HEADERS });\n    expect(repostA2.status()).toBe(200);\n    expect(await repostA2.json()).toMatchObject({ post_id: postId, reposted: false, reposts_count: 0 });\n\n    const repostB1 = await request.post(`/api/v1/posts/${postId}/repost`, { headers: USER_B_HEADERS });\n    expect(repostB1.status()).toBe(200);\n    expect(await repostB1.json()).toMatchObject({ post_id: postId, reposted: true, reposts_count: 1 });\n\n    // Atomic click increments\n    const click1 = await request.post(`/api/v1/posts/${postId}/click`);\n    expect(click1.status()).toBe(200);\n    expect(await click1.json()).toMatchObject({ post_id: postId, clicks_count: 1, views_count: 1 });\n\n    const click2 = await request.post(`/api/v1/posts/${postId}/click`);\n    expect(click2.status()).toBe(200);\n    expect(await click2.json()).toMatchObject({ post_id: postId, clicks_count: 2, views_count: 2 });\n\n    // Comment increment\n    const commentRes = await request.post(`/api/v1/posts/${postId}/comments`, {\n      headers: USER_A_HEADERS,\n      data: { content: 'Counting real comments' },\n    });\n    expect([200, 201]).toContain(commentRes.status());\n\n    // Verify feed reflects exact stats and per-user interaction flags\n    const feedForBRes = await request.get('/api/v1/feed', {\n      headers: USER_B_HEADERS,\n      params: { q: uniqueContent, limit: 10 },\n    });\n    expect(feedForBRes.status()).toBe(200);\n    const feedForB = await feedForBRes.json();\n    const targetInFeed = feedForB.posts.find((p: { id: string }) => p.id === postId);\n    expect(targetInFeed).toBeTruthy();\n    expect(targetInFeed.likes_count).toBe(1);\n    expect(targetInFeed.reposts_count).toBe(1);\n    expect(targetInFeed.clicks_count).toBe(2);\n    expect(targetInFeed.views_count).toBe(2);\n    expect(targetInFeed.comments_count).toBe(1);\n    expect(targetInFeed.user_liked).toBe(true);\n    expect(targetInFeed.user_reposted).toBe(true);\n\n    // Verify hot sort returns 200\n    const hotFeedRes = await request.get('/api/v1/feed', { params: { sort: 'hot', limit: 10 } });\n    expect(hotFeedRes.status()).toBe(200);\n    const hotFeed = await hotFeedRes.json();\n    expect(Array.isArray(hotFeed.posts)).toBe(true);\n\n    // Verify overview reflects real DB increments\n    const overviewAfterRes = await request.get('/api/v1/stats/overview');\n    expect(overviewAfterRes.status()).toBe(200);\n    const overviewAfter = await overviewAfterRes.json();\n    expect(overviewAfter.totals.posts).toBeGreaterThanOrEqual(overviewBefore.totals.posts + 1);\n    expect(overviewAfter.totals.likes).toBeGreaterThanOrEqual(overviewBefore.totals.likes + 1);\n    expect(overviewAfter.totals.reposts).toBeGreaterThanOrEqual(overviewBefore.totals.reposts + 1);\n    expect(overviewAfter.totals.clicks).toBeGreaterThanOrEqual(overviewBefore.totals.clicks + 2);\n    expect(overviewAfter.totals.comments).toBeGreaterThanOrEqual(overviewBefore.totals.comments + 1);\n    expect(Array.isArray(overviewAfter.hot_posts)).toBe(true);\n  });\n});\n\ntest.describe('Community V2: Email OTP Auth API Contracts', () => {\n  test('Auth routes validate email format, invalid code, /me dual auth, and logout', async ({ request }) => {\n    const invalidEmailRes = await request.post('/api/v1/auth/send-code', {\n      data: { email: 'not-a-valid-email' },\n    });\n    expect(invalidEmailRes.status()).toBe(400);\n    expect(JSON.stringify(await invalidEmailRes.json())).toContain('400_INVALID_EMAIL');\n\n    const invalidCodeRes = await request.post('/api/v1/auth/verify-code', {\n      data: { email: 'nobody@example.com', code: '000000' },\n    });\n    expect(invalidCodeRes.status()).toBe(400);\n    expect(JSON.stringify(await invalidCodeRes.json())).toContain('400_INVALID_CODE');\n\n    const unauthMeRes = await request.get('/api/v1/auth/me');\n    expect(unauthMeRes.status()).toBe(401);\n    expect(JSON.stringify(await unauthMeRes.json())).toContain('401_UNAUTHORIZED');\n\n    const fpMeRes = await request.get('/api/v1/auth/me', { headers: USER_A_HEADERS });\n    expect(fpMeRes.status()).toBe(200);\n    const fpMeBody = await fpMeRes.json();\n    expect(fpMeBody.authenticated).toBe(true);\n    expect(fpMeBody.auth_type).toBe('fingerprint');\n    expect(typeof fpMeBody.user?.id).toBe('string');\n\n    const logoutRes = await request.post('/api/v1/auth/logout');\n    expect(logoutRes.status()).toBe(200);\n    expect(await logoutRes.json()).toMatchObject({ success: true });\n  });\n});\n\ntest.describe('Community V2 Web E2E: Image-Text Feed, Real Stats & Email Login', () => {\n  test('Public community page exposes no /admin entry links and removes legacy mock widgets', async ({\n    page,\n  }) => {\n    await page.goto('/');\n    const feedRegion = page.getByTestId('feed-list').or(page.getByRole('main')).first();\n    await expect(feedRegion).toBeVisible();\n\n    // Strictly verify hidden admin rule: no link or navigation entry to /admin\n    await expect(page.locator('a[href=\"/admin\"], a[href^=\"/admin/\"]')).toHaveCount(0);\n    await expect(page.getByRole('link', { name: /管理后台|管理员|admin/i })).toHaveCount(0);\n\n    // Verify legacy hardcoded mock cards are removed\n    await expect(page.getByText('订阅 Premium')).toHaveCount(0);\n    await expect(page.getByText('#Awwwards2026')).toHaveCount(0);\n    await expect(page.getByText('48.2K 动态')).toHaveCount(0);\n  });\n\n  test('User uploads image with text, persists across reload, and views image in lightbox dialog', async ({\n    page,\n  }) => {\n    await page.goto('/');\n\n    const postInput = page\n      .getByRole('textbox', { name: /发帖|动态|说点什么|分享|post|content/i })\n      .or(page.locator('textarea'))\n      .first();\n    const publishButton = page.getByRole('button', { name: /发布|发帖|发送|post|publish/i }).first();\n    const fileInput = page.locator('input[type=\"file\"]').first();\n\n    await expect(postInput).toBeVisible();\n    await expect(fileInput).toBeAttached();\n\n    const uniqueCaption = `ImagePostE2E-${Date.now()}`;\n    await postInput.fill(uniqueCaption);\n    await fileInput.setInputFiles({\n      name: 'community-photo.png',\n      mimeType: 'image/png',\n      buffer: TINY_PNG_BUFFER,\n    });\n\n    const uploadOrPostDone = page.waitForResponse(\n      (res) => res.url().includes('/api/v1/posts') && res.request().method() === 'POST'\n    );\n    await publishButton.click();\n    const postResp = await uploadOrPostDone;\n    expect([200, 201]).toContain(postResp.status());\n\n    const postCard = page\n      .locator('article, .post-card, [data-testid=\"post-card\"]')\n      .filter({ hasText: uniqueCaption })\n      .first();\n    await expect(postCard).toBeVisible();\n\n    const renderedImg = postCard.locator('img[src*=\"/api/v1/media/\"]').first();\n    await expect(renderedImg).toBeVisible();\n    await expect\n      .poll(async () => renderedImg.evaluate((el: HTMLImageElement) => el.naturalWidth))\n      .toBeGreaterThan(0);\n\n    // Open Radix Dialog lightbox by clicking the post image\n    await renderedImg.click();\n    const lightbox = page.getByRole('dialog').first();\n    await expect(lightbox).toBeVisible();\n    await expect(lightbox.locator('img[src*=\"/api/v1/media/\"]').first()).toBeVisible();\n    await page.keyboard.press('Escape');\n    await expect(lightbox).toBeHidden();\n\n    // Reload and verify image-text post persistence\n    await page.reload();\n    const reloadedCard = page\n      .locator('article, .post-card, [data-testid=\"post-card\"]')\n      .filter({ hasText: uniqueCaption })\n      .first();\n    await expect(reloadedCard).toBeVisible();\n    await expect(reloadedCard.locator('img[src*=\"/api/v1/media/\"]').first()).toBeVisible();\n  });\n\n  test('User likes, reposts, and comments on a post with real backend persistence after reload', async ({\n    page,\n    request,\n  }) => {\n    const seedText = `InteractiveStatsE2E-${Date.now()}`;\n    const createRes = await request.post('/api/v1/posts', {\n      headers: USER_A_HEADERS,\n      data: { content: seedText },\n    });\n    expect([200, 201]).toContain(createRes.status());\n    const { id: postId } = await createRes.json();\n\n    // Seed 3 real clicks so UI displays non-zero real click count\n    for (let i = 0; i < 3; i++) {\n      await request.post(`/api/v1/posts/${postId}/click`);\n    }\n\n    await page.goto('/');\n    const postCard = page\n      .locator('article, .post-card, [data-testid=\"post-card\"]')\n      .filter({ hasText: seedText })\n      .first();\n    await expect(postCard).toBeVisible();\n\n    // Like button triggers real API\n    const likeBtn = postCard.getByRole('button', { name: /点赞|喜欢|赞|like/i }).first();\n    await expect(likeBtn).toBeVisible();\n    const likeRespPromise = page.waitForResponse(\n      (res) => res.url().includes(`/api/v1/posts/${postId}/like`) && res.request().method() === 'POST'\n    );\n    await likeBtn.click();\n    expect((await likeRespPromise).status()).toBe(200);\n\n    // Repost button triggers real API\n    const repostBtn = postCard.getByRole('button', { name: /转发|转帖|repost|retweet/i }).first();\n    await expect(repostBtn).toBeVisible();\n    const repostRespPromise = page.waitForResponse(\n      (res) => res.url().includes(`/api/v1/posts/${postId}/repost`) && res.request().method() === 'POST'\n    );\n    await repostBtn.click();\n    expect((await repostRespPromise).status()).toBe(200);\n\n    // Comment flow triggers real API\n    const commentToggleBtn = postCard.getByRole('button', { name: /评论|回复|comment|reply/i }).first();\n    await commentToggleBtn.click();\n    const commentInput = postCard\n      .getByPlaceholder(/撰写评论|撰写回复|写评论|回复|说点什么|comment|reply/i)\n      .or(postCard.getByRole('textbox', { name: /评论|回复|comment/i }))\n      .first();\n    await expect(commentInput).toBeVisible();\n    const replyText = `RealStatComment-${Date.now()}`;\n    await commentInput.fill(replyText);\n    const commentSubmitBtn = postCard\n      .getByRole('button', { name: /回复|发送|评论|提交|submit|send/i })\n      .filter({ hasNotText: /点赞|转发|展开/i })\n      .last();\n    const commentRespPromise = page.waitForResponse(\n      (res) => res.url().includes(`/api/v1/posts/${postId}/comments`) && res.request().method() === 'POST'\n    );\n    await commentSubmitBtn.click();\n    expect([200, 201]).toContain((await commentRespPromise).status());\n    await expect(postCard.getByText(replyText)).toBeVisible();\n\n    // Reload page and confirm persisted counts match database\n    await page.reload();\n    const reloadedCard = page\n      .locator('article, .post-card, [data-testid=\"post-card\"]')\n      .filter({ hasText: seedText })\n      .first();\n    await expect(reloadedCard).toBeVisible();\n    await expect(reloadedCard.getByRole('button', { name: /点赞|喜欢|赞|like/i }).first()).toContainText('1');\n    await expect(reloadedCard.getByRole('button', { name: /转发|转帖|repost|retweet/i }).first()).toContainText('1');\n    await expect(reloadedCard.getByRole('button', { name: /评论|回复|comment|reply/i }).first()).toContainText('1');\n\n    const verifyFeedRes = await request.get('/api/v1/feed', { params: { q: seedText, limit: 5 } });\n    const verifyFeed = await verifyFeedRes.json();\n    const persisted = verifyFeed.posts.find((p: { id: string }) => p.id === postId);\n    expect(persisted.likes_count).toBe(1);\n    expect(persisted.reposts_count).toBe(1);\n    expect(persisted.comments_count).toBe(1);\n    expect(persisted.clicks_count).toBeGreaterThanOrEqual(3);\n  });\n\n  test('Email OTP login modal sends code, verifies 6-digit OTP, shows logged-in email, and logs out', async ({\n    page,\n  }) => {\n    const testEmail = 'community.tester@example.com';\n    let isLoggedIn = false;\n    let capturedSendEmail = '';\n    let capturedVerifyBody: { email?: string; code?: string } | null = null;\n    let logoutCalled = false;\n\n    await page.route('**/api/v1/auth/send-code', async (route) => {\n      const body = route.request().postDataJSON() as { email?: string };\n      capturedSendEmail = body?.email || '';\n      await route.fulfill({\n        status: 200,\n        contentType: 'application/json',\n        body: JSON.stringify({ sent: true, expires_in_seconds: 600, cooldown_seconds: 60 }),\n      });\n    });\n\n    await page.route('**/api/v1/auth/verify-code', async (route) => {\n      capturedVerifyBody = route.request().postDataJSON() as { email?: string; code?: string };\n      isLoggedIn = true;\n      await route.fulfill({\n        status: 200,\n        contentType: 'application/json',\n        body: JSON.stringify({\n          token: 'mock-email-session-e2e-token',\n          user: {\n            id: 'usr_email_e2e_001',\n            username: 'community.tester',\n            email: testEmail,\n            created_at: new Date().toISOString(),\n          },\n        }),\n      });\n    });\n\n    await page.route('**/api/v1/auth/me', async (route) => {\n      if (isLoggedIn) {\n        await route.fulfill({\n          status: 200,\n          contentType: 'application/json',\n          body: JSON.stringify({\n            authenticated: true,\n            auth_type: 'email',\n            user: {\n              id: 'usr_email_e2e_001',\n              username: 'community.tester',\n              email: testEmail,\n              created_at: new Date().toISOString(),\n            },\n          }),\n        });\n      } else {\n        await route.continue();\n      }\n    });\n\n    await page.route('**/api/v1/auth/logout', async (route) => {\n      isLoggedIn = false;\n      logoutCalled = true;\n      await route.fulfill({\n        status: 200,\n        contentType: 'application/json',\n        body: JSON.stringify({ success: true }),\n      });\n    });\n\n    await page.goto('/');\n\n    const openLoginBtn = page.getByRole('button', { name: /邮箱登录|登录|sign in|login/i }).first();\n    await expect(openLoginBtn).toBeVisible();\n    await openLoginBtn.click();\n\n    const dialog = page.getByRole('dialog').first();\n    await expect(dialog).toBeVisible();\n\n    const emailInput = dialog\n      .getByLabel(/邮箱|email/i)\n      .or(dialog.locator('input[type=\"email\"]'))\n      .or(dialog.getByPlaceholder(/邮箱|email|@/i))\n      .first();\n    await expect(emailInput).toBeVisible();\n    await emailInput.fill(testEmail);\n\n    const sendCodeBtn = dialog.getByRole('button', { name: /发送验证码|获取验证码|send code/i }).first();\n    await expect(sendCodeBtn).toBeVisible();\n    await sendCodeBtn.click();\n    await expect.poll(() => capturedSendEmail).toBe(testEmail);\n\n    const codeInput = dialog\n      .getByLabel(/验证码|code|otp/i)\n      .or(dialog.getByPlaceholder(/验证码|6位|code|000000/i))\n      .or(dialog.locator('input[inputmode=\"numeric\"], input[maxlength=\"6\"]'))\n      .first();\n    await expect(codeInput).toBeVisible();\n    await codeInput.fill('123456');\n\n    const verifyBtn = dialog\n      .getByRole('button', { name: /验证并登录|确认登录|验证登录|登录|验证|verify|sign in|login/i })\n      .filter({ hasNotText: /发送验证码|获取验证码|重新发送|send code/i })\n      .first();\n    await verifyBtn.click();\n\n    await expect.poll(() => capturedVerifyBody?.code).toBe('123456');\n    expect(capturedVerifyBody?.email).toBe(testEmail);\n    await expect(dialog).toBeHidden();\n\n    // Authenticated email indicator visible on page\n    await expect(page.getByText(/community\\.tester/i).first()).toBeVisible();\n\n    // Logout flow\n    const logoutBtn = page.getByRole('button', { name: /退出|登出|logout|sign out/i }).first();\n    await expect(logoutBtn).toBeVisible();\n    await logoutBtn.click();\n    await expect.poll(() => logoutCalled).toBe(true);\n  });\n});\n\ntest.describe.serial('Hidden Admin Console & Resend Config E2E', () => {\n  test('Admin API enforces strict auth isolation and supports default admin/admin login', async ({ request }) => {\n    // Unauthenticated & ordinary user token rejected on all admin routes\n    for (const headers of [{}, USER_A_HEADERS]) {\n      const getRes = await request.get('/api/v1/admin/settings', { headers });\n      expect(getRes.status()).toBe(401);\n      expect(JSON.stringify(await getRes.json())).toContain('401_ADMIN_UNAUTHORIZED');\n\n      const putRes = await request.put('/api/v1/admin/settings', {\n        headers,\n        data: { site_name: 'Hijack' },\n      });\n      expect(putRes.status()).toBe(401);\n      expect(JSON.stringify(await putRes.json())).toContain('401_ADMIN_UNAUTHORIZED');\n\n      const testMailRes = await request.post('/api/v1/admin/settings/test-email', {\n        headers,\n        data: { to_email: 'test@example.com' },\n      });\n      expect(testMailRes.status()).toBe(401);\n\n      const credRes = await request.put('/api/v1/admin/credentials', {\n        headers,\n        data: { current_password: 'admin', new_password: 'NewPassword2026' },\n      });\n      expect(credRes.status()).toBe(401);\n    }\n\n    // Invalid admin login rejected\n    const badLoginRes = await request.post('/api/v1/admin/login', {\n      data: { username: 'admin', password: 'wrong-password' },\n    });\n    expect(badLoginRes.status()).toBe(401);\n    expect(JSON.stringify(await badLoginRes.json())).toContain('401_INVALID_CREDENTIALS');\n\n    // Default admin/admin login succeeds\n    const okLoginRes = await request.post('/api/v1/admin/login', {\n      data: { username: 'admin', password: 'admin' },\n    });\n    expect(okLoginRes.status()).toBe(200);\n    const okLoginBody = await okLoginRes.json();\n    expect(typeof okLoginBody.token).toBe('string');\n    expect(okLoginBody.token.length).toBeGreaterThan(0);\n    expect(okLoginBody.admin.username).toBe('admin');\n    expect(okLoginBody.admin.must_change_password).toBe(true);\n  });\n\n  test('Admin settings API manages Resend key with masking, empty preservation, clear, and live email wiring', async ({\n    request,\n  }) => {\n    const loginRes = await request.post('/api/v1/admin/login', {\n      data: { username: 'admin', password: 'admin' },\n    });\n    expect(loginRes.status()).toBe(200);\n    const { token } = await loginRes.json();\n    const adminHeaders = { Authorization: `Bearer ${token}` };\n\n    // Clear Resend key first to verify 503 behavior\n    const clearRes = await request.put('/api/v1/admin/settings', {\n      headers: adminHeaders,\n      data: { clear_resend_api_key: true },\n    });\n    expect(clearRes.status()).toBe(200);\n    const clearBody = await clearRes.json();\n    expect(clearBody.settings.resend_api_key_configured).toBe(false);\n\n    // Unconfigured Resend returns 503 on both send-code and test-email\n    const unconfSendCode = await request.post('/api/v1/auth/send-code', {\n      data: { email: 'verify503@example.com' },\n    });\n    expect(unconfSendCode.status()).toBe(503);\n    expect(JSON.stringify(await unconfSendCode.json())).toContain('503_EMAIL_NOT_CONFIGURED');\n\n    const unconfTestEmail = await request.post('/api/v1/admin/settings/test-email', {\n      headers: adminHeaders,\n      data: { to_email: 'verify503@example.com' },\n    });\n    expect(unconfTestEmail.status()).toBe(503);\n    expect(JSON.stringify(await unconfTestEmail.json())).toContain('503_EMAIL_NOT_CONFIGURED');\n\n    // Invalid email on test-email returns 400\n    const badTestEmail = await request.post('/api/v1/admin/settings/test-email', {\n      headers: adminHeaders,\n      data: { to_email: 'invalid-email' },\n    });\n    expect(badTestEmail.status()).toBe(400);\n    expect(JSON.stringify(await badTestEmail.json())).toContain('400_INVALID_EMAIL');\n\n    // Invalid settings rejected\n    const badSettingsRes = await request.put('/api/v1/admin/settings', {\n      headers: adminHeaders,\n      data: { max_images_per_post: 0, otp_expiry_minutes: -5 },\n    });\n    expect(badSettingsRes.status()).toBe(400);\n    expect(JSON.stringify(await badSettingsRes.json())).toContain('400_INVALID_SETTINGS');\n\n    // Save placeholder Resend API Key and verify masking (never plaintext)\n    const saveRes = await request.put('/api/v1/admin/settings', {\n      headers: adminHeaders,\n      data: {\n        resend_api_key: PLACEHOLDER_RESEND_KEY_API,\n        clear_resend_api_key: false,\n        resend_from_email: 'noreply@example.com',\n        site_name: '新版图文社区',\n        otp_expiry_minutes: 10,\n        max_images_per_post: 4,\n      },\n    });\n    expect(saveRes.status()).toBe(200);\n    const saveRaw = JSON.stringify(await saveRes.json());\n    expect(saveRaw).not.toContain(PLACEHOLDER_RESEND_KEY_API);\n\n    // GET /api/v1/admin/settings returns masked key and real stats\n    const getRes = await request.get('/api/v1/admin/settings', { headers: adminHeaders });\n    expect(getRes.status()).toBe(200);\n    const getBody = await getRes.json();\n    expect(JSON.stringify(getBody)).not.toContain(PLACEHOLDER_RESEND_KEY_API);\n    expect(getBody.settings.resend_api_key_configured).toBe(true);\n    expect(typeof getBody.settings.resend_api_key_masked).toBe('string');\n    expect(getBody.settings.resend_api_key_masked.length).toBeGreaterThan(0);\n    expect(getBody.settings.resend_from_email).toBe('noreply@example.com');\n    expect(getBody.settings.site_name).toBe('新版图文社区');\n    expect(typeof getBody.stats.posts).toBe('number');\n    expect(typeof getBody.stats.users).toBe('number');\n    expect(typeof getBody.stats.media).toBe('number');\n    expect(typeof getBody.stats.clicks).toBe('number');\n\n    // Updating other fields with empty resend_api_key preserves existing key\n    const preserveRes = await request.put('/api/v1/admin/settings', {\n      headers: adminHeaders,\n      data: {\n        resend_api_key: '',\n        clear_resend_api_key: false,\n        site_name: '新版社区 Pro',\n      },\n    });\n    expect(preserveRes.status()).toBe(200);\n    const preserveBody = await preserveRes.json();\n    expect(preserveBody.settings.resend_api_key_configured).toBe(true);\n    expect(preserveBody.settings.site_name).toBe('新版社区 Pro');\n\n    // With configured placeholder key, test-email attempts Resend instead of returning 503\n    const liveAttemptRes = await request.post('/api/v1/admin/settings/test-email', {\n      headers: adminHeaders,\n      data: { to_email: 'check-wiring@example.com' },\n    });\n    expect(liveAttemptRes.status()).not.toBe(503);\n    expect([200, 502]).toContain(liveAttemptRes.status());\n  });\n\n  test('Hidden /admin page allows admin/admin login, displays dashboard, and persists masked Resend config', async ({\n    page,\n  }) => {\n    await page.goto('/admin');\n\n    const usernameInput = page\n      .getByLabel(/用户名|账号|管理员|username/i)\n      .or(page.getByPlaceholder(/用户名|账号|admin|username/i))\n      .or(page.locator('input[type=\"text\"]'))\n      .first();\n    const passwordInput = page\n      .getByLabel(/密码|password/i)\n      .or(page.getByPlaceholder(/密码|password/i))\n      .or(page.locator('input[type=\"password\"]'))\n      .first();\n    const loginBtn = page.getByRole('button', { name: /登录|进入后台|sign in|login/i }).first();\n\n    await expect(usernameInput).toBeVisible();\n    await expect(passwordInput).toBeVisible();\n    await usernameInput.fill('admin');\n    await passwordInput.fill('admin');\n\n    const loginRespPromise = page.waitForResponse(\n      (res) => res.url().includes('/api/v1/admin/login') && res.request().method() === 'POST'\n    );\n    await loginBtn.click();\n    expect((await loginRespPromise).status()).toBe(200);\n\n    // Configure Resend API Key and From Email via Admin UI\n    const apiKeyInput = page\n      .getByLabel(/resend.*key|api\\s*key/i)\n      .or(page.getByPlaceholder(/resend|api\\s*key|密钥|key/i))\n      .first();\n    const fromEmailInput = page\n      .getByLabel(/发件人|from.*email|发信邮箱/i)\n      .or(page.getByPlaceholder(/发件人|noreply|from|@/i))\n      .first();\n    const saveSettingsBtn = page\n      .getByRole('button', { name: /保存配置|保存设置|保存|save/i })\n      .filter({ hasNotText: /密码|凭据|测试|password|credentials|test/i })\n      .first();\n\n    await expect(apiKeyInput).toBeVisible();\n    await expect(fromEmailInput).toBeVisible();\n    await apiKeyInput.fill(PLACEHOLDER_RESEND_KEY_UI);\n    await fromEmailInput.fill('noreply@community.example.com');\n\n    const saveRespPromise = page.waitForResponse(\n      (res) => res.url().includes('/api/v1/admin/settings') && res.request().method() === 'PUT'\n    );\n    await saveSettingsBtn.click();\n    expect((await saveRespPromise).status()).toBe(200);\n\n    // Reload /admin and confirm plaintext key is never rendered while from email persists\n    await page.reload();\n    const reloginPassword = page\n      .getByLabel(/密码|password/i)\n      .or(page.locator('input[type=\"password\"]'))\n      .first();\n    const reloginBtn = page.getByRole('button', { name: /登录|进入后台|sign in|login/i }).first();\n    if (await reloginBtn.isVisible().catch(() => false)) {\n      const reloginUser = page\n        .getByLabel(/用户名|账号|管理员|username/i)\n        .or(page.locator('input[type=\"text\"]'))\n        .first();\n      await reloginUser.fill('admin');\n      await reloginPassword.fill('admin');\n      await reloginBtn.click();\n    }\n\n    const reloadedFromEmail = page\n      .getByLabel(/发件人|from.*email|发信邮箱/i)\n      .or(page.getByPlaceholder(/发件人|noreply|from|@/i))\n      .first();\n    await expect(reloadedFromEmail).toHaveValue('noreply@community.example.com');\n    await expect(page.locator('body')).not.toContainText(PLACEHOLDER_RESEND_KEY_UI);\n  });\n\n  test('Admin credentials update invalidates default admin password and allows re-login with new credentials', async ({\n    request,\n    browser,\n  }) => {\n    const loginRes = await request.post('/api/v1/admin/login', {\n      data: { username: 'admin', password: 'admin' },\n    });\n    expect(loginRes.status()).toBe(200);\n    const { token } = await loginRes.json();\n    const adminHeaders = { Authorization: `Bearer ${token}` };\n\n    // Wrong current password rejected with 403\n    const wrongCurrRes = await request.put('/api/v1/admin/credentials', {\n      headers: adminHeaders,\n      data: { current_password: 'not-the-password', new_password: 'ValidNewPassword2026' },\n    });\n    expect(wrongCurrRes.status()).toBe(403);\n    expect(JSON.stringify(await wrongCurrRes.json())).toContain('403_WRONG_PASSWORD');\n\n    // Too-short new password (< 6 chars) rejected with 400\n    const weakPassRes = await request.put('/api/v1/admin/credentials', {\n      headers: adminHeaders,\n      data: { current_password: 'admin', new_password: '12345' },\n    });\n    expect(weakPassRes.status()).toBe(400);\n    expect(JSON.stringify(await weakPassRes.json())).toContain('400_INVALID_CREDENTIALS');\n\n    // Valid credentials update succeeds\n    const newUsername = 'admin_updated';\n    const newPassword = 'NewAdminPassword2026';\n    const updateRes = await request.put('/api/v1/admin/credentials', {\n      headers: adminHeaders,\n      data: {\n        current_password: 'admin',\n        new_username: newUsername,\n        new_password: newPassword,\n      },\n    });\n    expect(updateRes.status()).toBe(200);\n    const updateBody = await updateRes.json();\n    expect(updateBody.success).toBe(true);\n    expect(updateBody.admin.username).toBe(newUsername);\n    expect(updateBody.admin.must_change_password).toBe(false);\n\n    // Old default credentials immediately invalidated\n    const oldLoginRes = await request.post('/api/v1/admin/login', {\n      data: { username: 'admin', password: 'admin' },\n    });\n    expect(oldLoginRes.status()).toBe(401);\n\n    // New credentials succeed via API\n    const newLoginRes = await request.post('/api/v1/admin/login', {\n      data: { username: newUsername, password: newPassword },\n    });\n    expect(newLoginRes.status()).toBe(200);\n    const newLoginBody = await newLoginRes.json();\n    expect(newLoginBody.admin.username).toBe(newUsername);\n    expect(newLoginBody.admin.must_change_password).toBe(false);\n\n    // Verify new credentials also work on /admin UI in a clean browser context\n    const freshContext = await browser.newContext();\n    const freshPage = await freshContext.newPage();\n    try {\n      await freshPage.goto('/admin');\n      const uInput = freshPage\n        .getByLabel(/用户名|账号|管理员|username/i)\n        .or(freshPage.getByPlaceholder(/用户名|账号|admin|username/i))\n        .or(freshPage.locator('input[type=\"text\"]'))\n        .first();\n      const pInput = freshPage\n        .getByLabel(/密码|password/i)\n        .or(freshPage.getByPlaceholder(/密码|password/i))\n        .or(freshPage.locator('input[type=\"password\"]'))\n        .first();\n      const submitBtn = freshPage.getByRole('button', { name: /登录|进入后台|sign in|login/i }).first();\n      await uInput.fill(newUsername);\n      await pInput.fill(newPassword);\n      const uiLoginResp = freshPage.waitForResponse(\n        (res) => res.url().includes('/api/v1/admin/login') && res.request().method() === 'POST'\n      );\n      await submitBtn.click();\n      expect((await uiLoginResp).status()).toBe(200);\n      const fromEmailField = freshPage\n        .getByLabel(/发件人|from.*email|发信邮箱/i)\n        .or(freshPage.getByPlaceholder(/发件人|noreply|from|@/i))\n        .first();\n      await expect(fromEmailField).toBeVisible();\n    } finally {\n      await freshContext.close();\n    }\n  });\n});\n",
+  "coverageNotes": [
+    "全量覆盖 Stage 1 全部 17 项 API 契约（API-1 至 API-17），包含邮箱验证码认证、图片媒体上传与安全流式读取、图文混排发帖、动态流分页排序搜索、四维真实互动统计（点击/点赞/转发/评论）、社区总览统计以及隐藏式管理员鉴权、Resend 配置与改密接口。",
+    "所有测试夹具与配置占位符均采用无敏感密钥特征串的安全占位文本（如 YOUR_RESEND_API_KEY_PLACEHOLDER_9876），严格规避密钥扫描拦截风险，同时通过验证未配置 503 与已配置后触发上游请求来确保 Resend 配置实时生效。",
+    "所有 Playwright 组合定位器均遵循严格模式规范（每个 .or(...) 表达式末尾均显式附加 .first()），并优先采用语义角色、标签与占位文本，避免依赖未文档化的私有样式类名。",
+    "浏览器端邮箱验证码登录 E2E 通过拦截 /api/v1/auth/* 接口稳定模拟 Resend 邮件送达、6 位验证码登录、邮箱身份态展示及退出流程，不依赖外部真实邮箱收件箱或第三方密钥。",
+    "管理员 E2E 套件使用 test.describe.serial 严格按序执行：先验证主社区 DOM 零 /admin 入口暴露与管理员权限隔离，再使用默认 admin/admin 完成 API 与 UI 配置测试，最后执行改密测试并验证旧密码失效与新凭据重新登录。",
+    "所有 API 测试均使用独立指纹标识（qa-v2-user-a-001 / qa-v2-user-b-002），与既有只读 E2E 契约测试（tests/e2e.spec.ts 与 tests/e2e/run-f734f054.spec.ts）完全解耦兼容，无数据冲突。"
+  ]
+}
