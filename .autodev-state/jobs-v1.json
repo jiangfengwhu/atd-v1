@@ -2,7 +2,7 @@
   {
     "id": "job-a954c517",
     "createdAt": "2026-11-20T11:10:47.255Z",
-    "updatedAt": "2026-11-20T11:20:20.559Z",
+    "updatedAt": "2026-11-20T11:20:28.699Z",
     "repoFullName": "jiangfengwhu/atd-v1",
     "defaultBranch": "main",
     "prdTitle": "新版社区",
@@ -36,7 +36,9 @@
         "id": "qa_critic",
         "label": "03. QA Critic Agent",
         "roleTitle": "边界异常评审 · 锁定独立只读回归测试集",
-        "status": "idle"
+        "status": "running",
+        "startedAt": "2026-11-20T11:20:19.909Z",
+        "message": "Instabox AGY 正在评审边界异常并锁定终版独立盲测回归集…"
       }
     ],
     "repoContext": {
