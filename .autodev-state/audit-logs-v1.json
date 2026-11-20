@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-74208415",
+    "timestamp": "2026-11-20T11:27:48.394Z",
+    "category": "planning",
+    "action": "draft_pr_created",
+    "label": "创建规格 Draft PR",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-ec6c3c00",
+    "prdTitle": "新版社区",
+    "branch": "autodev/feat-20261120-112741",
+    "prNumber": 7,
+    "status": "success",
+    "detail": "创建规格 Draft PR #7（特性分支 autodev/feat-20261120-112741，提交 039936a）"
+  },
+  {
     "id": "aud-bfe4e0e2",
     "timestamp": "2026-11-20T11:10:47.257Z",
     "category": "planning",
