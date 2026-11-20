@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       pr_branch:
-        description: 'Target Draft PR branch containing docs/spec.json and read-only E2E test suite'
+        description: 'Target Draft PR branch containing docs/spec.json and docs/prd.md'
         required: true
         type: string
       pr_number:
@@ -18,7 +18,7 @@ on:
         default: ''
         type: string
       e2e_test_path:
-        description: 'Read-only E2E test path for this iteration (defaults to spec.json or tests/e2e.spec.ts)'
+        description: 'Vault-backed blind E2E test path for post-coding verification'
         required: false
         default: ''
         type: string
@@ -28,23 +28,22 @@ on:
         default: ''
         type: string
       agy_model:
-        description: 'AGY model ID configured on the VPS'
+        description: 'AGY model ID configured on the VPS (supports Gemini 4 & live synced models)'
         required: false
-        default: 'gemini-3.8-flash-high'
-        type: choice
-        options:
-          - gemini-3.8-flash-high
-          - gemini-3.8-flash-medium
-          - claude-sonnet-4-6
-          - claude-opus-4-6-thinking
-          - gpt-oss-120b-medium
+        default: 'gemini-4-pro-high'
+        type: string
+      agy_mode:
+        description: 'AGY execution mode (--mode: auto, accept-edits, plan)'
+        required: false
+        default: 'auto'
+        type: string
       session_mode:
-        description: 'Conditional AGY session policy: fresh or resume'
+        description: 'Optional AGY conversation policy: fresh or resume'
         required: false
         default: 'fresh'
         type: string
       resume_session_id:
-        description: 'Optional previous clean AGY session ID to resume on rework'
+        description: 'Optional previous AGY conversation ID to resume via --conversation'
         required: false
         default: ''
         type: string
@@ -69,19 +68,21 @@ jobs:
       (github.event_name == 'workflow_dispatch' ||
        (github.event_name == 'pull_request' && github.event.label.name == 'autodev:run'))
     runs-on: [self-hosted, linux, x64, vps-agy]
-    timeout-minutes: 30
+    timeout-minutes: 180
 
     steps:
-      - name: Resolve Target Branch
+      - name: Resolve Target Branch & Model Settings
         id: target
         shell: bash
         run: |
           BRANCH="${{ inputs.pr_branch || github.head_ref }}"
-          MODEL="${{ inputs.agy_model || 'gemini-3.8-flash-high' }}"
+          MODEL="${{ inputs.agy_model || 'gemini-4-pro-high' }}"
+          MODE="${{ inputs.agy_mode || 'auto' }}"
           PR_NUM="${{ inputs.pr_number || github.event.pull_request.number || '' }}"
           E2E_PATH="${{ inputs.e2e_test_path || '' }}"
           echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
           echo "model=${MODEL}" >> "$GITHUB_OUTPUT"
+          echo "mode=${MODE}" >> "$GITHUB_OUTPUT"
           echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
           echo "e2e_test_path=${E2E_PATH}" >> "$GITHUB_OUTPUT"
 
@@ -91,9 +92,10 @@ jobs:
           ref: ${{ steps.target.outputs.branch }}
           fetch-depth: 0
 
-      - name: Verify VPS AGY CLI, Capabilities, Workspace & Lock All Read-Only E2E Contracts
-        id: lock
+      - name: Verify VPS AGY CLI, Capabilities, Git Push Auth & Dependencies
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
           echo "Workspace CWD: $(pwd)"
@@ -102,31 +104,24 @@ jobs:
           agy --version
           echo "=== AGY CLI --help capabilities ==="
           agy --help 2>&1 | head -n 120 || true
+          echo "=== AGY available models ==="
+          agy models 2>&1 | head -n 80 || true
+          echo "=== AGY available agents ==="
+          agy agents 2>&1 | head -n 60 || true
           echo "==================================="
 
-          LOCK_MANIFEST="/tmp/autodev-e2e-lock-${{ github.run_id }}.sha256"
-          : > "${LOCK_MANIFEST}"
-          if [ -f "tests/e2e.spec.ts" ]; then
-            sha256sum "tests/e2e.spec.ts" >> "${LOCK_MANIFEST}"
+          git config user.name "AutoDev AGY Runner"
+          git config user.email "autodev-runner@users.noreply.github.com"
+          if [ -n "${GH_TOKEN}" ]; then
+            git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           fi
-          if [ -d "tests/e2e" ]; then
-            find tests/e2e -type f -name '*.spec.ts' | sort | while read -r f; do
-              sha256sum "${f}" >> "${LOCK_MANIFEST}"
-            done
-          fi
-          if [ -f "docs/spec.json" ]; then
-            sha256sum "docs/spec.json" >> "${LOCK_MANIFEST}"
-          fi
-          echo "lock_manifest=${LOCK_MANIFEST}" >> "$GITHUB_OUTPUT"
-          echo "Locked read-only contract files:"
-          cat "${LOCK_MANIFEST}" || true
 
           if [ -f "package.json" ] && [ ! -d "node_modules" ]; then
-            echo "Installing project dependencies before AGY coding & deterministic verification..."
+            echo "Installing project dependencies before AGY coding..."
             npm ci --no-audit --no-fund || npm install --no-audit --no-fund
           fi
 
-      - name: Execute AGY Outer-Loop Harness (Sentinel Watchdog + 4-Gate Deterministic Verifier)
+      - name: Execute VPS AGY Coding (No Timeout + Direct Push) & Blind Independent E2E Verification
         id: agy
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -134,16 +129,16 @@ jobs:
           LIVE_RUN_ID: ${{ github.run_id }}
           LIVE_BRANCH: ${{ steps.target.outputs.branch }}
           LIVE_MODEL: ${{ steps.target.outputs.model }}
+          LIVE_MODE: ${{ steps.target.outputs.mode }}
           LIVE_PR_NUM: ${{ steps.target.outputs.pr_number }}
           LIVE_PIPELINE_ID: ${{ inputs.run_id }}
           REVISION_NOTE: ${{ inputs.revision_note }}
           ACTIVE_E2E_PATH: ${{ steps.target.outputs.e2e_test_path }}
           SESSION_MODE: ${{ inputs.session_mode || 'fresh' }}
           RESUME_SESSION_ID: ${{ inputs.resume_session_id || '' }}
-          LOCK_MANIFEST: ${{ steps.lock.outputs.lock_manifest }}
           REPORT_CHANNEL_BRANCH: 'autodev-plan-channel'
-          MAX_ROUNDS: '3'
-          ROUND_TIMEOUT_MINUTES: '9'
+          E2E_VAULT_PREFIX: '.autodev-e2e-vault'
+          VPS_CAPS_PATH: '.autodev-vps-capabilities.json'
           CI: 'true'
           PLAYWRIGHT_HTML_OPEN: 'never'
         shell: bash
@@ -152,7 +147,7 @@ jobs:
           LOG_FILE="/tmp/autodev-agy-${LIVE_RUN_ID}.log"
           : > "${LOG_FILE}"
 
-          cat > /tmp/autodev-outer-harness.mjs <<'OUTER_HARNESS_EOF'
+          cat > /tmp/autodev-blind-runner.mjs <<'BLIND_RUNNER_EOF'
           import fs from 'fs';
           import path from 'path';
           import { execSync, spawn, spawnSync } from 'child_process';
@@ -161,27 +156,27 @@ jobs:
           const repo = process.env.LIVE_REPO || '';
           const actionsRunId = Number(process.env.LIVE_RUN_ID || 0);
           const branch = process.env.LIVE_BRANCH || 'main';
-          const model = process.env.LIVE_MODEL || 'gemini-3.8-flash-high';
+          const requestedModel = (process.env.LIVE_MODEL || 'gemini-4-pro-high').trim();
+          const requestedMode = (process.env.LIVE_MODE || 'auto').trim();
           const prNumber = process.env.LIVE_PR_NUM ? Number(process.env.LIVE_PR_NUM) : undefined;
-          const pipelineRunId = process.env.LIVE_PIPELINE_ID || undefined;
+          const pipelineRunId = (process.env.LIVE_PIPELINE_ID || '').trim() || undefined;
           const revisionNote = (process.env.REVISION_NOTE || '').trim();
           const sessionMode = (process.env.SESSION_MODE || 'fresh').trim();
           const resumeSessionId = (process.env.RESUME_SESSION_ID || '').trim();
-          const lockManifest = (process.env.LOCK_MANIFEST || '').trim();
           const channelBranch = process.env.REPORT_CHANNEL_BRANCH || 'autodev-plan-channel';
+          const vaultPrefix = process.env.E2E_VAULT_PREFIX || '.autodev-e2e-vault';
+          const capsPath = process.env.VPS_CAPS_PATH || '.autodev-vps-capabilities.json';
           const logFile = process.env.LOG_FILE || '/tmp/autodev-agy.log';
-          const maxRounds = Math.max(1, Math.min(4, Number(process.env.MAX_ROUNDS || 3)));
-          const roundTimeoutMin = Math.max(3, Math.min(12, Number(process.env.ROUND_TIMEOUT_MINUTES || 7)));
-          const sentinelFile = '.autodev-agent-done.json';
-          const feedbackFile = '.autodev-verify-feedback.md';
           const issueTitle = '[AutoDev] Live AGY Execution Stream';
           const marker = '<!-- AUTODEV-LIVE-LOG:' + actionsRunId + ' -->';
           const startedAt = Date.now();
+          const blindStashDir = '/tmp/autodev-blind-e2e-' + actionsRunId;
 
           let issueNumber = null;
           let issueCommentCount = 0;
           let commentId = null;
-          let currentPhaseLabel = 'RUNNING (Round 1/' + maxRounds + ')';
+          let currentPhaseLabel = 'PREPARING';
+          let resolvedModel = requestedModel;
 
           function appendLog(line) {
             const text = String(line || '');
@@ -205,13 +200,37 @@ jobs:
               const res = await fetch('https://api.github.com' + apiPath, {
                 ...options,
                 headers: ghHeaders,
-                signal: AbortSignal.timeout(20000),
+                signal: AbortSignal.timeout(25000),
               });
               if (!res.ok) return null;
               return await res.json().catch(() => null);
             } catch {
               return null;
             }
+          }
+
+          function encodeRepoPath(filePath) {
+            return filePath.split('/').map(encodeURIComponent).join('/');
+          }
+
+          async function upsertChannelJson(filePath, data, commitMessage) {
+            if (!token || !repo) return;
+            const encoded = encodeRepoPath(filePath);
+            let sha;
+            try {
+              const existing = await gh('/repos/' + repo + '/contents/' + encoded + '?ref=' + encodeURIComponent(channelBranch));
+              sha = existing?.sha;
+            } catch {}
+            const payload = {
+              message: commitMessage,
+              content: Buffer.from(JSON.stringify(data, null, 2), 'utf8').toString('base64'),
+              branch: channelBranch,
+            };
+            if (sha) payload.sha = sha;
+            await gh('/repos/' + repo + '/contents/' + encoded, {
+              method: 'PUT',
+              body: JSON.stringify(payload),
+            });
           }
 
           async function ensureIssue() {
@@ -244,7 +263,7 @@ jobs:
               return execSync('git status --porcelain', { encoding: 'utf8' })
                 .split('\n')
                 .map((l) => l.trimEnd())
-                .filter((l) => l && !l.includes(sentinelFile) && !l.includes(feedbackFile));
+                .filter(Boolean);
             } catch {
               return [];
             }
@@ -263,18 +282,20 @@ jobs:
               logText = clean.split('\n').slice(-110).join('\n').slice(-24000);
             } catch {}
             const filesSection = (
-              changedLines.join('\n') || '(尚未产生文件变更，AGY 正在阅读需求并规划实现…)'
+              changedLines.join('\n') || '(当前工作区干净，或 AGY 已直接 commit/push)'
             ).replace(/~~~~/g, '----');
             const outputSection =
               logText.trim() ||
-              '(AutoDev Outer-Loop Harness 已启动，正在派发 AGY 编码回合…)';
+              '(AutoDev VPS AGY 已启动，正在等待 AGY 完整执行并直接推送代码…)';
             return [
               marker,
               '### AutoDev VPS AGY Live Stream',
               '- Status: ' + stateLabel,
               '- Run ID: ' + actionsRunId,
+              ...(pipelineRunId ? ['- PipelineRunId: ' + pipelineRunId] : []),
               '- Branch: ' + branch,
-              '- Model: ' + model,
+              '- Model: ' + resolvedModel,
+              '- Mode: ' + requestedMode,
               '- Workspace: ' + process.cwd(),
               '- Elapsed: ' + elapsedSec + 's',
               '- Updated: ' + new Date().toISOString(),
@@ -327,121 +348,218 @@ jobs:
             }
           }
 
-          function removeEphemeralFiles() {
-            for (const f of [sentinelFile, feedbackFile]) {
+          function detectAndResolveAgyCapabilities() {
+            const verRes = spawnSync('agy', ['--version'], { encoding: 'utf8', timeout: 15000 });
+            const helpRes = spawnSync('agy', ['--help'], { encoding: 'utf8', timeout: 15000 });
+            const modelsRes = spawnSync('agy', ['models'], { encoding: 'utf8', timeout: 15000 });
+            const agentsRes = spawnSync('agy', ['agents'], { encoding: 'utf8', timeout: 15000 });
+
+            const version = ((verRes.stdout || '') + ' ' + (verRes.stderr || '')).trim();
+            const helpText = ((helpRes.stdout || '') + '\n' + (helpRes.stderr || '')).trim();
+            const modelsText = ((modelsRes.stdout || '') + '\n' + (modelsRes.stderr || '')).trim();
+            const agentsText = ((agentsRes.stdout || '') + '\n' + (agentsRes.stderr || '')).trim();
+
+            const parsedModels = [];
+            for (const line of modelsText.split('\n')) {
+              const clean = line.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').trim();
+              if (!clean || /^(available|models|name|id|---)/i.test(clean)) continue;
+              const tokenMatch = clean.match(/^[-*•]?\s*([a-z0-9][a-z0-9._-]{2,64})\b(.*)$/i);
+              if (tokenMatch) {
+                const id = tokenMatch[1];
+                const rest = tokenMatch[2].trim().replace(/^[-:–|]+\s*/, '');
+                if (!parsedModels.some((m) => m.id === id)) {
+                  parsedModels.push({ id, label: rest ? id + ' (' + rest.slice(0, 48) + ')' : id });
+                }
+              }
+            }
+
+            const parsedAgents = [];
+            for (const line of agentsText.split('\n')) {
+              const clean = line.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').trim();
+              if (!clean || /^(available|agents|name|id|---)/i.test(clean)) continue;
+              const tokenMatch = clean.match(/^[-*•]?\s*([a-z0-9][a-z0-9._-]{1,48})\b(.*)$/i);
+              if (tokenMatch) {
+                const id = tokenMatch[1];
+                if (!parsedAgents.some((a) => a.id === id)) {
+                  parsedAgents.push({ id, label: clean.slice(0, 80) });
+                }
+              }
+            }
+
+            // Smart model pre-flight resolution against live VPS agy models
+            let chosenModel = requestedModel;
+            if (parsedModels.length > 0 && !parsedModels.some((m) => m.id === requestedModel)) {
+              const reqLower = requestedModel.toLowerCase();
+              const fuzzy =
+                parsedModels.find((m) => m.id.toLowerCase() === reqLower) ||
+                (reqLower.includes('gemini-4')
+                  ? parsedModels.find((m) => /gemini-4/i.test(m.id))
+                  : null) ||
+                parsedModels.find((m) => m.id.toLowerCase().includes(reqLower.split('-').slice(0, 2).join('-'))) ||
+                parsedModels[0];
+              if (fuzzy) {
+                appendLog('[AutoDev] Requested model "' + requestedModel + '" not verbatim in VPS agy models; resolved to "' + fuzzy.id + '".');
+                chosenModel = fuzzy.id;
+              }
+            }
+            resolvedModel = chosenModel;
+
+            return {
+              version,
+              supportsConversation: helpText.includes('--conversation'),
+              supportsMode: helpText.includes('--mode'),
+              supportsStreamJson: helpText.includes('stream-json'),
+              modes: ['auto', 'accept-edits', 'plan'],
+              models: parsedModels,
+              agents: parsedAgents,
+              rawModelsOutput: modelsText.slice(0, 4000),
+              rawAgentsOutput: agentsText.slice(0, 2000),
+              syncedAt: new Date().toISOString(),
+            };
+          }
+
+          // Blind Isolation: hide ALL existing E2E tests from workspace BEFORE AGY runs so AGY cannot cheat!
+          function stashExistingE2eTests() {
+            const stashed = [];
+            const skipWorktreeFiles = [];
+            const candidates = ['tests/e2e', 'tests/e2e.spec.ts', 'e2e'];
+
+            fs.rmSync(blindStashDir, { recursive: true, force: true });
+            fs.mkdirSync(blindStashDir, { recursive: true });
+
+            for (const rel of candidates) {
+              if (!fs.existsSync(rel)) continue;
+              // Record tracked files under this path so git update-index --skip-worktree prevents AGY git add -A from staging deletions
+              try {
+                const tracked = execSync('git ls-files -- "' + rel + '"', { encoding: 'utf8' })
+                  .split('\n')
+                  .map((s) => s.trim())
+                  .filter(Boolean);
+                for (const tf of tracked) {
+                  spawnSync('git', ['update-index', '--skip-worktree', tf], { stdio: 'ignore' });
+                  skipWorktreeFiles.push(tf);
+                }
+              } catch {}
+
+              const dest = path.join(blindStashDir, rel);
+              fs.mkdirSync(path.dirname(dest), { recursive: true });
+              fs.renameSync(rel, dest);
+              stashed.push(rel);
+            }
+            appendLog('[Blind E2E] Isolated ' + stashed.length + ' existing E2E path(s) from coding workspace (' + skipWorktreeFiles.length + ' tracked files shielded via skip-worktree).');
+            return { stashed, skipWorktreeFiles };
+          }
+
+          function restoreExistingE2eTests(stashState) {
+            if (!stashState) return;
+            for (const rel of stashState.stashed) {
+              const src = path.join(blindStashDir, rel);
+              if (fs.existsSync(src)) {
+                if (fs.existsSync(rel)) {
+                  fs.rmSync(rel, { recursive: true, force: true });
+                }
+                fs.mkdirSync(path.dirname(rel), { recursive: true });
+                fs.renameSync(src, rel);
+              }
+            }
+            for (const tf of stashState.skipWorktreeFiles) {
+              spawnSync('git', ['update-index', '--no-skip-worktree', tf], { stdio: 'ignore' });
+            }
+            fs.rmSync(blindStashDir, { recursive: true, force: true });
+            appendLog('[Blind E2E] Restored baseline E2E files for post-coding verification.');
+          }
+
+          async function hydrateVaultE2eTests() {
+            const writtenFiles = [];
+            if (!token || !repo) return writtenFiles;
+            const entries = await gh(
+              '/repos/' + repo + '/contents/' + encodeRepoPath(vaultPrefix) + '?ref=' + encodeURIComponent(channelBranch)
+            );
+            if (!Array.isArray(entries)) {
+              appendLog('[Blind E2E] No vault directory found at ' + vaultPrefix + ' on ' + channelBranch + '.');
+              return writtenFiles;
+            }
+            fs.mkdirSync('tests/e2e', { recursive: true });
+            for (const dirEntry of entries) {
+              if (dirEntry.type !== 'dir') continue;
+              const slug = dirEntry.name;
+              const specFileRes = await gh(
+                '/repos/' + repo + '/contents/' + encodeRepoPath(vaultPrefix + '/' + slug + '/e2e.spec.ts') + '?ref=' + encodeURIComponent(channelBranch)
+              );
+              if (!specFileRes || !specFileRes.content) continue;
+              const decoded = specFileRes.encoding === 'base64'
+                ? Buffer.from(String(specFileRes.content).replace(/\n/g, ''), 'base64').toString('utf8')
+                : String(specFileRes.content);
+              const targetLocalPath = path.join('tests', 'e2e', slug + '.spec.ts');
+              fs.writeFileSync(targetLocalPath, decoded, 'utf8');
+              writtenFiles.push(targetLocalPath);
+            }
+            appendLog('[Blind E2E] Hydrated ' + writtenFiles.length + ' blind E2E test file(s) from vault: ' + writtenFiles.join(', '));
+            return writtenFiles;
+          }
+
+          function cleanupHydratedVaultTests(writtenFiles) {
+            for (const f of writtenFiles) {
               try {
                 if (fs.existsSync(f)) fs.rmSync(f, { force: true });
               } catch {}
             }
           }
 
-          function detectAgyCapabilities() {
-            const helpRes = spawnSync('agy', ['--help'], { encoding: 'utf8', timeout: 15000 });
-            const helpText = ((helpRes.stdout || '') + '\n' + (helpRes.stderr || '')).trim();
-            return {
-              supportsResume: helpText.includes('--resume'),
-              supportsStreamJson: helpText.includes('stream-json'),
-              supportsOutputFormat: helpText.includes('--output-format'),
-              supportsMaxTurns: helpText.includes('--max-turns'),
-            };
-          }
-
-          function buildRoundPrompt(round) {
+          function buildCodingPrompt() {
             const hasRev = fs.existsSync('docs/revision-feedback.md') || Boolean(revisionNote);
             const revBlock = hasRev
-              ? 'CRITICAL REWORK MODE: Read docs/revision-feedback.md thoroughly (if present) and prioritize resolving EVERY requested fix: ' + revisionNote
+              ? 'CRITICAL REWORK MODE: Read docs/revision-feedback.md thoroughly (if present) and resolve EVERY requested fix: ' + revisionNote
               : '';
 
-            const commonSeparationRules = [
-              'CRITICAL EXECUTION BOUNDARY (OUTER-LOOP HARNESS ARCHITECTURE):',
-              '- DO NOT run `npx playwright test`, `npm run dev`, `wrangler dev`, or start ANY server/watch/background process inside your turn.',
-              '- The external AutoDev Outer-Loop Harness will automatically run `npm run build`, `tsc --noEmit`, and the full Playwright E2E test suite immediately after you finish, and will invoke a focused follow-up round with exact failure traces if anything fails.',
-              '- You may optionally run fast, finite foreground static checks ONLY (e.g. `npx tsc --noEmit`), and NEVER spawn background tasks.',
-              '- STRICT READ-ONLY CONTRACT: Do NOT modify, weaken, or delete docs/spec.json, tests/e2e.spec.ts, or ANY file inside tests/e2e/.',
-              '- MANDATORY COMPLETION SENTINEL: As your VERY LAST action after finishing all code edits, write a small JSON file `' + sentinelFile + '` in the repository root with `{"done": true, "round": ' + round + ', "summary": "<1-line Chinese summary>"}` and immediately end your turn.',
-            ].join('\n');
-
-            if (round === 1) {
-              return [
-                'You are executing Round 1/' + maxRounds + ' inside AutoDev Studio Outer-Loop Pipeline on branch ' + branch + '.',
-                'Current working directory is the root of this repository.',
-                'Read docs/prd.md, docs/spec.json, docs/rsi-guidelines.md (if present), any docs/revision-feedback.md, and all read-only Playwright E2E tests under tests/e2e/ (and tests/e2e.spec.ts if present) thoroughly.',
-                revBlock,
-                '',
-                'Engineering Requirements:',
-                '1. INCREMENTAL ITERATION RULE: Inspect the existing codebase first. Preserve all previously working features, existing API contracts, and historical regression tests under tests/e2e/. Do NOT rewrite unrelated working modules from scratch.',
-                '2. RSI GUARDRAILS: If docs/rsi-guidelines.md exists, strictly obey every engineering guardrail inside it.',
-                '3. Implement all atomic tasks and API contracts defined in docs/spec.json in clean, modular, production-ready code.',
-                '4. Cloudflare Deployment & D1 Migration Standard (when targeting Cloudflare Workers): maintain valid wrangler.toml with Static Assets, Hono TypeScript API entry, and append-only idempotent D1 SQL migrations (CREATE TABLE IF NOT EXISTS).',
-                '5. Keep git working tree clean of temporary logs or build artifacts.',
-                '',
-                commonSeparationRules,
-              ].filter(Boolean).join('\n');
-            }
-
             return [
-              'You are executing Auto-Fix Round ' + round + '/' + maxRounds + ' inside AutoDev Studio Outer-Loop Pipeline on branch ' + branch + '.',
-              'The external deterministic verifier ran build + full Playwright E2E tests after the previous round and found specific failures.',
-              'Read `' + feedbackFile + '` FIRST — it contains the exact failing test names, error messages, and build/typecheck logs.',
-              'Also respect docs/rsi-guidelines.md (if present) and all read-only tests under tests/e2e/.',
+              'You are the autonomous full-stack coding agent executing inside AutoDev Studio on branch `' + branch + '`.',
+              'Current working directory is the root of this repository.',
+              'Read docs/prd.md, docs/spec.json, docs/rsi-guidelines.md (if present), and docs/revision-feedback.md (if present) thoroughly.',
+              revBlock,
               '',
-              'Focus strictly on fixing EVERY failure listed in `' + feedbackFile + '` without breaking already-passing tests or modifying any read-only test/spec file.',
-              '',
-              commonSeparationRules,
-            ].join('\n');
+              'Engineering Requirements:',
+              '1. INCREMENTAL ITERATION RULE: Inspect the existing codebase first. Preserve all previously working features, existing API contracts, and existing database migrations. Do NOT rewrite unrelated working modules from scratch.',
+              '2. RSI GUARDRAILS: If docs/rsi-guidelines.md exists, strictly obey every engineering guardrail inside it.',
+              '3. Implement ALL atomic tasks, UI flows, edge-case states (empty states, error states, loading states), and API contracts defined in docs/spec.json in clean, modular, production-ready code.',
+              '4. BLIND VERIFICATION DISCIPLINE: Independent E2E acceptance tests are held externally and will run after you push. Implement the real feature cleanly from docs/prd.md and docs/spec.json — never hardcode test shortcuts.',
+              '5. Cloudflare Deployment & D1 Migration Standard (when targeting Cloudflare Workers): maintain valid wrangler.toml with Static Assets, Hono TypeScript API entry, and append-only idempotent D1 SQL migrations (CREATE TABLE IF NOT EXISTS).',
+              '6. STATIC VERIFICATION BEFORE PUSH: Before committing, run finite foreground checks such as `npx tsc --noEmit` and `npm run build` (if scripts exist) and fix all errors. NEVER leave background dev servers or watch processes running.',
+              '7. MANDATORY FINAL STEP — COMMIT AND PUSH CODE:',
+              '   Once implementation and build/typecheck pass, stage all your code changes, commit them with a clear message, and push directly to the remote branch:',
+              '   `git add -A && git commit -m "feat(autodev): implement spec for ' + branch + '" && git push origin HEAD:' + branch + '`',
+              '   Verify `git status` is clean and the push succeeded before ending your turn.',
+            ].filter(Boolean).join('\n');
           }
 
-          function killProcessGroup(pid) {
-            if (!pid) return;
-            try {
-              process.kill(-pid, 'SIGTERM');
-            } catch {
-              try {
-                process.kill(pid, 'SIGTERM');
-              } catch {}
-            }
-            setTimeout(() => {
-              try {
-                process.kill(-pid, 'SIGKILL');
-              } catch {
-                try {
-                  process.kill(pid, 'SIGKILL');
-                } catch {}
-              }
-            }, 3000).unref();
-          }
-
-          function runAgyRound({ round, prompt, resumeId, useStreamJson = false }) {
+          function runAgyToCompletion({ prompt, resumeId, useStreamJson, supportsMode, supportsConversation }) {
             return new Promise((resolve) => {
-              try {
-                if (fs.existsSync(sentinelFile)) fs.rmSync(sentinelFile, { force: true });
-              } catch {}
-
               const args = [
                 '--dangerously-skip-permissions',
                 '--model',
-                model,
-                '--print-timeout',
-                roundTimeoutMin + 'm',
+                resolvedModel,
               ];
+              if (supportsMode && requestedMode) {
+                args.push('--mode', requestedMode);
+              }
               if (useStreamJson) {
                 args.push('--output-format', 'stream-json');
               }
-              if (resumeId) {
-                args.push('--resume', resumeId);
+              if (resumeId && supportsConversation) {
+                args.push('--conversation', resumeId);
               }
+              // NO --print-timeout: let AGY wait naturally until the full turn completes!
               args.push('--print=' + prompt);
 
               appendLog(
-                '=== [Outer Harness] Starting AGY Round ' + round + '/' + maxRounds +
-                ' (timeout ' + roundTimeoutMin + 'm' +
+                '=== [AutoDev] Starting VPS AGY (no timeout, wait-until-complete, model=' +
+                resolvedModel + ', mode=' + requestedMode +
                 (useStreamJson ? ', stream-json' : '') +
-                (resumeId ? ', resume ' + resumeId : ', fresh session') + ') ==='
+                (resumeId ? ', conversation=' + resumeId : ', fresh session') + ') ==='
               );
 
               const child = spawn('agy', args, {
                 cwd: process.cwd(),
-                detached: true,
                 stdio: ['ignore', 'pipe', 'pipe'],
                 env: {
                   ...process.env,
@@ -452,13 +570,7 @@ jobs:
 
               let combinedOut = '';
               let lineBuf = '';
-              let idleDetectedAt = null;
-              let sentinelDetectedAt = null;
-              let streamResultDetectedAt = null;
-              let earlyStopReason = '';
-              let settled = false;
               const roundStart = Date.now();
-              const hardWallMs = (roundTimeoutMin + 1) * 60 * 1000;
 
               const formatStreamJsonLine = (rawLine) => {
                 const trimmed = rawLine.trim();
@@ -467,11 +579,11 @@ jobs:
                 try {
                   const ev = JSON.parse(trimmed);
                   const evType = String(ev.type || ev.event || '');
-                  if (ev.session_id || ev.sessionId) {
-                    combinedOut += '\nsession_id=' + String(ev.session_id || ev.sessionId) + '\n';
+                  if (ev.session_id || ev.sessionId || ev.conversation_id || ev.conversationId) {
+                    const sid = String(ev.session_id || ev.sessionId || ev.conversation_id || ev.conversationId);
+                    combinedOut += '\nsession_id=' + sid + '\n';
                   }
                   if (evType === 'result' || evType === 'turn_complete' || evType === 'done') {
-                    if (!streamResultDetectedAt) streamResultDetectedAt = Date.now();
                     const msg = typeof ev.result === 'string' ? ev.result.slice(0, 300) : JSON.stringify(ev).slice(0, 300);
                     return '[agy:result] ' + msg;
                   }
@@ -511,10 +623,6 @@ jobs:
                 if (combinedOut.length > 250000) {
                   combinedOut = combinedOut.slice(-250000);
                 }
-                if (!idleDetectedAt && /root agent idle; waiting up to/i.test(text)) {
-                  idleDetectedAt = Date.now();
-                  appendLog('[Outer Harness] Detected AGY root-agent-idle waiting for background task; arming 25s watchdog.');
-                }
                 if (!useStreamJson) {
                   process.stdout.write(text);
                   try {
@@ -539,130 +647,47 @@ jobs:
               child.stdout.on('data', onChunk);
               child.stderr.on('data', onChunk);
 
-              let lastGitSnapshot = getCleanGitStatusLines().join('|');
-              let lastGitChangeAt = Date.now();
-
-              const watchdog = setInterval(() => {
-                if (settled) return;
-                const now = Date.now();
-                const curGit = getCleanGitStatusLines().join('|');
-                if (curGit !== lastGitSnapshot) {
-                  lastGitSnapshot = curGit;
-                  lastGitChangeAt = now;
-                }
-
-                // 1. Completion Sentinel Watchdog: once AGY writes .autodev-agent-done.json, allow 12s grace then cleanly stop process group
-                if (!sentinelDetectedAt && fs.existsSync(sentinelFile)) {
-                  try {
-                    const content = fs.readFileSync(sentinelFile, 'utf8').trim();
-                    if (content.length > 2) {
-                      sentinelDetectedAt = now;
-                      appendLog('[Outer Harness] Completion sentinel ' + sentinelFile + ' detected; allowing 12s grace for clean AGY exit.');
-                    }
-                  } catch {}
-                }
-                if (sentinelDetectedAt && now - sentinelDetectedAt >= 12000) {
-                  earlyStopReason = 'sentinel_grace_elapsed';
-                  appendLog('[Outer Harness] Stopping AGY process group cleanly after completion sentinel grace window.');
-                  killProcessGroup(child.pid);
-                  return;
-                }
-                if (streamResultDetectedAt && now - streamResultDetectedAt >= 15000) {
-                  earlyStopReason = 'stream_result_grace_elapsed';
-                  appendLog('[Outer Harness] Stopping AGY process group cleanly after stream-json result event.');
-                  killProcessGroup(child.pid);
-                  return;
-                }
-
-                // 2. Root-Agent-Idle Watchdog: if AGY is idling on a leaked background task and repo edits have stabilized for 25s
-                if (idleDetectedAt && now - idleDetectedAt >= 25000 && now - lastGitChangeAt >= 15000) {
-                  earlyStopReason = 'root_agent_idle_watchdog';
-                  appendLog('[Outer Harness] Terminating stalled AGY process group stuck in root-agent-idle background wait.');
-                  killProcessGroup(child.pid);
-                  return;
-                }
-
-                // 3. Hard outer wall-clock timeout
-                if (now - roundStart >= hardWallMs) {
-                  earlyStopReason = 'hard_round_wall_timeout';
-                  appendLog('[Outer Harness] Hard round wall timeout (' + (roundTimeoutMin + 1) + 'm) reached; terminating AGY process group.');
-                  killProcessGroup(child.pid);
-                }
-              }, 2000);
-
-              const finish = (exitCode) => {
-                if (settled) return;
-                settled = true;
-                clearInterval(watchdog);
-                killProcessGroup(child.pid);
-
-                const sessionMatch = combinedOut.match(/(?:session[_ -]?id|sessionId|session)[\s:=]+([A-Za-z0-9_-]{8,64})/i);
-                const capturedSessionId = sessionMatch ? sessionMatch[1] : undefined;
-                const sentinelWritten = fs.existsSync(sentinelFile);
-                let sentinelSummary = '';
-                if (sentinelWritten) {
-                  try {
-                    const parsed = JSON.parse(fs.readFileSync(sentinelFile, 'utf8'));
-                    sentinelSummary = String(parsed?.summary || '');
-                  } catch {}
-                }
-                resolve({
-                  exitCode: exitCode ?? 1,
-                  elapsedMs: Date.now() - roundStart,
-                  capturedSessionId,
-                  sentinelWritten,
-                  sentinelSummary,
-                  earlyStopReason,
-                });
-              };
-
               child.on('error', (err) => {
-                appendLog('[Outer Harness] AGY spawn error: ' + String(err));
-                finish(1);
+                appendLog('[AutoDev] AGY spawn error: ' + String(err));
+                resolve({ exitCode: 1, elapsedMs: Date.now() - roundStart, capturedSessionId: undefined });
               });
               child.on('close', (code) => {
-                finish(code ?? 1);
+                const sessionMatch = combinedOut.match(/(?:session[_ -]?id|sessionId|conversation[_ -]?id|conversationId)[\s:=]+([A-Za-z0-9_-]{8,64})/i);
+                resolve({
+                  exitCode: code ?? 1,
+                  elapsedMs: Date.now() - roundStart,
+                  capturedSessionId: sessionMatch ? sessionMatch[1] : undefined,
+                });
               });
             });
           }
 
-          function runDeterministicVerification(round) {
+          function ensureChangesCommittedAndPushed(initialHeadSha) {
+            const dirty = getCleanGitStatusLines();
+            if (dirty.length > 0) {
+              appendLog('[AutoDev] AGY left uncommitted files; committing & pushing fallback commit to ' + branch + '...');
+              spawnSync('git', ['add', '-A'], { stdio: 'inherit' });
+              spawnSync('git', ['commit', '-m', 'feat(autodev): implement spec via VPS AGY (' + resolvedModel + ')'], { stdio: 'inherit' });
+            }
+            const currentHeadSha = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+            // Always ensure remote branch is up to date with HEAD
+            const pushRes = spawnSync('git', ['push', 'origin', 'HEAD:' + branch], { encoding: 'utf8' });
+            if (pushRes.status !== 0) {
+              appendLog('[AutoDev] git push warning: ' + ((pushRes.stderr || '') + (pushRes.stdout || '')).slice(0, 400));
+            } else {
+              appendLog('[AutoDev] Confirmed branch ' + branch + ' pushed at ' + currentHeadSha.slice(0, 7));
+            }
+            return {
+              changed: currentHeadSha !== initialHeadSha,
+              commitSha: currentHeadSha.slice(0, 7),
+            };
+          }
+
+          function runBlindVerification() {
             const startedAll = Date.now();
             const cases = [];
             let kind = 'build_check';
             let rawLog = '';
-            let contractOk = true;
-
-            try {
-              if (fs.existsSync(sentinelFile)) fs.rmSync(sentinelFile, { force: true });
-            } catch {}
-
-            // Gate 1: Read-Only Contract Hash Integrity
-            if (lockManifest && fs.existsSync(lockManifest) && fs.statSync(lockManifest).size > 0) {
-              const t0 = Date.now();
-              const chk = spawnSync('sha256sum', ['-c', lockManifest], { encoding: 'utf8', timeout: 30000 });
-              const durationMs = Date.now() - t0;
-              if (chk.status !== 0) {
-                contractOk = false;
-                const out = ((chk.stderr || '') + '\n' + (chk.stdout || '')).trim();
-                rawLog += '\n=== Read-Only Contract Violation ===\n' + out;
-                cases.push({
-                  id: 'gate-contract',
-                  title: '只读测试与规格契约完整性校验 (sha256sum -c)',
-                  status: 'failed',
-                  durationMs,
-                  error: '严禁修改 docs/spec.json 或 tests/e2e/ 只读测试文件，已自动还原：' + out.slice(0, 400),
-                });
-                spawnSync('git', ['checkout', '--', 'docs/spec.json', 'tests/e2e.spec.ts', 'tests/e2e'], { stdio: 'ignore' });
-              } else {
-                cases.push({
-                  id: 'gate-contract',
-                  title: '只读测试与规格契约完整性校验 (sha256sum -c)',
-                  status: 'passed',
-                  durationMs,
-                });
-              }
-            }
 
             const runCheck = (id, title, cmd, args, timeoutMs = 180000) => {
               const t0 = Date.now();
@@ -684,7 +709,6 @@ jobs:
               return res.status === 0;
             };
 
-            // Gate 2: Dependencies, Typecheck, Build & Unit Tests
             if (fs.existsSync('package.json')) {
               if (!fs.existsSync('node_modules')) {
                 runCheck('check-deps', '安装项目依赖 (npm ci)', 'npm', ['ci', '--no-audit', '--no-fund'], 240000);
@@ -703,27 +727,22 @@ jobs:
                 runCheck('check-build', '生产构建检查 (npm run build)', 'npm', ['run', 'build']);
               }
               const testCmd = String(scripts.test || '');
-              if (
-                testCmd &&
-                !testCmd.includes('no test specified') &&
-                !(hasPlaywrightCfg && /playwright/i.test(testCmd))
-              ) {
+              if (testCmd && !testCmd.includes('no test specified') && !(hasPlaywrightCfg && /playwright/i.test(testCmd))) {
                 kind = 'unit';
                 runCheck('check-unit', '自动化单元测试 (npm test)', 'npm', ['test']);
               }
             }
 
-            // Gate 3: Full Playwright E2E Suite (Deterministic Outer Runner)
             if (fs.existsSync('playwright.config.ts') || fs.existsSync('playwright.config.js')) {
               kind = 'e2e';
               const t0 = Date.now();
               const pw = spawnSync('npx', ['playwright', 'test', '--reporter=json'], {
                 encoding: 'utf8',
-                timeout: 240000,
+                timeout: 300000,
                 env: { ...process.env, CI: 'true', PLAYWRIGHT_HTML_OPEN: 'never' },
               });
               const durationMs = Date.now() - t0;
-              rawLog += '\n=== Playwright E2E ===\n' + ((pw.stderr || '') + '\n' + (pw.stdout || '')).slice(-2500);
+              rawLog += '\n=== Playwright Blind E2E ===\n' + ((pw.stderr || '') + '\n' + (pw.stdout || '')).slice(-2500);
               let parsedPw = null;
               try {
                 const firstBrace = (pw.stdout || '').indexOf('{');
@@ -751,7 +770,7 @@ jobs:
               } else {
                 cases.push({
                   id: 'pw-suite',
-                  title: 'Playwright E2E 测试套件',
+                  title: 'Playwright 独立盲测套件',
                   status: pw.status === 0 ? 'passed' : 'failed',
                   durationMs,
                   ...(pw.status === 0 ? {} : { error: ((pw.stderr || '') + (pw.stdout || '')).slice(-600) }),
@@ -764,15 +783,11 @@ jobs:
             const skipped = cases.filter((c) => c.status === 'skipped').length;
             const total = cases.length;
             const status = failed > 0 && passed > 0 ? 'partial' : failed > 0 ? 'failed' : passed > 0 ? 'passed' : 'skipped';
-            const hasChanges = getCleanGitStatusLines().length > 0;
-            const allPassed = contractOk && (total > 0 ? failed === 0 && passed > 0 : hasChanges);
+            const allPassed = total > 0 ? failed === 0 && passed > 0 : true;
 
             return {
-              round,
               kind,
               status,
-              contractOk,
-              hasChanges,
               allPassed,
               total,
               passed,
@@ -782,30 +797,6 @@ jobs:
               cases,
               rawLogExcerpt: rawLog.slice(-3000),
             };
-          }
-
-          function writeVerificationFeedback(verify) {
-            const failedCases = verify.cases.filter((c) => c.status === 'failed');
-            const lines = [
-              '# AutoDev Deterministic Verification Feedback (Round ' + verify.round + ')',
-              '',
-              '- Summary: ' + verify.passed + ' passed / ' + verify.failed + ' failed / ' + verify.skipped + ' skipped',
-              '- Contract Integrity: ' + (verify.contractOk ? 'OK' : 'VIOLATED (reverted)'),
-              '',
-              '## Failing Checks & Test Cases (FIX ALL OF THESE)',
-            ];
-            for (const fc of failedCases) {
-              lines.push('### ❌ ' + fc.title + (fc.file ? ' (' + fc.file + ')' : ''));
-              if (fc.error) {
-                lines.push('~~~text');
-                lines.push(fc.error);
-                lines.push('~~~');
-              }
-            }
-            if (verify.rawLogExcerpt) {
-              lines.push('', '## Verifier Log Tail', '~~~text', verify.rawLogExcerpt.slice(-1800), '~~~');
-            }
-            fs.writeFileSync(feedbackFile, lines.join('\n'), 'utf8');
           }
 
           async function publishTestReport(verify, meta) {
@@ -826,225 +817,171 @@ jobs:
               durationMs: verify.durationMs,
               executedAt: new Date().toISOString(),
               summary:
-                '外置验证（第 ' +
-                meta.roundsExecuted +
-                '/' +
-                maxRounds +
-                ' 轮）：' +
-                verify.passed +
-                ' 通过 / ' +
-                verify.failed +
-                ' 失败 / ' +
-                verify.skipped +
-                ' 跳过' +
-                (meta.earlyStopped ? ' · 哨兵早停' : ''),
+                '独立盲测验证（' + resolvedModel + ' / ' + requestedMode + '）：' +
+                verify.passed + ' 通过 / ' + verify.failed + ' 失败 / ' + verify.skipped + ' 跳过',
               cases: verify.cases,
               rawLogExcerpt: verify.rawLogExcerpt,
               ...(meta.agySessionId ? { agySessionId: meta.agySessionId } : {}),
               agySessionReused: meta.agySessionReused,
               agyExitCode: meta.agyExitCode,
             };
-
-            const targetPath = '.autodev-test-reports/' + actionsRunId + '.json';
-            const encoded = targetPath.split('/').map(encodeURIComponent).join('/');
-            const contentB64 = Buffer.from(JSON.stringify(report, null, 2), 'utf8').toString('base64');
-            await fetch('https://api.github.com/repos/' + repo + '/contents/' + encoded, {
-              method: 'PUT',
-              headers: ghHeaders,
-              body: JSON.stringify({
-                message: 'chore(autodev-test): publish structured test report for run ' + actionsRunId,
-                content: contentB64,
-                branch: channelBranch,
-              }),
-              signal: AbortSignal.timeout(20000),
-            }).catch((err) => appendLog('Warning: Failed to upload structured test report: ' + String(err)));
+            await upsertChannelJson(
+              '.autodev-test-reports/' + actionsRunId + '.json',
+              report,
+              'chore(autodev-test): publish blind E2E report for run ' + actionsRunId
+            );
           }
 
           async function main() {
-            removeEphemeralFiles();
-            const caps = detectAgyCapabilities();
-            appendLog('[Outer Harness] AGY CLI capabilities: ' + JSON.stringify(caps));
+            const initialHeadSha = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+            const caps = detectAndResolveAgyCapabilities();
+            appendLog('[AutoDev] VPS AGY capabilities synced: version=' + caps.version + ', models=' + caps.models.length + ', agents=' + caps.agents.length);
+            await upsertChannelJson(capsPath, caps, 'chore(autodev): sync live VPS AGY capabilities').catch(() => {});
 
-            await syncLiveComment(currentPhaseLabel);
+            await syncLiveComment('CODING (waiting for AGY completion)');
             const ticker = setInterval(() => {
               syncLiveComment(currentPhaseLabel).catch(() => {});
             }, 8000);
 
-            let activeSessionId = sessionMode === 'resume' && resumeSessionId && caps.supportsResume ? resumeSessionId : undefined;
-            let sessionReused = Boolean(activeSessionId);
-            let lastRoundResult = { exitCode: 1, earlyStopReason: '', capturedSessionId: undefined };
-            let lastVerify = null;
-            let roundsExecuted = 0;
-            let earlyStoppedAny = false;
+            let stashState = null;
+            let hydratedVaultFiles = [];
+            let agyRes = { exitCode: 1, elapsedMs: 0, capturedSessionId: undefined };
+            let pushInfo = { changed: false, commitSha: initialHeadSha.slice(0, 7) };
+            let verify = null;
+            const useResume = sessionMode === 'resume' && resumeSessionId && caps.supportsConversation ? resumeSessionId : undefined;
+            let sessionReused = Boolean(useResume);
 
             try {
-              for (let round = 1; round <= maxRounds; round++) {
-                roundsExecuted = round;
-                currentPhaseLabel = 'CODING (Round ' + round + '/' + maxRounds + ')';
-                await syncLiveComment(currentPhaseLabel);
+              // 1. Hide all E2E test code before AGY starts so coding stage is strictly blind
+              stashState = stashExistingE2eTests();
 
-                const prompt = buildRoundPrompt(round);
-                const useResumeThisRound = round === 1 ? activeSessionId : undefined;
-                let useStreamJson = Boolean(caps.supportsStreamJson);
-                let res = await runAgyRound({ round, prompt, resumeId: useResumeThisRound, useStreamJson });
+              // 2. Run AGY directly until completion (NO timeout; AGY commits & pushes directly)
+              currentPhaseLabel = 'CODING (' + resolvedModel + ' · ' + requestedMode + ')';
+              await syncLiveComment(currentPhaseLabel);
+              const prompt = buildCodingPrompt();
+              let useStreamJson = Boolean(caps.supportsStreamJson);
+              agyRes = await runAgyToCompletion({
+                prompt,
+                resumeId: useResume,
+                useStreamJson,
+                supportsMode: caps.supportsMode,
+                supportsConversation: caps.supportsConversation,
+              });
 
-                if (useStreamJson && res.exitCode !== 0 && res.elapsedMs < 20000 && !res.sentinelWritten) {
-                  appendLog('[Outer Harness] stream-json flag exited quickly; retrying Round ' + round + ' without --output-format stream-json.');
-                  useStreamJson = false;
-                  caps.supportsStreamJson = false;
-                  res = await runAgyRound({ round, prompt, resumeId: useResumeThisRound, useStreamJson: false });
-                }
-
-                if (useResumeThisRound && res.exitCode !== 0 && res.elapsedMs < 45000 && !res.sentinelWritten) {
-                  appendLog('[Outer Harness] Resuming session ' + useResumeThisRound + ' failed quickly; retrying Round 1 with clean fresh session.');
-                  sessionReused = false;
-                  activeSessionId = undefined;
-                  res = await runAgyRound({ round, prompt, resumeId: undefined, useStreamJson });
-                }
-
-                lastRoundResult = res;
-                if (res.capturedSessionId) activeSessionId = res.capturedSessionId;
-                if (res.earlyStopReason) earlyStoppedAny = true;
-
-                appendLog(
-                  '[Outer Harness] Round ' + round + ' AGY finished (exit=' + res.exitCode +
-                  ', elapsed=' + Math.round(res.elapsedMs / 1000) + 's, sentinel=' + res.sentinelWritten +
-                  (res.earlyStopReason ? ', earlyStop=' + res.earlyStopReason : '') + '). Starting deterministic 4-gate verification...'
-                );
-
-                currentPhaseLabel = 'VERIFYING (Round ' + round + '/' + maxRounds + ')';
-                await syncLiveComment(currentPhaseLabel);
-
-                lastVerify = runDeterministicVerification(round);
-                appendLog(
-                  '[Outer Harness] Round ' + round + ' Verification: ' +
-                  lastVerify.passed + ' passed / ' + lastVerify.failed + ' failed / ' + lastVerify.skipped + ' skipped' +
-                  ' (contractOk=' + lastVerify.contractOk + ', hasChanges=' + lastVerify.hasChanges + ', allPassed=' + lastVerify.allPassed + ')'
-                );
-
-                if (lastVerify.allPassed) {
-                  appendLog('[Outer Harness] ✅ 4-Gate Deterministic Verification PASSED on Round ' + round + '/' + maxRounds + '! Task Complete.');
-                  removeEphemeralFiles();
-                  break;
-                }
-
-                if (round < maxRounds) {
-                  writeVerificationFeedback(lastVerify);
-                  appendLog('[Outer Harness] Verification had ' + lastVerify.failed + ' failure(s). Wrote ' + feedbackFile + ' and starting Auto-Fix Round ' + (round + 1) + '/' + maxRounds + '...');
-                }
+              if (useStreamJson && agyRes.exitCode !== 0 && agyRes.elapsedMs < 20000) {
+                appendLog('[AutoDev] stream-json exited quickly; retrying without --output-format stream-json.');
+                useStreamJson = false;
+                agyRes = await runAgyToCompletion({
+                  prompt,
+                  resumeId: useResume,
+                  useStreamJson: false,
+                  supportsMode: caps.supportsMode,
+                  supportsConversation: caps.supportsConversation,
+                });
               }
+
+              if (useResume && agyRes.exitCode !== 0 && agyRes.elapsedMs < 45000) {
+                appendLog('[AutoDev] Resuming conversation failed quickly; retrying with fresh session.');
+                sessionReused = false;
+                agyRes = await runAgyToCompletion({
+                  prompt,
+                  resumeId: undefined,
+                  useStreamJson,
+                  supportsMode: caps.supportsMode,
+                  supportsConversation: caps.supportsConversation,
+                });
+              }
+
+              appendLog('[AutoDev] AGY completed naturally (exit=' + agyRes.exitCode + ', elapsed=' + Math.round(agyRes.elapsedMs / 1000) + 's).');
+
+              // 3. Ensure all AGY edits are committed & pushed to feature branch (while E2E tests are still isolated!)
+              pushInfo = ensureChangesCommittedAndPushed(initialHeadSha);
+
+              // 4. Restore baseline E2E tests + hydrate Blind Vault E2E tests & run independent verification
+              currentPhaseLabel = 'BLIND E2E VERIFICATION';
+              await syncLiveComment(currentPhaseLabel);
+              restoreExistingE2eTests(stashState);
+              stashState = null;
+              hydratedVaultFiles = await hydrateVaultE2eTests();
+              verify = runBlindVerification();
+
+              appendLog(
+                '[AutoDev] Blind Verification finished: ' +
+                verify.passed + ' passed / ' + verify.failed + ' failed / ' + verify.skipped + ' skipped'
+              );
             } finally {
               clearInterval(ticker);
-              removeEphemeralFiles();
+              if (stashState) {
+                restoreExistingE2eTests(stashState);
+              }
+              cleanupHydratedVaultTests(hydratedVaultFiles);
             }
 
-            const verifiedComplete = Boolean(lastVerify && lastVerify.allPassed);
-            const logicalAgyExit = verifiedComplete && lastRoundResult.earlyStopReason === 'sentinel_grace_elapsed'
-              ? 0
-              : lastRoundResult.exitCode;
-
-            if (lastVerify) {
-              await publishTestReport(lastVerify, {
-                roundsExecuted,
-                earlyStopped: earlyStoppedAny,
-                agySessionId: activeSessionId,
+            if (verify) {
+              await publishTestReport(verify, {
+                agySessionId: agyRes.capturedSessionId || useResume,
                 agySessionReused: sessionReused,
-                agyExitCode: logicalAgyExit,
+                agyExitCode: agyRes.exitCode,
               });
             }
 
-            const finalStatusLabel = verifiedComplete
-              ? 'COMPLETED (verified ' + lastVerify.passed + '/' + lastVerify.total + ' in ' + roundsExecuted + ' round' + (roundsExecuted > 1 ? 's' : '') + ')'
-              : 'FAILED (verification failed after ' + roundsExecuted + '/' + maxRounds + ' rounds: ' + (lastVerify ? lastVerify.failed + ' failed' : 'no checks') + ')';
-            await syncLiveComment(finalStatusLabel);
+            const verifiedOk = Boolean(verify && verify.allPassed && agyRes.exitCode === 0);
+            const finalStatus = verifiedOk
+              ? 'COMPLETED (blind verified ' + verify.passed + '/' + verify.total + ', commit ' + pushInfo.commitSha + ')'
+              : 'FAILED (agyExit=' + agyRes.exitCode + ', verify=' + (verify ? verify.passed + '/' + verify.total + ', ' + verify.failed + ' failed' : 'skipped') + ')';
+            await syncLiveComment(finalStatus);
 
             if (process.env.GITHUB_OUTPUT) {
               const lines = [
-                'verified_complete=' + (verifiedComplete ? 'true' : 'false'),
-                'rounds_executed=' + roundsExecuted,
-                'passed_count=' + (lastVerify ? lastVerify.passed : 0),
-                'failed_count=' + (lastVerify ? lastVerify.failed : 0),
-                'has_changes=' + (lastVerify && lastVerify.hasChanges ? 'true' : 'false'),
-                'early_stopped=' + (earlyStoppedAny ? 'true' : 'false'),
-                'agy_exit=' + logicalAgyExit,
-                'agy_session_id=' + (activeSessionId || ''),
-                'agy_session_reused=' + (sessionReused ? 'true' : 'false'),
+                'verified_complete=' + (verifiedOk ? 'true' : 'false'),
+                'passed_count=' + (verify ? verify.passed : 0),
+                'failed_count=' + (verify ? verify.failed : 0),
+                'changed=' + (pushInfo.changed ? 'true' : 'false'),
+                'commit_sha=' + pushInfo.commitSha,
+                'resolved_model=' + resolvedModel,
+                'agy_exit=' + agyRes.exitCode,
               ];
               fs.appendFileSync(process.env.GITHUB_OUTPUT, lines.join('\n') + '\n');
             }
 
-            process.exit(verifiedComplete ? 0 : 1);
+            process.exit(verifiedOk ? 0 : 1);
           }
 
           main().catch((err) => {
-            appendLog('[Outer Harness] Fatal error: ' + String(err));
+            appendLog('[AutoDev] Fatal runner error: ' + String(err));
             process.exit(1);
           });
-          OUTER_HARNESS_EOF
+          BLIND_RUNNER_EOF
 
           export LOG_FILE
           set +e
-          node /tmp/autodev-outer-harness.mjs
-          HARNESS_EXIT=$?
+          node /tmp/autodev-blind-runner.mjs
+          RUNNER_EXIT=$?
           set -e
-          rm -f /tmp/autodev-outer-harness.mjs "${LOG_FILE}"
-          exit "${HARNESS_EXIT}"
-
-      - name: Enforce Read-Only E2E Test & Spec Contract Integrity
-        shell: bash
-        run: |
-          LOCK_MANIFEST="${{ steps.lock.outputs.lock_manifest }}"
-          if [ -s "${LOCK_MANIFEST}" ]; then
-            if ! sha256sum -c "${LOCK_MANIFEST}"; then
-              echo "::error::One or more read-only test/spec contract files were modified or deleted by coding agent! Reverting and failing gate."
-              git checkout -- docs/spec.json tests/e2e.spec.ts tests/e2e 2>/dev/null || true
-              rm -f "${LOCK_MANIFEST}"
-              exit 1
-            fi
-            echo "Read-only contract verified: all locked E2E tests and docs/spec.json are unchanged."
-          fi
-          rm -f "${LOCK_MANIFEST}"
-
-      - name: Commit & Push Implementation to Draft PR Branch
-        id: push
-        shell: bash
-        run: |
-          rm -f .autodev-agent-done.json .autodev-verify-feedback.md
-          git config user.name "AutoDev AGY Runner"
-          git config user.email "autodev-runner@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No file changes produced by AGY."
-          else
-            git commit -m "feat(autodev): implement spec via VPS AGY (${{ steps.target.outputs.model }}) [verified: ${{ steps.agy.outputs.passed_count }} passed in ${{ steps.agy.outputs.rounds_executed }}r]"
-            git push origin "HEAD:${{ steps.target.outputs.branch }}"
-            SHA=$(git rev-parse --short HEAD)
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "commit_sha=${SHA}" >> "$GITHUB_OUTPUT"
-          fi
+          rm -f /tmp/autodev-blind-runner.mjs "${LOG_FILE}"
+          exit "${RUNNER_EXIT}"
 
       - name: Post Summary Comment on Draft PR
-        if: steps.target.outputs.pr_number != ''
+        if: always() && steps.target.outputs.pr_number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          if [ "${{ steps.push.outputs.changed }}" = "true" ]; then
+          if [ "${{ steps.agy.outputs.verified_complete }}" = "true" ]; then
             cat > /tmp/autodev-pr-summary.md <<'COMMENT_EOF'
-          ### AutoDev VPS AGY 外置闭环验证通过
-          - Model: `${{ steps.target.outputs.model }}`
-          - Commit: `${{ steps.push.outputs.commit_sha }}`
-          - Rounds: `${{ steps.agy.outputs.rounds_executed }}/3` · 通过校验 `${{ steps.agy.outputs.passed_count }}` 项（失败 `${{ steps.agy.outputs.failed_count }}` 项）
-          - 全量只读测试契约（含历次回归测试）完整性校验通过，结构化测试报告已同步至控制面。
-          - 请前往 AutoDev Studio「5. 验收与上线审批」或「6. 质量与自进化 (RSI)」查看测试结果并验收。
+          ### AutoDev VPS AGY 编码完成 · 独立盲测验证通过
+          - Model: `${{ steps.agy.outputs.resolved_model || steps.target.outputs.model }}` · Mode: `${{ steps.target.outputs.mode }}`
+          - Commit: `${{ steps.agy.outputs.commit_sha }}`
+          - 独立盲测校验：${{ steps.agy.outputs.passed_count }} 项通过 / ${{ steps.agy.outputs.failed_count }} 项失败（编码阶段对 E2E 测试集完全隔离）
+          - 请前往 AutoDev Studio「5. 验收与上线审批」进行人工验收与一键发布。
           COMMENT_EOF
           else
             cat > /tmp/autodev-pr-summary.md <<'COMMENT_EOF'
-          ### AutoDev VPS AGY 执行结束
-          - Model: `${{ steps.target.outputs.model }}`
-          - Rounds: `${{ steps.agy.outputs.rounds_executed }}/3` · 校验通过 `${{ steps.agy.outputs.passed_count }}` 项
-          - 本次执行未产生新的文件变更，请查看 Actions 日志。
+          ### AutoDev VPS AGY 执行结束 · 盲测校验发现待修复项
+          - Model: `${{ steps.agy.outputs.resolved_model || steps.target.outputs.model }}` · Mode: `${{ steps.target.outputs.mode }}`
+          - Commit: `${{ steps.agy.outputs.commit_sha }}` · AGY Exit: `${{ steps.agy.outputs.agy_exit }}`
+          - 独立盲测校验：${{ steps.agy.outputs.passed_count }} 项通过 / ${{ steps.agy.outputs.failed_count }} 项失败
+          - 完整结构化测试报告已同步至 AutoDev Studio「6. 质量与自进化 (RSI)」。
           COMMENT_EOF
           fi
           gh pr comment "${{ steps.target.outputs.pr_number }}" --body-file /tmp/autodev-pr-summary.md || true
