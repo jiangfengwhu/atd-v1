@@ -369,7 +369,17 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44727895990",
       "branch": "main",
       "occurredAt": "2026-11-20T11:28:49Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "ci_workflow",
+        "rootCauseSummary": "CI 流水线步骤 Execute VPS AGY Coding (No Timeout + Direct Push) & Blind Independent E2E Verification 执行失败，但截取到的日志仅包含 GitHub Actions 作业结束后的 Git 凭据清理与孤儿进程清理过程，缺少实际失败阶段的错误详情。",
+        "shouldCodifyAsRule": false,
+        "decisionRationale": "原始日志仅记录了作业后置清理阶段的输出，未包含具体失败堆栈、断言错误或环境异常信息，无法定位可复用的工程或测试规律，因此不应固化为永久 System Prompt 规则。",
+        "confidence": 0.85,
+        "appliedOutcome": "discarded",
+        "analyzedAt": "2026-11-20T12:30:41.855Z",
+        "model": "gemini-4-hydrogen"
+      }
     },
     {
       "id": "inc-603e6132",
@@ -488,5 +498,6 @@
       "updatedAt": "2026-11-20T11:08:12.838Z",
       "lastAppliedAt": "2026-11-20T11:32:44.854Z"
     }
-  ]
+  ],
+  "lastSyncedAt": "2026-11-20T12:30:41.857Z"
 }
