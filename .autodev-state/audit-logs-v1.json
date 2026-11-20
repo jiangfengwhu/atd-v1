@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-0dcbfcd8",
+    "timestamp": "2026-11-20T13:06:26.628Z",
+    "category": "approval",
+    "action": "release_approved",
+    "label": "验收通过并批准上线",
+    "actor": "验收审批人",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-ec6c3c00",
+    "prdTitle": "新版社区",
+    "branch": "autodev/feat-20261120-112741",
+    "prNumber": 7,
+    "status": "success",
+    "detail": "验收通过并合入 main（Commit 605149c），已自动部署生产：https://atd-v1.809740942.workers.dev"
+  },
+  {
     "id": "aud-e37df391",
     "timestamp": "2026-11-20T12:43:32.965Z",
     "category": "execution",
