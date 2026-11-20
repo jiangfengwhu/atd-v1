@@ -369,7 +369,7 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44727895990",
       "branch": "main",
       "occurredAt": "2026-11-20T11:28:49Z",
-      "analysisStatus": "pending"
+      "analysisStatus": "analyzing"
     },
     {
       "id": "inc-603e6132",
@@ -383,7 +383,34 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44728477037",
       "branch": "main",
       "occurredAt": "2026-11-20T11:40:31Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "test_assertion",
+        "rootCauseSummary": "Playwright 断言使用了宽泛的正则文本定位器 getByText(/加载失败|服务异常|error|retry|重试/i)，同时匹配到错误标题、刷新重试按钮等 3 个元素，触发了严格模式（strict mode）多元素冲突报错。",
+        "shouldCodifyAsRule": true,
+        "decisionRationale": "Decision 门控收入「待观察候选池」（通用性 98% · 泛化评分 2.03/3.0）：暂不占用注入预算，同类问题复发 ≥ 2 次或人工转正后自动生效。 Playwright 默认开启 strict mode，宽泛正则的 getByText 在错误态、弹窗等包含标题与操作按钮的复合 UI 中极易匹配多个元素导致测试误报，属于可复用的 E2E 测试编写规范。",
+        "confidence": 0.98,
+        "suggestedRule": {
+          "title": "避免宽泛正则触发 Playwright 严格模式冲突",
+          "targetStage": "qa_spec",
+          "severity": "recommended",
+          "promptDirective": "编写 Playwright 断言时，禁止对复合 UI 使用宽泛正则的 getByText()；应优先使用 getByRole、data-testid 或精确文本，若确需模糊匹配多个候选元素，必须显式追加 .first()，避免触发 strict mode 报错。",
+          "dedupeKey": "playwright-strict-mode-specific-locator"
+        },
+        "decisionGate": {
+          "model": "gemini-decision-1",
+          "generalizableProb": 0.9809,
+          "duplicateProb": 0.01,
+          "generalityScore": 2.029,
+          "chosenAction": "create_candidate",
+          "actionConfidence": 0.7858,
+          "evaluatedAt": "2026-11-20T12:29:32.709Z"
+        },
+        "appliedOutcome": "candidate_created",
+        "analyzedAt": "2026-11-20T12:29:32.709Z",
+        "model": "gemini-4-hydrogen + gemini-decision-1",
+        "generatedRuleId": "rsi-46589212"
+      }
     },
     {
       "id": "inc-bacf4991",
@@ -426,6 +453,23 @@
     }
   ],
   "rules": [
+    {
+      "id": "rsi-46589212",
+      "dedupeKey": "playwright-strict-mode-specific-locator",
+      "title": "避免宽泛正则触发 Playwright 严格模式冲突",
+      "targetStage": "qa_spec",
+      "severity": "recommended",
+      "status": "candidate",
+      "promptDirective": "编写 Playwright 断言时，禁止对复合 UI 使用宽泛正则的 getByText()；应优先使用 getByRole、data-testid 或精确文本，若确需模糊匹配多个候选元素，必须显式追加 .first()，避免触发 strict mode 报错。",
+      "rootCauseCategory": "test_assertion",
+      "sourceIncidentIds": [
+        "inc-603e6132"
+      ],
+      "hitCount": 1,
+      "appliedCount": 0,
+      "createdAt": "2026-11-20T12:29:32.709Z",
+      "updatedAt": "2026-11-20T12:29:32.709Z"
+    },
     {
       "id": "rsi-eb3a26f4",
       "dedupeKey": "github-secret-scanning-no-secrets",
