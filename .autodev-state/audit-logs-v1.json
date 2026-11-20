@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-7928dbb3",
+    "timestamp": "2026-11-20T11:42:10.218Z",
+    "category": "execution",
+    "action": "preview_deployed",
+    "label": "部署隔离预览环境",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-ec6c3c00",
+    "prdTitle": "新版社区",
+    "branch": "autodev/feat-20261120-112741",
+    "prNumber": 7,
+    "status": "success",
+    "detail": "部署隔离预览 Worker atd-v1-preview (https://atd-v1-preview.809740942.workers.dev)"
+  },
+  {
     "id": "aud-883329e0",
     "timestamp": "2026-11-20T11:32:46.398Z",
     "category": "execution",
