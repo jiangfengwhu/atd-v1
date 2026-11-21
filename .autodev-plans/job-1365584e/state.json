@@ -1,0 +1,20 @@
+{
+  "jobId": "job-1365584e",
+  "status": "queued",
+  "mode": "unified_single_turn",
+  "updatedAt": "2026-11-21T16:21:46.653Z",
+  "model": "gemini-4-neon-high",
+  "steps": {
+    "architect": {
+      "status": "running",
+      "message": "已入队，等待 Instabox AGY Runner 检出最新代码并启动单对话联合规划…"
+    },
+    "qa_spec": {
+      "status": "idle"
+    },
+    "qa_critic": {
+      "status": "idle"
+    }
+  },
+  "outputFiles": {}
+}
