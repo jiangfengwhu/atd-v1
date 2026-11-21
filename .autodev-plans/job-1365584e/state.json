@@ -1,28 +1,45 @@
 {
   "jobId": "job-1365584e",
-  "status": "running",
+  "status": "completed",
   "mode": "unified_single_turn",
-  "updatedAt": "2026-11-21T16:22:00.251Z",
+  "updatedAt": "2026-11-21T16:28:59.563Z",
   "headSha": "47da7f3347a7e83b8d99d56ed117929120bdd6ea",
   "actionsRunId": 44924166558,
   "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44924166558",
   "model": "gemini-4-neon-high",
   "steps": {
     "architect": {
-      "status": "running",
+      "status": "completed",
       "startedAt": "2026-11-21T16:22:00.251Z",
-      "message": "单对话联合规划中：正在阅读代码库并一次性生成架构方案、API 契约与原子任务树…"
+      "completedAt": "2026-11-21T16:28:59.563Z",
+      "durationMs": 419312,
+      "message": "单对话完成 · 识别 3 项歧义、5 项增量任务"
     },
     "qa_spec": {
-      "status": "running",
+      "status": "completed",
       "startedAt": "2026-11-21T16:22:00.251Z",
-      "message": "同会话同步产出接口测试清单与初版 Playwright E2E 脚本…"
+      "completedAt": "2026-11-21T16:28:59.563Z",
+      "durationMs": 419312,
+      "message": "单对话完成 · 生成 7 条接口用例与初版 E2E 测试"
     },
     "qa_critic": {
-      "status": "running",
+      "status": "completed",
       "startedAt": "2026-11-21T16:22:00.251Z",
-      "message": "同会话完成盲测安全评审并输出终版加固 E2E 套件…"
+      "completedAt": "2026-11-21T16:28:59.563Z",
+      "durationMs": 419312,
+      "message": "单对话完成 · 提出 6 项加固意见并锁定盲测 E2E 测试集"
     }
   },
-  "outputFiles": {}
+  "outputFiles": {
+    "architect": ".autodev-plans/job-1365584e/architect.json",
+    "qa_spec": ".autodev-plans/job-1365584e/qa_spec.json",
+    "qa_critic": ".autodev-plans/job-1365584e/qa_critic.json"
+  },
+  "tokenUsage": {
+    "inputTokens": 69651,
+    "outputTokens": 27087,
+    "totalTokens": 96738,
+    "source": "estimated",
+    "model": "gemini-4-neon-high"
+  }
 }
