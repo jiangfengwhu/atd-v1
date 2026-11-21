@@ -1,0 +1,178 @@
+{
+  "ambiguities": [
+    {
+      "id": "AMB-1",
+      "severity": "high",
+      "title": "评论迁移至动态详情页后与既有只读 E2E 回归契约（run-f734f054.spec.ts）的 DOM 兼容边界",
+      "detail": "PRD 要求为每条动态新增详情页并将评论移至详情页，这意味着首页 Feed 卡片不应再内联展开评论列表。但仓库中已存在的只读回归测试 tests/e2e/run-f734f054.spec.ts 会在首页找到包含帖子正文的 .post-card/article，点击其内部“评论”按钮后，继续在同一 postCard 定位器作用域内查找评论输入框、提交评论并校验新评论文本可见。",
+      "clarificationSuggestion": "首页 Feed 卡片彻底移除内联 Comments 展开逻辑，点击卡片正文、发布时间或评论按钮均跳转至 /posts/:id 动态详情页；同时详情页将动态主体与 Comments 评论区统一包裹在语义化的 <article className=\"post-card post-detail-card\"> 容器内，从而既严格落实“评论仅在详情页展示”，又 100% 兼容既有只读回归契约。"
+    },
+    {
+      "id": "AMB-2",
+      "severity": "high",
+      "title": "Cloudflare Workers 线上 /admin（及新增 /posts/:id）返回 Not Found 的根因与双层 SPA 回退边界",
+      "detail": "当前 wrangler.toml 中 compatibility_date 为 2024-09-23（早于 Cloudflare Workers Static Assets 启用 assets_navigation_prefers_asset_serving 的 2025-04-01），且 [assets] 未声明 binding = \"ASSETS\"；当请求到达 Worker 脚本 src/index.ts 时，app.notFound 对非 /api 路径直接返回 404 纯文本 Not Found。本地 src/node-server.ts 因额外挂载了 app.get('*', index.html) 掩盖了此缺陷。",
+      "clarificationSuggestion": "采用“边缘配置 + Worker 运行时兜底”双层修复：将 wrangler.toml 的 compatibility_date 升级至 2025-04-01 并在 [assets] 中添加 binding = \"ASSETS\"；同时在 src/index.ts 的 app.notFound 中针对非 /api、非缺失静态资源文件（如 /assets/* 或 .js/.css/.png/.map 等后缀）的 GET/HEAD 请求，通过 c.env.ASSETS.fetch('/index.html') 回退返回 SPA 入口页，确保浏览器导航、页面刷新与非导航 HTTP 请求访问 /admin 与 /posts/:id 均稳定返回 200 HTML。"
+    },
+    {
+      "id": "AMB-3",
+      "severity": "medium",
+      "title": "动态详情页 URL 规范、浏览点击计数时机与无效动态 ID（404）交互体验",
+      "detail": "PRD 未明确动态详情页的路由路径格式、从右侧“热门动态”点击后的跳转行为、进入详情页是否自动累加点击量，以及直接访问不存在的动态 ID 时的兜底界面。",
+      "clarificationSuggestion": "统一采用前端 History API 路由 /posts/:id（支持直达链接、刷新与浏览器前进/后退）；点击首页动态卡片正文/时间/评论按钮或右侧栏热门动态项均进入 /posts/:id；进入详情页挂载成功时调用一次 POST /api/v1/posts/:id/click（使用 ref 防 React StrictMode 重复计数）；遇到 404_POST_NOT_FOUND 时展示“动态不存在或已被删除”及“返回首页”按钮。"
+    }
+  ],
+  "architectureSummary": "在现有 Cloudflare Workers + Hono + D1（兼容本地 node:sqlite）与 React 19 + Vite 6 架构上进行增量迭代，无需修改或新增 SQL 迁移脚本（0001~0003 迁移已完整覆盖动态、媒体、评论及四维统计表）。核心包含两部分改造：1）根治 Cloudflare Workers SPA 路由 404 问题：将 wrangler.toml 的 compatibility_date 升级至 2025-04-01 并补充 [assets] binding = \"ASSETS\"，在 src/types.ts 与 worker-configuration.d.ts 扩展可选 ASSETS?: Fetcher 绑定，在 src/index.ts 的 app.notFound 中为非 /api 且非静态资源文件后缀的 GET/HEAD 请求回退调用 c.env.ASSETS.fetch('/index.html')（放在 notFound 钩子中可避免与 src/node-server.ts 的 serveStatic 及兜底路由冲突），同步在 src/node-server.ts 保持缺失静态资源返回 404、vite.config.ts 显式锁定 base: '/'，确保 /admin、/admin/* 与 /posts/:id 在线上 Workers 与本地 Node 双端均可直接打开与刷新；2）新增动态详情页并将评论迁移至详情页：在 client/App.tsx 引入基于 History API（pushState + popstate）的轻量前端路由分发（/、/posts/:id、/admin），新增 client/components/PostDetail.tsx 展示完整图文、灯箱大图、四维真实互动统计（进页单次累加点击量，支持点赞/转发实时切换）与嵌套在语义 <article className=\"post-card post-detail-card\"> 内的 Comments 评论区，移除 client/components/Feed.tsx 中的内联评论展开状态并将卡片点击、评论按钮及右侧热门动态统一导流至 /posts/:id；同时在 src/routes/comments.ts 加固帖子存在性校验与同帖 parent_id 归属校验。",
+  "techDecisions": [
+    "采用轻量级原生 History API（pushState + popstate）路由状态机替代引入额外路由库，保持前端包体精简且与现有 App/AdminPage 分发逻辑无缝衔接。",
+    "在 wrangler.toml 同步升级 compatibility_date 至 2025-04-01 并声明 [assets] binding = \"ASSETS\"，配合 src/index.ts app.notFound 的 ASSETS.fetch('/index.html') 兜底，同时覆盖浏览器导航请求（边缘直出）与非导航 HTTP 请求（Worker 兜底）。",
+    "将 Worker 的 SPA HTML 回退放在 app.notFound 而非 app.get('*') 中，确保 src/node-server.ts 导入同一 Hono app 后挂载的 serveStatic 与本地回退逻辑不受注册顺序干扰，并对 /api/* 与缺失静态资源（/assets/*、.js/.css/.map 等）严格返回 404 防止 MIME 错配。",
+    "详情页将动态主体与 Comments 评论区共同包裹在 <article className=\"post-card post-detail-card\"> 中，首页 Feed 完全移除内联评论渲染，既彻底满足 PRD 要求又保证既有只读回归测试 tests/e2e/run-f734f054.spec.ts 零修改通过。",
+    "完全复用已有 D1/SQLite 数据表与 /api/v1/posts/:id、/click、/like、/repost、/comments 接口，不改动任何已执行 SQL 迁移，仅在 comments 路由补充 GET 404 校验与 POST parent_id 同帖归属校验防止跨帖评论注入。"
+  ],
+  "apiContracts": [
+    {
+      "id": "API-1",
+      "method": "GET",
+      "path": "/api/v1/posts/:id",
+      "summary": "获取单条动态详情（含作者名、多图列表、点击/点赞/转发/评论真实统计及当前用户互动状态）",
+      "requestSchema": "Path param: id (string); Optional Header: Authorization Bearer <token> 或 x-browser-fingerprint",
+      "responseSchema": "{ id, user_id, author_name, content, images: [{ id, url, mime_type }], clicks_count, views_count, likes_count, reposts_count, comments_count, user_liked, user_reposted, created_at }",
+      "errorCodes": [
+        "404",
+        "500"
+      ]
+    },
+    {
+      "id": "API-2",
+      "method": "POST",
+      "path": "/api/v1/posts/:id/click",
+      "summary": "原子累加动态点击/浏览量，用于进入动态详情页或查看图片时记录真实访问统计",
+      "requestSchema": "Path param: id (string)",
+      "responseSchema": "{ post_id, clicks_count, views_count }",
+      "errorCodes": [
+        "404",
+        "500"
+      ]
+    },
+    {
+      "id": "API-3",
+      "method": "GET",
+      "path": "/api/v1/posts/:postId/comments",
+      "summary": "按时间正序获取指定动态下的全部评论与嵌套回复，动态不存在时返回 404_POST_NOT_FOUND",
+      "requestSchema": "Path param: postId (string)",
+      "responseSchema": "{ comments: [{ id, post_id, user_id, author_name, parent_id, content, created_at }] }",
+      "errorCodes": [
+        "404",
+        "500"
+      ]
+    },
+    {
+      "id": "API-4",
+      "method": "POST",
+      "path": "/api/v1/posts/:postId/comments",
+      "summary": "在动态详情页发表评论或回复已有评论，校验身份鉴权、非空内容、目标动态存在性及 parent_id 同帖归属",
+      "requestSchema": "Headers: Authorization Bearer <token> 或 x-browser-fingerprint; Body: { content: string (non-empty), parent_id?: string | null }",
+      "responseSchema": "{ id, post_id, user_id, author_name, parent_id, content, created_at }",
+      "errorCodes": [
+        "400",
+        "401",
+        "404",
+        "500"
+      ]
+    },
+    {
+      "id": "API-5",
+      "method": "GET",
+      "path": "/admin | /admin/* | /posts/:id",
+      "summary": "SPA 前端路由入口回退契约：Cloudflare Workers 与本地 Node 服务对非 /api 且非缺失静态资源文件的页面路径返回 200 text/html 入口页，对 /api/* 返回 JSON 404，对缺失静态资源（如 /assets/*.js）返回 404",
+      "requestSchema": "GET/HEAD request to SPA pathname (/admin, /admin/*, /posts/:id)",
+      "responseSchema": "HTTP 200 text/html (dist/index.html SPA shell)",
+      "errorCodes": [
+        "404"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-01",
+      "title": "修复 Cloudflare Workers 与本地服务的 SPA 路由回退（解决 /admin 与 /posts/:id 404）",
+      "module": "Cloudflare Workers / Server Routing",
+      "description": "1. 更新 wrangler.toml：将 compatibility_date 升级至 \"2025-04-01\"（保留 compatibility_flags = [\"nodejs_compat\"]），在 [assets] 区块补充 binding = \"ASSETS\"，保留 directory = \"./dist\" 与 not_found_handling = \"single-page-application\"。\n2. 在 src/types.ts 的 Env 接口和 worker-configuration.d.ts 中新增可选属性 ASSETS?: Fetcher。\n3. 修改 src/index.ts 的 app.notFound 回调：/api 前缀继续返回 JSON 404（404_NOT_FOUND）；对非 /api 的 GET/HEAD 请求，若路径为缺失静态资源（以 /assets/ 开头或带常见静态后缀如 .js/.css/.map/.png/.jpg/.jpeg/.gif/.webp/.svg/.ico/.woff/.woff2/.json）则返回 404 Not Found；否则在存在 c.env?.ASSETS 时拉取 /index.html 并以 200 HTML 返回。\n4. 同步检查 src/node-server.ts 的 app.get('*', ...) 兜底逻辑，对缺失的 /assets/* 或静态文件后缀返回 404 而非 index.html，确保 /admin、/admin/、/posts/:id 等 SPA 路径返回 200 text/html；在 vite.config.ts 显式配置 base: '/' 确保嵌套路由下静态资源绝对路径加载无误。",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "wrangler.toml 包含 compatibility_date = \"2025-04-01\" 且 [assets] 配置了 binding = \"ASSETS\" 与 not_found_handling = \"single-page-application\"",
+        "GET /admin、GET /admin/ 与 GET /posts/:id 在浏览器直接访问、刷新以及非导航 HTTP 请求（无 Sec-Fetch-Mode）下均返回 HTTP 200 且 Content-Type 为 text/html",
+        "GET /api/v1/non-existent 仍返回 HTTP 404 JSON（包含 404_NOT_FOUND）",
+        "GET /assets/non-existent-file.js 返回 HTTP 404 而非 index.html",
+        "npm run build（vite build && tsc --noEmit）零报错通过"
+      ],
+      "estimatedComplexity": "S"
+    },
+    {
+      "id": "T-02",
+      "title": "加固动态详情与评论后端接口边界校验",
+      "module": "Backend API",
+      "description": "检查并增量加固 src/routes/comments.ts 与 src/routes/posts.ts：\n1. 在 GET /api/v1/posts/:postId/comments 中先查询 posts 表确认目标动态存在，若不存在则返回 404 与 { error: '404_POST_NOT_FOUND', message: 'Target post not found' }。\n2. 在 POST /api/v1/posts/:postId/comments 中，当请求体传入非空 parent_id 时校验其类型为字符串且对应父评论存在并归属于当前 postId；若不存在或跨帖引用则返回 400 与 { error: '400_INVALID_PARENT', message: 'Parent comment not found in this post' }。\n3. 确认 GET /api/v1/posts/:id 返回完整字段（images、clicks_count、views_count、likes_count、reposts_count、comments_count、user_liked、user_reposted、author_name），且对不存在 ID 返回 404_POST_NOT_FOUND。",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "GET /api/v1/posts/:id 对有效动态返回 200 及完整统计和图片数组，对不存在 ID 返回 404（404_POST_NOT_FOUND）",
+        "GET /api/v1/posts/:postId/comments 对不存在动态返回 404（404_POST_NOT_FOUND），对有效动态按 created_at ASC 返回评论列表",
+        "POST /api/v1/posts/:postId/comments 拒绝跨帖或不存在的 parent_id 并返回 400（400_INVALID_PARENT），正常根评论和同帖嵌套回复返回 201",
+        "保留所有既有评论、点赞、转发、点击与站内信接口的向后兼容性"
+      ],
+      "estimatedComplexity": "S"
+    },
+    {
+      "id": "T-03",
+      "title": "前端引入轻量 History API 路由分发（支持 /、/posts/:id、/admin）",
+      "module": "Frontend Routing",
+      "description": "改造 client/App.tsx 实现响应式的客户端路径路由：\n1. 使用 React state 维护当前 pathname 并监听 window popstate 事件，提供统一的 navigate(to: string) 辅助函数（调用 window.history.pushState 并同步 state、滚动至顶部）。\n2. 当 pathname 为 /admin 或以 /admin/ 开头时渲染 AdminPage（保持全站公开页面不暴露任何管理员入口链接）。\n3. 当 pathname 匹配 /posts/:id（decodeURIComponent 提取 postId）时，在社区三栏布局的主内容区渲染 PostDetail 页面，顶部标题区切换为详情页返回栏。\n4. 点击左侧导航“动态 Feed”或 Logo 时导航回 / 并展示 Feed；点击“站内信”时若当前处于详情页则先切回 / 并激活站内信标签；右侧“热门动态”卡片中的每条热门动态点击后直接 navigate(`/posts/${item.id}`) 进入对应动态详情页。",
+      "dependsOn": [
+        "T-01"
+      ],
+      "acceptanceCriteria": [
+        "直接访问 /admin、/admin/ 均可正常渲染管理员登录页，无 Not Found 错误，且首页与详情页均不暴露管理员链接",
+        "访问 /posts/:id 可正确解析 postId 并展示动态详情页，支持页面刷新与浏览器前进/后退按钮",
+        "点击右侧栏“热门动态”条目可直接跳转至该动态详情页 /posts/:id",
+        "从详情页点击左侧“动态 Feed”或“站内信”可平滑切回对应视图且导航激活态正确"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-04",
+      "title": "新增动态详情页组件 PostDetail 并承接评论区与实时互动",
+      "module": "Frontend Post Detail",
+      "description": "新增 client/components/PostDetail.tsx，并按需优化 client/components/Comments.tsx 与 client/styles.css：\n1. 顶部吸顶栏提供“返回”按钮（aria-label=\"返回\"，站内跳入时返回首页/上一页，直达 URL 时安全返回 /）与“动态详情”标题。\n2. 挂载时通过 GET /api/v1/posts/:id 加载动态详情，并使用 useRef 按 postId 去重仅触发一次 POST /api/v1/posts/:id/click 记录真实点击量，同步更新详情页统计与侧边栏社区概览（onStatsChange）。\n3. 将动态完整正文、作者头像/名称/句柄、完整发布时间、“联系作者”按钮、1-4 张大图网格（支持 ImageLightbox 预览）、四维真实互动栏（评论/转发/点赞/点击数）以及 <Comments /> 评论区统一包裹在语义化的 <article className=\"post-card post-detail-card x-tweet-detail-card\"> 容器内。\n4. 详情页内支持点赞/转发实时切换、点击评论图标聚焦评论输入框、发表评论与嵌套回复后实时累加 comments_count 并刷新侧边栏统计。\n5. 完善骨架屏加载态、动态不存在时的 404 友好提示页（含“返回首页”按钮）以及接口异常时的“重试”按钮；补充明暗双主题与移动端响应式样式。",
+      "dependsOn": [
+        "T-02",
+        "T-03"
+      ],
+      "acceptanceCriteria": [
+        "动态详情页完整展示正文、多图灯箱预览、作者与时间信息、四维真实互动统计及完整评论列表与发表/回复表单",
+        "进入详情页仅触发一次点击量累加，点赞/转发/发表评论后页面统计与持久化数据实时一致，刷新后不丢失",
+        "评论区完整保留空白校验、嵌套回复（parent_id）、取消回复与 XSS 安全文本渲染",
+        "访问不存在的 /posts/:id 时优雅展示“动态不存在”提示及返回首页按钮，网络/服务端异常时展示错误提示与重试按钮",
+        "动态主体与 Comments 位于同一语义 <article className=\"post-card ...\"> 容器内，兼顾语义清晰与既有只读 E2E 回归契约"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-05",
+      "title": "重构首页 Feed 卡片移除内联评论并统一导流至动态详情页",
+      "module": "Frontend Feed",
+      "description": "修改 client/components/Feed.tsx 与 client/styles.css：\n1. 移除 Feed 组件内对 Comments 的直接渲染以及 activeCommentsPostId 状态，确保首页信息流不再内联展开评论区。\n2. 为 FeedProps 增加 onOpenPostDetail: (postId: string) => void 回调；点击动态卡片正文区域、发布时间链接（语义化 <a href={`/posts/${post.id}`}>）或底部“评论”按钮时调用 onOpenPostDetail(post.id) 跳转至 /posts/:id 动态详情页。\n3. 对卡片内独立的原地交互控件（点赞按钮、转发按钮、图片灯箱缩略图按钮、联系作者按钮）调用 e.stopPropagation()，避免误触发详情页跳转；为卡片增加细腻的悬停高亮与指针反馈（cursor: pointer）。\n4. 避免在 Feed 跳转前重复调用 recordClick（点击计数由详情页挂载时统一单次上报），图片灯箱原地打开时继续保留点击上报。",
+      "dependsOn": [
+        "T-03",
+        "T-04"
+      ],
+      "acceptanceCriteria": [
+        "首页 Feed 列表不再内联渲染任何评论列表或评论输入框",
+        "点击 Feed 卡片正文、发布时间或评论按钮均平滑跳转至 /posts/:id 详情页",
+        "在 Feed 卡片直接点击点赞、转发、查看大图或联系作者不会误跳离首页",
+        "全部存量 E2E 契约（tests/e2e.spec.ts 与 tests/e2e/run-f734f054.spec.ts）及新增详情页与 /admin 验收测试全部通过"
+      ],
+      "estimatedComplexity": "S"
+    }
+  ]
+}
