@@ -1,0 +1,16 @@
+{
+  "jobId": "job-45d371c7",
+  "repoFullName": "jiangfengwhu/atd-v1",
+  "baseBranch": "main",
+  "prdTitle": "动态详情页",
+  "prdContent": "1. 针对每条动态添加详情页，评论也放到详情页\n2. 修复https://atd-v1.809740942.workers.dev/admin 打不开管理员页面，显示not found",
+  "effectiveTechStack": "React + Vite + TypeScript (Cloudflare Workers Static Assets) + Hono API on Cloudflare Workers + Cloudflare D1 (SQLite) + Cloudflare KV",
+  "isDefaultCloudflare": true,
+  "agyModel": "gemini-4-neon-high",
+  "createdAt": "2026-11-21T15:46:15.241Z",
+  "rsiSystemPrompts": {
+    "architect": "=== RSI 系统自进化强约束规则 (Architect 架构规划 · 已自动注入 1 条历史经验) ===\n以下规则均由系统经 Decision 门控筛选并从历史真实故障中提炼，本轮必须严格遵守以避免重复踩坑：\n1. [CRITICAL] (流水线与权限 · 触发 1 次) 严禁在生成内容中夹带密钥特征串：严禁在规划文档、代码、示例配置或测试数据中写入真实密钥或符合常见密钥格式（如 sk-、ghp_、AKIA 等）的占位符，应改用无密钥特征的占位文本（如 YOUR_API_KEY_HERE），避免触发 GitHub Secret Scanning 拦截（409）。",
+    "qa_spec": "=== RSI 系统自进化强约束规则 (QA Spec 测试规格 · 已自动注入 1 条历史经验) ===\n以下规则均由系统经 Decision 门控筛选并从历史真实故障中提炼，本轮必须严格遵守以避免重复踩坑：\n1. [CRITICAL] (流水线与权限 · 触发 1 次) 严禁在生成内容中夹带密钥特征串：严禁在规划文档、代码、示例配置或测试数据中写入真实密钥或符合常见密钥格式（如 sk-、ghp_、AKIA 等）的占位符，应改用无密钥特征的占位文本（如 YOUR_API_KEY_HERE），避免触发 GitHub Secret Scanning 拦截（409）。",
+    "qa_critic": "=== RSI 系统自进化强约束规则 (QA Critic 边界评审 · 已自动注入 1 条历史经验) ===\n以下规则均由系统经 Decision 门控筛选并从历史真实故障中提炼，本轮必须严格遵守以避免重复踩坑：\n1. [CRITICAL] (流水线与权限 · 触发 1 次) 严禁在生成内容中夹带密钥特征串：严禁在规划文档、代码、示例配置或测试数据中写入真实密钥或符合常见密钥格式（如 sk-、ghp_、AKIA 等）的占位符，应改用无密钥特征的占位文本（如 YOUR_API_KEY_HERE），避免触发 GitHub Secret Scanning 拦截（409）。"
+  }
+}
