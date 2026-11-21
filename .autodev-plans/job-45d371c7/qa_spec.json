@@ -1,0 +1,66 @@
+{
+  "apiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/api/v1/posts/:id",
+      "method": "GET",
+      "scenario": "获取已发布动态的完整详情及四维统计字段",
+      "expectedStatus": 200,
+      "assertion": "返回 JSON 包含 id、content、author_name、images 数组以及 clicks_count、likes_count、reposts_count、comments_count"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/api/v1/posts/:id",
+      "method": "GET",
+      "scenario": "查询不存在的动态 ID 返回 404",
+      "expectedStatus": 404,
+      "assertion": "返回 JSON 包含错误码 404_POST_NOT_FOUND"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/v1/posts/:id/click",
+      "method": "POST",
+      "scenario": "进入动态详情页时累加点击/浏览量",
+      "expectedStatus": 200,
+      "assertion": "clicks_count 与 views_count 原子加 1 并与 GET /api/v1/posts/:id 一致"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/api/v1/posts/:postId/comments",
+      "method": "POST",
+      "scenario": "在动态详情页发表根评论与嵌套回复",
+      "expectedStatus": 201,
+      "assertion": "返回评论对象包含 id、post_id、parent_id、content，且 GET 评论列表可按时间顺序查回"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/v1/posts/:postId/comments",
+      "method": "GET",
+      "scenario": "查询不存在动态的评论列表返回 404",
+      "expectedStatus": 404,
+      "assertion": "返回 JSON 包含 404_POST_NOT_FOUND"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/admin",
+      "method": "GET",
+      "scenario": "直接请求 /admin 管理员页面路径返回 SPA HTML 而非 Not Found",
+      "expectedStatus": 200,
+      "assertion": "响应头 Content-Type 包含 text/html 且响应体包含 SPA 挂载节点而非 Not Found"
+    },
+    {
+      "id": "TC-07",
+      "endpoint": "/posts/:id",
+      "method": "GET",
+      "scenario": "直接请求动态详情页路径返回 SPA HTML",
+      "expectedStatus": 200,
+      "assertion": "响应头 Content-Type 包含 text/html 且响应体包含 SPA 挂载节点"
+    }
+  ],
+  "e2eTestCode": "import { test, expect } from '@playwright/test';\n\nconst FP_HEADER = { 'x-browser-fingerprint': 'qa-detail-spec-fp-001' };\n\ntest.describe('Post Detail & Admin Route Spec (Draft)', () => {\n  test('API returns post detail, increments click count, and manages comments', async ({ request }) => {\n    const postText = `Spec Detail Post ${Date.now()}`;\n    const createRes = await request.post('/api/v1/posts', {\n      headers: FP_HEADER,\n      data: { content: postText },\n    });\n    expect(createRes.status()).toBe(201);\n    const { id: postId } = await createRes.json();\n\n    const detailRes = await request.get(`/api/v1/posts/${postId}`, { headers: FP_HEADER });\n    expect(detailRes.status()).toBe(200);\n    const detail = await detailRes.json();\n    expect(detail.id).toBe(postId);\n    expect(detail.content).toBe(postText);\n    expect(Array.isArray(detail.images)).toBe(true);\n\n    const clickRes = await request.post(`/api/v1/posts/${postId}/click`);\n    expect(clickRes.status()).toBe(200);\n    const clickBody = await clickRes.json();\n    expect(clickBody.clicks_count).toBeGreaterThanOrEqual(1);\n\n    const commentRes = await request.post(`/api/v1/posts/${postId}/comments`, {\n      headers: FP_HEADER,\n      data: { content: 'First detail comment' },\n    });\n    expect(commentRes.status()).toBe(201);\n    const comment = await commentRes.json();\n    expect(comment.post_id).toBe(postId);\n\n    const listRes = await request.get(`/api/v1/posts/${postId}/comments`);\n    expect(listRes.status()).toBe(200);\n    const listBody = await listRes.json();\n    expect(listBody.comments.some((c: { id: string }) => c.id === comment.id)).toBe(true);\n  });\n\n  test('User navigates from feed to post detail page and posts comment', async ({ page, request }) => {\n    const postText = `Detail UI Post ${Date.now()}`;\n    const createRes = await request.post('/api/v1/posts', {\n      headers: FP_HEADER,\n      data: { content: postText },\n    });\n    const { id: postId } = await createRes.json();\n\n    await page.goto('/');\n    const main = page.getByRole('main');\n    const card = main.locator('article').filter({ hasText: postText }).first();\n    await expect(card).toBeVisible();\n    await expect(card.getByPlaceholder(/撰写评论|撰写回复/i)).toHaveCount(0);\n\n    await card.getByRole('button', { name: /评论/i }).first().click();\n    await expect(page).toHaveURL(new RegExp(`/posts/${postId}`));\n    await expect(main.getByText(postText).first()).toBeVisible();\n\n    const commentInput = main.getByPlaceholder(/撰写评论|撰写回复/i).first();\n    await expect(commentInput).toBeVisible();\n    const replyText = `Detail Reply ${Date.now()}`;\n    await commentInput.fill(replyText);\n    await main.getByRole('button', { name: /回复/i }).first().click();\n    await expect(main.getByText(replyText).first()).toBeVisible();\n  });\n\n  test('/admin route loads admin login page without Not Found', async ({ page }) => {\n    const response = await page.goto('/admin');\n    expect(response?.status()).toBe(200);\n    await expect(page.getByRole('heading', { name: /管理员登录/i })).toBeVisible();\n    await expect(page.getByLabel(/管理员账号/i)).toBeVisible();\n    await expect(page.getByLabel(/管理员密码/i)).toBeVisible();\n  });\n});\n",
+  "coverageNotes": [
+    "覆盖单条动态详情接口 GET /api/v1/posts/:id 与点击统计 POST /api/v1/posts/:id/click 核心链路",
+    "验证首页动态卡片不再内联渲染评论区，点击评论入口跳转至 /posts/:id 并在详情页完成评论提交",
+    "验证 /admin 隐藏路径可正常返回 200 并渲染管理员登录界面"
+  ]
+}
