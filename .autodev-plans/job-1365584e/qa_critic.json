@@ -1,0 +1,130 @@
+{
+  "reviewSummary": "经对初版 QA 规格进行边界、异常输入、交互隔离、安全及并发五维审计，发现 6 项关键缺口（含 /admin/ 尾斜杠与 API/静态资源 404 不被 SPA 劫持验证、无效 postId 与跨帖 parent_id 校验、列表卡片点赞/转发防冒泡隔离、详情页正文与评论 XSS 防护、并发评论/点击原子性及 500 恢复验证）。已在终版接口清单与盲测 E2E 脚本中全面补齐，并严格执行 Playwright 严格模式卫生规范（所有 .or() 链均附带 .first()，且主内容断言均限定在 main 区域内避免与右侧热门动态冲突）。",
+  "findings": [
+    {
+      "id": "CRIT-01",
+      "category": "security",
+      "severity": "high",
+      "issue": "初版仅测试 GET /admin，未验证带尾斜杠的 /admin/、管理员登录鉴权（错误凭据拦截与默认 admin/admin 登录）、公开首页不暴露 /admin 隐藏入口，且未检验未匹配 /api/* 与缺失静态文件（如 /assets/missing.js）不会被 SPA 回退错误返回 200 HTML。",
+      "recommendation": "在终版测试中补齐 /admin 与 /admin/ 双路径 200 HTML 验证、错误密码拒绝与默认管理员登录验证（不修改密码保证幂等）、公开页零 /admin 链接检查，以及 /api/v1/non-existent JSON 404 与缺失静态资源 404 回归断言。"
+    },
+    {
+      "id": "CRIT-02",
+      "category": "invalid_input",
+      "severity": "high",
+      "issue": "初版未测试访问不存在动态详情页（/posts/non-existent-post-99999）的前端 404 友好兜底与返回首页能力，也未验证 GET /api/v1/posts/:postId/comments 对不存在动态返回 404 及 POST 评论传入跨帖/不存在 parent_id 的非法参数拦截。",
+      "recommendation": "新增不存在动态详情页的浏览器直达 404 兜底测试，以及评论接口的未鉴权 401、空白内容 400、不存在动态 404 与跨帖/无效 parent_id 拒绝契约测试。"
+    },
+    {
+      "id": "CRIT-03",
+      "category": "ui_interaction",
+      "severity": "medium",
+      "issue": "初版未验证信息流卡片内点击点赞或转发按钮时阻止事件冒泡（不误跳转到详情页），也未验证点击卡片评论按钮直达详情页、详情页内空评论拦截、嵌套回复（parent_id）及刷新后评论持久化。",
+      "recommendation": "补全列表卡片点赞/转发留页断言、点击评论按钮进入 /posts/:id 断言、详情页空评论错误提示、顶级评论与嵌套回复发表、以及 page.reload() 深链刷新后动态与评论完整持久化验证。"
+    },
+    {
+      "id": "CRIT-04",
+      "category": "security",
+      "severity": "high",
+      "issue": "新增的动态详情页独立渲染动态正文与评论内容，初版缺少针对详情页的 XSS 注入防护检测，存在新组件误用危险 HTML 注入的风险。",
+      "recommendation": "向详情页注入包含事件处理器的脚本载荷（动态正文与评论内容双重注入），验证内容按纯文本安全转义展示，无弹窗且全局标记未被执行。"
+    },
+    {
+      "id": "CRIT-05",
+      "category": "concurrency",
+      "severity": "medium",
+      "issue": "初版缺少对同一动态并发发表多条评论及并发点击计数的原子性与无碰撞验证，也缺少详情接口返回 500 时的前端错误恢复测试。",
+      "recommendation": "新增同帖 5 并发评论写入（断言 5 个唯一 comment id 且详情 comments_count 精确增长 5）与 5 并发点击累加测试，并在浏览器端拦截单帖详情接口返回 500 后验证错误提示与重试恢复。"
+    },
+    {
+      "id": "CRIT-06",
+      "category": "boundary",
+      "severity": "medium",
+      "issue": "详情页中右侧栏可能同时渲染热门动态摘要，直接全局 page.getByText 易触发 Playwright strict mode 多元素冲突；同时需验证详情页内点赞/转发交互持久化及顶部返回导航。",
+      "recommendation": "所有动态与评论页面断言严格限定在 page.getByRole('main') 作用域并规范使用 .first()，补充详情页点赞/转发刷新持久化与返回首页验证。"
+    }
+  ],
+  "finalApiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/admin",
+      "method": "GET",
+      "scenario": "直接 HTTP GET 请求 /admin 与 /admin/（无浏览器导航头）验证 SPA 回退",
+      "expectedStatus": 200,
+      "assertion": "两者均返回 HTTP 200、Content-Type 包含 text/html、响应体含 #root 且不等于 Not Found"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/posts/:id",
+      "method": "GET",
+      "scenario": "直接 HTTP GET 请求动态详情深链 /posts/:id 验证 SPA 回退",
+      "expectedStatus": 200,
+      "assertion": "返回 HTTP 200 且 Content-Type 包含 text/html"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/v1/non-existent-route",
+      "method": "GET",
+      "scenario": "访问不存在的 API 路径确保不被 SPA HTML 劫持",
+      "expectedStatus": 404,
+      "assertion": "返回 HTTP 404 且响应为包含 404_NOT_FOUND 的 JSON"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/assets/non-existent-bundle-99999.js",
+      "method": "GET",
+      "scenario": "访问不存在的静态资源文件确保不错误回退返回 index.html",
+      "expectedStatus": 404,
+      "assertion": "返回 HTTP 404 而非 200 HTML"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/v1/posts/:id",
+      "method": "GET",
+      "scenario": "查询已存在动态与不存在动态的单条详情",
+      "expectedStatus": 200,
+      "assertion": "存在动态返回 200 及完整正文、images、likes_count、reposts_count、comments_count、clicks_count、views_count、user_liked、user_reposted；不存在动态返回 404 (404_POST_NOT_FOUND)"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/api/v1/posts/:postId/comments",
+      "method": "GET",
+      "scenario": "分别查询存在动态与不存在动态的评论列表",
+      "expectedStatus": 200,
+      "assertion": "存在动态返回 200 { comments: [...] }；不存在动态返回 404 (404_POST_NOT_FOUND)"
+    },
+    {
+      "id": "TC-07",
+      "endpoint": "/api/v1/posts/:postId/comments",
+      "method": "POST",
+      "scenario": "校验评论未鉴权、空/空白内容、不存在动态、跨帖或无效 parent_id，以及正常顶级评论与同帖嵌套回复",
+      "expectedStatus": 201,
+      "assertion": "未鉴权返回 401、空内容返回 400、不存在动态返回 404、无效/跨帖 parent_id 返回 400/404；合法请求返回 201 且 GET /api/v1/posts/:id 的 comments_count 精确增长"
+    },
+    {
+      "id": "TC-08",
+      "endpoint": "/api/v1/posts/:id/click",
+      "method": "POST",
+      "scenario": "对不存在动态点击返回 404，对存在动态发起 5 并发点击验证原子递增",
+      "expectedStatus": 200,
+      "assertion": "不存在动态返回 404；存在动态 5 并发点击全部 200 且最终 clicks_count 精确递增 5"
+    },
+    {
+      "id": "TC-09",
+      "endpoint": "/api/v1/posts/:postId/comments",
+      "method": "POST",
+      "scenario": "对同一动态并发提交 5 条评论验证无 ID 冲突与计数一致",
+      "expectedStatus": 201,
+      "assertion": "5 个响应均成功且 comment id 互不相同，评论列表长度与动态详情 comments_count 精确一致"
+    },
+    {
+      "id": "TC-10",
+      "endpoint": "/api/v1/admin/login",
+      "method": "POST",
+      "scenario": "验证管理员错误凭据拒绝与有效凭据登录鉴权及配置读取",
+      "expectedStatus": 200,
+      "assertion": "错误密码返回 401；有效凭据返回 200 token 且凭 token 可访问 GET /api/v1/admin/settings"
+    }
+  ],
+  "finalE2eTestCode": "import { test, expect } from '@playwright/test';\n\nconst FP_PRIMARY = { 'x-browser-fingerprint': 'qa-detail-hardened-001' };\nconst FP_SECONDARY = { 'x-browser-fingerprint': 'qa-detail-hardened-002' };\n\ntest.describe('SPA Routing & Admin Fix Contracts', () => {\n  test('GET /admin, /admin/, and /posts/:id return 200 SPA HTML while API and missing assets return 404', async ({ request }) => {\n    for (const spaPath of ['/admin', '/admin/', '/posts/sample-route-check']) {\n      const res = await request.get(spaPath);\n      expect(res.status()).toBe(200);\n      expect(res.headers()['content-type'] || '').toContain('text/html');\n      const body = await res.text();\n      expect(body).toContain('root');\n      expect(body.trim()).not.toBe('Not Found');\n    }\n\n    const apiNotFound = await request.get('/api/v1/non-existent-endpoint-check');\n    expect(apiNotFound.status()).toBe(404);\n    const apiBody = await apiNotFound.json();\n    expect(JSON.stringify(apiBody)).toContain('404_NOT_FOUND');\n\n    const missingAsset = await request.get('/assets/non-existent-bundle-99999.js');\n    expect(missingAsset.status()).toBe(404);\n  });\n\n  test('Admin page opens cleanly on /admin and /admin/, rejects bad credentials, allows login, and stays hidden on public UI', async ({ page }) => {\n    await page.goto('/');\n    await expect(page.locator('a[href*=\"/admin\"]')).toHaveCount(0);\n\n    await page.goto('/admin');\n    await expect(page.getByText(/^Not Found$/i)).toHaveCount(0);\n    await expect(page.getByText(/社区系统管理后台|管理员登录/i).first()).toBeVisible();\n\n    const usernameInput = page.getByLabel(/管理员账号/i);\n    const passwordInput = page.getByLabel(/管理员密码/i);\n    const loginBtn = page.getByRole('button', { name: /登录管理后台|登录/i }).first();\n\n    if (await usernameInput.isVisible()) {\n      await usernameInput.fill('admin');\n      await passwordInput.fill('wrong-password-check');\n      await loginBtn.click();\n      await expect(page.getByRole('alert').first()).toBeVisible();\n\n      await usernameInput.fill('admin');\n      await passwordInput.fill('admin');\n      await loginBtn.click();\n    }\n\n    await expect(page.getByText(/平台运行数据概览|Resend 邮件服务与社区配置/i).first()).toBeVisible();\n\n    await page.reload();\n    await expect(page.getByText(/^Not Found$/i)).toHaveCount(0);\n    await expect(page.getByText(/社区系统管理后台|平台运行数据概览|管理员登录/i).first()).toBeVisible();\n\n    await page.goto('/admin/');\n    await expect(page.getByText(/^Not Found$/i)).toHaveCount(0);\n    await expect(page.getByText(/社区系统管理后台|平台运行数据概览|管理员登录/i).first()).toBeVisible();\n  });\n});\n\ntest.describe('Post Detail & Comments API Contracts (Hardened)', () => {\n  test('GET /api/v1/posts/:id and comments endpoints enforce 404, auth, whitespace, and cross-post parent_id validation', async ({ request }) => {\n    const missingPostRes = await request.get('/api/v1/posts/non-existent-post-99999');\n    expect(missingPostRes.status()).toBe(404);\n    expect(JSON.stringify(await missingPostRes.json())).toContain('404_POST_NOT_FOUND');\n\n    const missingCommentsRes = await request.get('/api/v1/posts/non-existent-post-99999/comments');\n    expect(missingCommentsRes.status()).toBe(404);\n\n    const missingClickRes = await request.post('/api/v1/posts/non-existent-post-99999/click');\n    expect(missingClickRes.status()).toBe(404);\n\n    const postARes = await request.post('/api/v1/posts', {\n      headers: FP_PRIMARY,\n      data: { content: `Detail Contract Post A ${Date.now()}` },\n    });\n    expect([200, 201]).toContain(postARes.status());\n    const postA = await postARes.json();\n\n    const postBRes = await request.post('/api/v1/posts', {\n      headers: FP_SECONDARY,\n      data: { content: `Detail Contract Post B ${Date.now()}` },\n    });\n    expect([200, 201]).toContain(postBRes.status());\n    const postB = await postBRes.json();\n\n    const detailRes = await request.get(`/api/v1/posts/${postA.id}`, { headers: FP_PRIMARY });\n    expect(detailRes.status()).toBe(200);\n    const detailBody = await detailRes.json();\n    expect(detailBody.id).toBe(postA.id);\n    expect(Array.isArray(detailBody.images)).toBe(true);\n    expect(typeof detailBody.likes_count).toBe('number');\n    expect(typeof detailBody.reposts_count).toBe('number');\n    expect(typeof detailBody.comments_count).toBe('number');\n    expect(typeof detailBody.clicks_count).toBe('number');\n\n    const unauthCommentRes = await request.post(`/api/v1/posts/${postA.id}/comments`, {\n      data: { content: 'Unauthorized comment' },\n    });\n    expect(unauthCommentRes.status()).toBe(401);\n\n    const blankCommentRes = await request.post(`/api/v1/posts/${postA.id}/comments`, {\n      headers: FP_PRIMARY,\n      data: { content: '   ' },\n    });\n    expect(blankCommentRes.status()).toBe(400);\n\n    const commentOnBRes = await request.post(`/api/v1/posts/${postB.id}/comments`, {\n      headers: FP_SECONDARY,\n      data: { content: `Comment on B ${Date.now()}` },\n    });\n    expect([200, 201]).toContain(commentOnBRes.status());\n    const commentOnB = await commentOnBRes.json();\n\n    // Cross-post parent_id must be rejected\n    const crossParentRes = await request.post(`/api/v1/posts/${postA.id}/comments`, {\n      headers: FP_PRIMARY,\n      data: { content: 'Cross post reply attempt', parent_id: commentOnB.id },\n    });\n    expect([400, 404]).toContain(crossParentRes.status());\n\n    // Non-existent parent_id must be rejected\n    const nonexistentParentRes = await request.post(`/api/v1/posts/${postA.id}/comments`, {\n      headers: FP_PRIMARY,\n      data: { content: 'Missing parent reply attempt', parent_id: 'non-existent-parent-99999' },\n    });\n    expect([400, 404]).toContain(nonexistentParentRes.status());\n\n    // Valid comment and valid nested reply on Post A\n    const topCommentRes = await request.post(`/api/v1/posts/${postA.id}/comments`, {\n      headers: FP_PRIMARY,\n      data: { content: `Top Comment A ${Date.now()}` },\n    });\n    expect([200, 201]).toContain(topCommentRes.status());\n    const topComment = await topCommentRes.json();\n\n    const nestedReplyRes = await request.post(`/api/v1/posts/${postA.id}/comments`, {\n      headers: FP_SECONDARY,\n      data: { content: `Nested Reply A ${Date.now()}`, parent_id: topComment.id },\n    });\n    expect([200, 201]).toContain(nestedReplyRes.status());\n    const nestedReply = await nestedReplyRes.json();\n    expect(nestedReply.parent_id).toBe(topComment.id);\n\n    const detailAfterRes = await request.get(`/api/v1/posts/${postA.id}`, { headers: FP_PRIMARY });\n    expect(detailAfterRes.status()).toBe(200);\n    const detailAfter = await detailAfterRes.json();\n    expect(detailAfter.comments_count).toBe(2);\n  });\n\n  test('Concurrent comments and clicks on the same post preserve uniqueness and atomic counters', async ({ request }) => {\n    const seedRes = await request.post('/api/v1/posts', {\n      headers: FP_PRIMARY,\n      data: { content: `Concurrency Target Post ${Date.now()}` },\n    });\n    expect([200, 201]).toContain(seedRes.status());\n    const { id: postId } = await seedRes.json();\n\n    const commentResponses = await Promise.all(\n      Array.from({ length: 5 }, (_, idx) =>\n        request.post(`/api/v1/posts/${postId}/comments`, {\n          headers: FP_PRIMARY,\n          data: { content: `Concurrent Comment ${idx} ${Date.now()}` },\n        })\n      )\n    );\n    const commentIds = new Set<string>();\n    for (const res of commentResponses) {\n      expect([200, 201]).toContain(res.status());\n      const body = await res.json();\n      expect(typeof body.id).toBe('string');\n      commentIds.add(body.id);\n    }\n    expect(commentIds.size).toBe(5);\n\n    const clickResponses = await Promise.all(\n      Array.from({ length: 5 }, () => request.post(`/api/v1/posts/${postId}/click`))\n    );\n    for (const res of clickResponses) {\n      expect(res.status()).toBe(200);\n    }\n\n    const detailRes = await request.get(`/api/v1/posts/${postId}`, { headers: FP_PRIMARY });\n    expect(detailRes.status()).toBe(200);\n    const detail = await detailRes.json();\n    expect(detail.comments_count).toBe(5);\n    expect(detail.clicks_count).toBe(5);\n  });\n});\n\ntest.describe('Post Detail Page Web E2E (Hardened)', () => {\n  test('Comments are moved out of Feed into /posts/:id, feed actions stay on feed, and detail supports commenting, nested replies, likes, reload persistence, and back navigation', async ({ page, request }) => {\n    const uniqueTag = Date.now();\n    const postText = `Full Detail Flow Post ${uniqueTag}`;\n    const seedRes = await request.post('/api/v1/posts', {\n      headers: FP_PRIMARY,\n      data: { content: postText },\n    });\n    expect([200, 201]).toContain(seedRes.status());\n    const { id: postId } = await seedRes.json();\n\n    await page.goto('/');\n    const main = page.getByRole('main');\n    const feedCard = main.locator('article').filter({ hasText: postText }).first();\n    await expect(feedCard).toBeVisible();\n\n    // Comments must NOT be rendered inline in Feed cards\n    await expect(feedCard.getByPlaceholder(/撰写评论|撰写回复/i)).toHaveCount(0);\n\n    // Clicking Like on Feed card must NOT navigate away to detail page\n    const feedLikeBtn = feedCard.getByRole('button', { name: /点赞/i }).first();\n    await expect(feedLikeBtn).toBeVisible();\n    await feedLikeBtn.click();\n    expect(page.url()).not.toContain(`/posts/${postId}`);\n\n    // Clicking post text navigates to /posts/:id\n    await feedCard.getByText(postText).first().click();\n    await expect(page).toHaveURL(new RegExp(`/posts/${postId}/?$`));\n    await expect(main.getByText(postText).first()).toBeVisible();\n\n    // Comment form is visible on the detail page\n    const commentInput = main\n      .getByPlaceholder(/撰写评论|撰写回复|评论|回复/i)\n      .or(main.getByRole('textbox', { name: /回复|评论/i }))\n      .first();\n    await expect(commentInput).toBeVisible();\n\n    const commentForm = main.locator('form').filter({ has: commentInput }).first();\n    const submitBtn = commentForm\n      .getByRole('button', { name: /回复|发送|提交|评论/i })\n      .first();\n\n    // Whitespace comment validation\n    await commentInput.fill('   ');\n    await submitBtn.click();\n    await expect(main.getByText(/不能为空|invalid|required/i).first()).toBeVisible();\n\n    // Post top-level comment\n    const topCommentText = `Top Detail Comment ${uniqueTag}`;\n    await commentInput.fill(topCommentText);\n    await submitBtn.click();\n    await expect(main.getByText(topCommentText).first()).toBeVisible();\n\n    // Reply to top-level comment (nested reply)\n    const replyTrigger = main\n      .locator('.comment-item')\n      .filter({ hasText: topCommentText })\n      .getByRole('button', { name: /回复/i })\n      .or(main.getByRole('button', { name: /^回复$/ }).last())\n      .first();\n    await expect(replyTrigger).toBeVisible();\n    await replyTrigger.click();\n\n    const nestedReplyText = `Nested Detail Reply ${uniqueTag}`;\n    await commentInput.fill(nestedReplyText);\n    await submitBtn.click();\n    await expect(main.getByText(nestedReplyText).first()).toBeVisible();\n\n    // Reload directly on /posts/:id verifies deep-link SPA fallback & persistence\n    await page.reload();\n    await expect(page).toHaveURL(new RegExp(`/posts/${postId}/?$`));\n    await expect(main.getByText(postText).first()).toBeVisible();\n    await expect(main.getByText(topCommentText).first()).toBeVisible();\n    await expect(main.getByText(nestedReplyText).first()).toBeVisible();\n\n    // Back button returns to Feed (/)\n    const backBtn = main.getByRole('button', { name: /返回|back/i }).first();\n    await expect(backBtn).toBeVisible();\n    await backBtn.click();\n    await expect(page).toHaveURL(/^https?:\\/\\/[^/]+\\/?$/);\n    await expect(\n      main.getByRole('textbox', { name: /发帖|动态|说点什么|post|content/i }).first()\n    ).toBeVisible();\n  });\n\n  test('Clicking comment button on a Feed card navigates directly to /posts/:id detail page', async ({ page, request }) => {\n    const postText = `Comment Button Nav Post ${Date.now()}`;\n    const seedRes = await request.post('/api/v1/posts', {\n      headers: FP_PRIMARY,\n      data: { content: postText },\n    });\n    const { id: postId } = await seedRes.json();\n\n    await page.goto('/');\n    const main = page.getByRole('main');\n    const feedCard = main.locator('article').filter({ hasText: postText }).first();\n    await expect(feedCard).toBeVisible();\n\n    const commentBtn = feedCard.getByRole('button', { name: /评论|回复/i }).first();\n    await commentBtn.click();\n    await expect(page).toHaveURL(new RegExp(`/posts/${postId}/?$`));\n    await expect(\n      main\n        .getByPlaceholder(/撰写评论|撰写回复|评论|回复/i)\n        .or(main.getByRole('textbox', { name: /回复|评论/i }))\n        .first()\n    ).toBeVisible();\n  });\n\n  test('Visiting non-existent /posts/:id shows graceful 404 state with navigation back to feed', async ({ page }) => {\n    await page.goto('/posts/non-existent-post-99999');\n    const main = page.getByRole('main');\n    await expect(\n      main.getByText(/不存在|未找到|找不到|已删除|not found/i).first()\n    ).toBeVisible();\n\n    const backHomeBtn = main\n      .getByRole('button', { name: /返回|首页|动态/i })\n      .or(main.getByRole('link', { name: /返回|首页|动态/i }))\n      .first();\n    await expect(backHomeBtn).toBeVisible();\n    await backHomeBtn.click();\n    await expect(page).toHaveURL(/^https?:\\/\\/[^/]+\\/?$/);\n  });\n\n  test('Post detail page safely escapes XSS payloads in both post content and comments', async ({ page, request }) => {\n    let dialogTriggered = false;\n    page.on('dialog', async (dialog) => {\n      dialogTriggered = true;\n      await dialog.dismiss();\n    });\n\n    const marker = Date.now();\n    const xssPost = `<img src=x onerror=\"window.__detailXss=true;alert(1)\"> post-xss-safe-${marker}`;\n    const seedRes = await request.post('/api/v1/posts', {\n      headers: FP_PRIMARY,\n      data: { content: xssPost },\n    });\n    const { id: postId } = await seedRes.json();\n\n    const xssComment = `<svg onload=\"window.__detailXss=true;alert(2)\"> comment-xss-safe-${marker}`;\n    await request.post(`/api/v1/posts/${postId}/comments`, {\n      headers: FP_PRIMARY,\n      data: { content: xssComment },\n    });\n\n    await page.goto(`/posts/${postId}`);\n    const main = page.getByRole('main');\n    await expect(main.getByText(new RegExp(`post-xss-safe-${marker}`)).first()).toBeVisible();\n    await expect(main.getByText(new RegExp(`comment-xss-safe-${marker}`)).first()).toBeVisible();\n    expect(dialogTriggered).toBe(false);\n\n    const executed = await page.evaluate(\n      () => (window as unknown as { __detailXss?: boolean }).__detailXss\n    );\n    expect(executed).toBeUndefined();\n  });\n\n  test('Post detail page renders error state on 500 and recovers on retry', async ({ page, request }) => {\n    const postText = `Recovery Detail Post ${Date.now()}`;\n    const seedRes = await request.post('/api/v1/posts', {\n      headers: FP_PRIMARY,\n      data: { content: postText },\n    });\n    const { id: postId } = await seedRes.json();\n\n    let failDetail = true;\n    await page.route(`**/api/v1/posts/${postId}`, async (route) => {\n      if (failDetail && route.request().method() === 'GET') {\n        await route.fulfill({\n          status: 500,\n          contentType: 'application/json',\n          body: JSON.stringify({ error: '500_DB_ERROR', message: 'Database unavailable' }),\n        });\n      } else {\n        await route.continue();\n      }\n    });\n\n    await page.goto(`/posts/${postId}`);\n    const main = page.getByRole('main');\n    await expect(main.getByText(/失败|异常|错误|重试|error/i).first()).toBeVisible();\n\n    failDetail = false;\n    const retryBtn = main.getByRole('button', { name: /重试|刷新|retry|reload/i }).first();\n    if (await retryBtn.isVisible()) {\n      await retryBtn.click();\n    } else {\n      await page.reload();\n    }\n    await expect(main.getByText(postText).first()).toBeVisible();\n  });\n});\n"
+}
