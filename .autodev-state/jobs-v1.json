@@ -2,7 +2,7 @@
   {
     "id": "job-45d371c7",
     "createdAt": "2026-11-21T15:46:15.241Z",
-    "updatedAt": "2026-11-21T15:56:36.875Z",
+    "updatedAt": "2026-11-21T15:56:45.028Z",
     "repoFullName": "jiangfengwhu/atd-v1",
     "defaultBranch": "main",
     "prdTitle": "动态详情页",
@@ -18,20 +18,24 @@
         "label": "01. Architect Agent",
         "roleTitle": "读取仓库真实代码 · 增量架构 · 任务树",
         "status": "running",
-        "startedAt": "2026-11-21T15:46:15.251Z",
-        "message": "已入队，等待 Instabox AGY Runner 检出最新代码并启动单对话联合规划…"
+        "startedAt": "2026-11-21T15:56:38.141Z",
+        "message": "单对话联合规划中：正在阅读代码库并一次性生成架构方案、API 契约与原子任务树…"
       },
       {
         "id": "qa_spec",
         "label": "02. QA Spec Agent",
         "roleTitle": "结合现有路由与历史测试 · Playwright 初版",
-        "status": "idle"
+        "status": "running",
+        "startedAt": "2026-11-21T15:56:38.141Z",
+        "message": "同会话同步产出接口测试清单与初版 Playwright E2E 脚本…"
       },
       {
         "id": "qa_critic",
         "label": "03. QA Critic Agent",
         "roleTitle": "边界异常评审 · 锁定独立只读回归测试集",
-        "status": "idle"
+        "status": "running",
+        "startedAt": "2026-11-21T15:56:38.141Z",
+        "message": "同会话完成盲测安全评审并输出终版加固 E2E 套件…"
       }
     ],
     "repoContext": {
