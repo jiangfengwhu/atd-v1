@@ -1,19 +1,27 @@
 {
   "jobId": "job-1365584e",
-  "status": "queued",
+  "status": "running",
   "mode": "unified_single_turn",
-  "updatedAt": "2026-11-21T16:21:46.653Z",
+  "updatedAt": "2026-11-21T16:22:00.251Z",
+  "headSha": "47da7f3347a7e83b8d99d56ed117929120bdd6ea",
+  "actionsRunId": 44924166558,
+  "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44924166558",
   "model": "gemini-4-neon-high",
   "steps": {
     "architect": {
       "status": "running",
-      "message": "已入队，等待 Instabox AGY Runner 检出最新代码并启动单对话联合规划…"
+      "startedAt": "2026-11-21T16:22:00.251Z",
+      "message": "单对话联合规划中：正在阅读代码库并一次性生成架构方案、API 契约与原子任务树…"
     },
     "qa_spec": {
-      "status": "idle"
+      "status": "running",
+      "startedAt": "2026-11-21T16:22:00.251Z",
+      "message": "同会话同步产出接口测试清单与初版 Playwright E2E 脚本…"
     },
     "qa_critic": {
-      "status": "idle"
+      "status": "running",
+      "startedAt": "2026-11-21T16:22:00.251Z",
+      "message": "同会话完成盲测安全评审并输出终版加固 E2E 套件…"
     }
   },
   "outputFiles": {}
