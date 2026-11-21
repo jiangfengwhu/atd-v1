@@ -214,8 +214,9 @@ jobs:
             const contentB64 = Buffer.from(JSON.stringify(data, null, 2), 'utf8').toString('base64');
 
             let sha = knownSha;
-            for (let attempt = 1; attempt <= 2; attempt++) {
-              if (!sha && attempt === 2) {
+            const maxAttempts = 5;
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              if (!sha) {
                 try {
                   const existing = await gh(
                     '/repos/' + repo + '/contents/' + encoded + '?ref=' + encodeURIComponent(channelBranch)
@@ -236,8 +237,11 @@ jobs:
                 });
                 return updated?.content?.sha || sha;
               } catch (err) {
-                if ((err.status === 409 || err.status === 422) && attempt === 1) {
+                if ((err.status === 409 || err.status === 422) && attempt < maxAttempts) {
                   sha = undefined;
+                  const waitMs = 450 * attempt + Math.floor(Math.random() * 250);
+                  console.warn('[writeChannelFile retry ' + attempt + '/' + maxAttempts + '] HTTP ' + err.status + ' on ' + filePath + ', waiting ' + waitMs + 'ms');
+                  await sleep(waitMs);
                   continue;
                 }
                 throw err;
@@ -625,11 +629,10 @@ jobs:
                 const criticCheck = validateStage('qa_critic', parsedBundle.qa_critic);
 
                 if (archCheck.ok && specCheck.ok && criticCheck.ok) {
-                  const [archFile, specFile, criticFile] = await Promise.all([
-                    postStageOutput('architect', archCheck.data),
-                    postStageOutput('qa_spec', specCheck.data),
-                    postStageOutput('qa_critic', criticCheck.data),
-                  ]);
+                  // Commit sequentially to autodev-plan-channel to avoid GitHub Contents API 409 HEAD races
+                  const archFile = await postStageOutput('architect', archCheck.data);
+                  const specFile = await postStageOutput('qa_spec', specCheck.data);
+                  const criticFile = await postStageOutput('qa_critic', criticCheck.data);
 
                   const completedIso = new Date().toISOString();
                   const durationMs = Date.now() - startedMs;
