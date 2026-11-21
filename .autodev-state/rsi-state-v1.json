@@ -369,7 +369,34 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44920946485",
       "branch": "main",
       "occurredAt": "2026-11-21T16:02:13.839Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "ci_workflow",
+        "rootCauseSummary": "并发修改 GitHub 仓库文件导致的冲突 (HTTP 409)，当前进程尝试更新已过期版本的文件内容。",
+        "shouldCodifyAsRule": true,
+        "decisionRationale": "Decision 门控收入「待观察候选池」（通用性 64% · 泛化评分 1.89/3.0）：暂不占用注入预算，同类问题复发 ≥ 2 次或人工转正后自动生效。 并发写入导致的 Git 冲突是分布式系统中的高频问题，需要标准化重试机制以提高流水线的鲁棒性。",
+        "confidence": 0.64,
+        "suggestedRule": {
+          "title": "并发写入文件冲突重试机制",
+          "targetStage": "all",
+          "severity": "recommended",
+          "promptDirective": "在进行 GitHub 文件写入操作时，若触发 HTTP 409 Conflict 错误，必须实现指数退避重试策略。重试前需重新拉取最新文件 sha 值，严禁无感知地盲目覆盖，确保原子性写入。",
+          "dedupeKey": "github-concurrency-conflict-retry"
+        },
+        "decisionGate": {
+          "model": "gemini-decision-1",
+          "generalizableProb": 0.6382,
+          "duplicateProb": 0.0317,
+          "generalityScore": 1.886,
+          "chosenAction": "create_candidate",
+          "actionConfidence": 0.6224,
+          "evaluatedAt": "2026-11-21T16:02:37.093Z"
+        },
+        "appliedOutcome": "candidate_created",
+        "analyzedAt": "2026-11-21T16:02:37.093Z",
+        "model": "gemini-3.1-flash-lite + gemini-decision-1",
+        "generatedRuleId": "rsi-13f86936"
+      }
     },
     {
       "id": "inc-603e6132",
@@ -477,6 +504,23 @@
     }
   ],
   "rules": [
+    {
+      "id": "rsi-13f86936",
+      "dedupeKey": "github-concurrency-conflict-retry",
+      "title": "并发写入文件冲突重试机制",
+      "targetStage": "all",
+      "severity": "recommended",
+      "status": "candidate",
+      "promptDirective": "在进行 GitHub 文件写入操作时，若触发 HTTP 409 Conflict 错误，必须实现指数退避重试策略。重试前需重新拉取最新文件 sha 值，严禁无感知地盲目覆盖，确保原子性写入。",
+      "rootCauseCategory": "ci_workflow",
+      "sourceIncidentIds": [
+        "inc-9ce6f50d"
+      ],
+      "hitCount": 1,
+      "appliedCount": 0,
+      "createdAt": "2026-11-21T16:02:37.094Z",
+      "updatedAt": "2026-11-21T16:02:37.094Z"
+    },
     {
       "id": "rsi-46589212",
       "dedupeKey": "playwright-strict-mode-specific-locator",
