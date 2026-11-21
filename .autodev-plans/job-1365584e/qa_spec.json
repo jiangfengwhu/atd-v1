@@ -1,0 +1,66 @@
+{
+  "apiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/admin",
+      "method": "GET",
+      "scenario": "直接请求 /admin 页面入口验证 SPA 回退生效",
+      "expectedStatus": 200,
+      "assertion": "返回状态码 200，Content-Type 包含 text/html，响应体包含前端根节点且不为 Not Found"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/posts/:id",
+      "method": "GET",
+      "scenario": "直接请求动态详情页前端路由 /posts/:id 验证 SPA 深链回退",
+      "expectedStatus": 200,
+      "assertion": "返回状态码 200，Content-Type 包含 text/html，支持前端挂载详情页"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/v1/posts/:id",
+      "method": "GET",
+      "scenario": "查询已存在的单条动态详情与实时统计数据",
+      "expectedStatus": 200,
+      "assertion": "返回 JSON 包含匹配的 id、content、images 数组以及 clicks_count、likes_count、reposts_count、comments_count"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/api/v1/posts/non-existent-id",
+      "method": "GET",
+      "scenario": "查询不存在的动态详情",
+      "expectedStatus": 404,
+      "assertion": "返回状态码 404 且响应体包含 404_POST_NOT_FOUND"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/v1/posts/:postId/comments",
+      "method": "POST",
+      "scenario": "已鉴权用户对存在的动态发表评论",
+      "expectedStatus": 201,
+      "assertion": "返回状态码 201，包含新评论 id、post_id、content，且随后查询动态详情 comments_count 递增"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/api/v1/posts/:postId/comments",
+      "method": "GET",
+      "scenario": "获取指定动态的评论列表",
+      "expectedStatus": 200,
+      "assertion": "返回 200 且 comments 数组包含刚创建的评论记录"
+    },
+    {
+      "id": "TC-07",
+      "endpoint": "/api/v1/posts/:id/click",
+      "method": "POST",
+      "scenario": "记录动态详情点击/浏览数递增",
+      "expectedStatus": 200,
+      "assertion": "返回 200 且 clicks_count 与 views_count 较调用前严格加 1"
+    }
+  ],
+  "e2eTestCode": "import { test, expect } from '@playwright/test';\n\nconst FP_HEADER = { 'x-browser-fingerprint': 'qa-detail-spec-fp-001' };\n\ntest.describe('Post Detail & Admin Route Draft E2E', () => {\n  test('GET /admin returns SPA HTML and renders Admin Login UI', async ({ page, request }) => {\n    const res = await request.get('/admin');\n    expect(res.status()).toBe(200);\n    expect(res.headers()['content-type'] || '').toContain('text/html');\n    const html = await res.text();\n    expect(html).not.toBe('Not Found');\n\n    await page.goto('/admin');\n    await expect(page.getByText(/管理员登录|社区系统管理后台/i).first()).toBeVisible();\n  });\n\n  test('User navigates from feed to post detail page and posts a comment there', async ({ page, request }) => {\n    const postText = `Draft Detail Post ${Date.now()}`;\n    const createRes = await request.post('/api/v1/posts', {\n      headers: FP_HEADER,\n      data: { content: postText },\n    });\n    expect([200, 201]).toContain(createRes.status());\n    const { id: postId } = await createRes.json();\n\n    await page.goto('/');\n    const main = page.getByRole('main');\n    const card = main.locator('article').filter({ hasText: postText }).first();\n    await expect(card).toBeVisible();\n    await expect(card.getByPlaceholder(/撰写评论|撰写回复/i)).toHaveCount(0);\n\n    await card.getByText(postText).first().click();\n    await expect(page).toHaveURL(new RegExp(`/posts/${postId}/?$`));\n    await expect(main.getByText(postText).first()).toBeVisible();\n\n    const commentInput = main\n      .getByPlaceholder(/撰写评论|撰写回复|评论|回复/i)\n      .or(main.getByRole('textbox', { name: /回复|评论/i }))\n      .first();\n    await expect(commentInput).toBeVisible();\n\n    const commentText = `Detail Page Comment ${Date.now()}`;\n    await commentInput.fill(commentText);\n    const submitBtn = main\n      .locator('form')\n      .filter({ has: commentInput })\n      .getByRole('button', { name: /回复|发送|提交|评论/i })\n      .first();\n    await submitBtn.click();\n\n    await expect(main.getByText(commentText).first()).toBeVisible();\n\n    const backBtn = main.getByRole('button', { name: /返回|back/i }).first();\n    await expect(backBtn).toBeVisible();\n    await backBtn.click();\n    await expect(page).toHaveURL(/^https?:\\/\\/[^/]+\\/?$/);\n  });\n});\n",
+  "coverageNotes": [
+    "覆盖 /admin 页面 HTTP 200 SPA 回退与管理后台登录页渲染",
+    "覆盖信息流列表移除内联评论、点击动态进入 /posts/:id 详情页、在详情页发表评论及点击返回首页主链路",
+    "覆盖 GET /api/v1/posts/:id、POST /api/v1/posts/:id/click 及评论读写基础 API 契约"
+  ]
+}
