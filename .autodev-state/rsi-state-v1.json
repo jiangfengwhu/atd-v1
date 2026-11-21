@@ -358,6 +358,20 @@
   ],
   "incidents": [
     {
+      "id": "inc-9ce6f50d",
+      "sourceRefKey": "actions:44920946485",
+      "source": "plan_error",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "title": "Instabox AGY 规划异常：动态详情页",
+      "errorSummary": "GitHub API 409 on /repos/jiangfengwhu/atd-v1/contents/.autodev-plans/job-45d371c7/qa_critic.json: {\"message\":\"is at d739952a57606140a8c3ae70c4c4ff9c88e879a0 but expected 13127176b48a6244267325805b7490d9dbda79d5\",\"documentation_url\":\"https://docs.github.com/rest/repos/contents#create-or-update-file-contents\",\"status\":\"409\"}",
+      "rawEvidence": "Job ID: job-45d371c7\nActions Run: 44920946485\nError: GitHub API 409 on /repos/jiangfengwhu/atd-v1/contents/.autodev-plans/job-45d371c7/qa_critic.json: {\"message\":\"is at d739952a57606140a8c3ae70c4c4ff9c88e879a0 but expected 13127176b48a6244267325805b7490d9dbda79d5\",\"documentation_url\":\"https://docs.github.com/rest/repos/contents#create-or-update-file-contents\",\"status\":\"409\"}",
+      "relatedActionsRunId": 44920946485,
+      "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44920946485",
+      "branch": "main",
+      "occurredAt": "2026-11-21T16:02:13.839Z",
+      "analysisStatus": "analyzing"
+    },
+    {
       "id": "inc-603e6132",
       "sourceRefKey": "actions:44728477037",
       "source": "test_failure",

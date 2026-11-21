@@ -2,7 +2,7 @@
   {
     "id": "job-45d371c7",
     "createdAt": "2026-11-21T15:46:15.241Z",
-    "updatedAt": "2026-11-21T16:02:05.636Z",
+    "updatedAt": "2026-11-21T16:02:13.830Z",
     "repoFullName": "jiangfengwhu/atd-v1",
     "defaultBranch": "main",
     "prdTitle": "动态详情页",
@@ -11,31 +11,31 @@
     "planMode": "unified_single_turn",
     "agyModel": "gemini-4-neon-high",
     "agyMode": "auto",
-    "status": "running",
+    "status": "error",
     "steps": [
       {
         "id": "architect",
         "label": "01. Architect Agent",
         "roleTitle": "读取仓库真实代码 · 增量架构 · 任务树",
-        "status": "running",
+        "status": "error",
         "startedAt": "2026-11-21T15:56:38.141Z",
-        "message": "单对话联合规划中：正在阅读代码库并一次性生成架构方案、API 契约与原子任务树…"
+        "message": "GitHub API 409 on /repos/jiangfengwhu/atd-v1/contents/.autodev-plans/job-45d371c7/qa_critic.json: {\"message\":\"is at d739952a57606140a8c3ae70c4c4ff9c88e879a0 but expected 13127176b48a6244267325805b7490d9dbda79d5\",\"documentation_url\":\"https://docs.github.com/rest/repos/contents#create-or-update-file-contents\",\"status\":\"409\"}"
       },
       {
         "id": "qa_spec",
         "label": "02. QA Spec Agent",
         "roleTitle": "结合现有路由与历史测试 · Playwright 初版",
-        "status": "running",
+        "status": "error",
         "startedAt": "2026-11-21T15:56:38.141Z",
-        "message": "同会话同步产出接口测试清单与初版 Playwright E2E 脚本…"
+        "message": "GitHub API 409 on /repos/jiangfengwhu/atd-v1/contents/.autodev-plans/job-45d371c7/qa_critic.json: {\"message\":\"is at d739952a57606140a8c3ae70c4c4ff9c88e879a0 but expected 13127176b48a6244267325805b7490d9dbda79d5\",\"documentation_url\":\"https://docs.github.com/rest/repos/contents#create-or-update-file-contents\",\"status\":\"409\"}"
       },
       {
         "id": "qa_critic",
         "label": "03. QA Critic Agent",
         "roleTitle": "边界异常评审 · 锁定独立只读回归测试集",
-        "status": "running",
+        "status": "error",
         "startedAt": "2026-11-21T15:56:38.141Z",
-        "message": "同会话完成盲测安全评审并输出终版加固 E2E 套件…"
+        "message": "GitHub API 409 on /repos/jiangfengwhu/atd-v1/contents/.autodev-plans/job-45d371c7/qa_critic.json: {\"message\":\"is at d739952a57606140a8c3ae70c4c4ff9c88e879a0 but expected 13127176b48a6244267325805b7490d9dbda79d5\",\"documentation_url\":\"https://docs.github.com/rest/repos/contents#create-or-update-file-contents\",\"status\":\"409\"}"
       }
     ],
     "repoContext": {
@@ -125,7 +125,8 @@
     },
     "planChannelBranch": "autodev-plan-channel",
     "planActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44920946485",
-    "planActionsRunId": 44920946485
+    "planActionsRunId": 44920946485,
+    "error": "GitHub API 409 on /repos/jiangfengwhu/atd-v1/contents/.autodev-plans/job-45d371c7/qa_critic.json: {\"message\":\"is at d739952a57606140a8c3ae70c4c4ff9c88e879a0 but expected 13127176b48a6244267325805b7490d9dbda79d5\",\"documentation_url\":\"https://docs.github.com/rest/repos/contents#create-or-update-file-contents\",\"status\":\"409\"}"
   },
   {
     "id": "job-a954c517",
