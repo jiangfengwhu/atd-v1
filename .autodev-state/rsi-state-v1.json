@@ -1101,7 +1101,7 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44741327372",
       "branch": "main",
       "occurredAt": "2026-11-20T13:06:12Z",
-      "analysisStatus": "pending"
+      "analysisStatus": "analyzing"
     },
     {
       "id": "inc-c64c848a",
@@ -1115,7 +1115,34 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44975367285",
       "branch": "main",
       "occurredAt": "2026-11-22T02:39:00Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "test_assertion",
+        "rootCauseSummary": "E2E测试逻辑过于复杂且执行依赖长链路（评论、嵌套回复、路由跳转、状态持久化），导致在默认超时时间内（30s）未能完成交互序列，引发测试超时。",
+        "shouldCodifyAsRule": true,
+        "decisionRationale": "Decision 门控放行立即生效（通用性 93% · 泛化评分 2.29/3.0）：高危系统性工程防线，直接注入下游 Prompt。 高复杂度E2E测试用例极易触发异步流控导致的抖动失败，应强制要求拆解测试用例以提高执行的稳定性和可维护性。",
+        "confidence": 0.93,
+        "suggestedRule": {
+          "title": "避免单测逻辑过长导致超时",
+          "targetStage": "qa_spec",
+          "severity": "recommended",
+          "promptDirective": "禁止编写包含多个业务模块深度耦合（如同时测试评论、路由导航、持久化加载等）的 E2E 测试用例。每个测试用例应遵循‘单一职责原则’，若复杂场景逻辑链路过长，必须将其拆分为多个原子化测试用例，并使用 setup/teardown 共享测试状态，确保单个测试执行时长控制在 10s…",
+          "dedupeKey": "e2e-test-atomicity-timeout-prevention"
+        },
+        "decisionGate": {
+          "model": "gemini-decision-1",
+          "generalizableProb": 0.9319,
+          "duplicateProb": 0.039,
+          "generalityScore": 2.292,
+          "chosenAction": "create_critical_active",
+          "actionConfidence": 0.4919,
+          "evaluatedAt": "2026-11-22T08:14:35.310Z"
+        },
+        "appliedOutcome": "active_created",
+        "analyzedAt": "2026-11-22T08:14:35.310Z",
+        "model": "gemini-3.1-flash-lite + gemini-decision-1",
+        "generatedRuleId": "rsi-bfc5e3c9"
+      }
     },
     {
       "id": "inc-9ce6f50d",
@@ -1264,6 +1291,23 @@
     }
   ],
   "rules": [
+    {
+      "id": "rsi-bfc5e3c9",
+      "dedupeKey": "e2e-test-atomicity-timeout-prevention",
+      "title": "避免单测逻辑过长导致超时",
+      "targetStage": "qa_spec",
+      "severity": "recommended",
+      "status": "active",
+      "promptDirective": "禁止编写包含多个业务模块深度耦合（如同时测试评论、路由导航、持久化加载等）的 E2E 测试用例。每个测试用例应遵循‘单一职责原则’，若复杂场景逻辑链路过长，必须将其拆分为多个原子化测试用例，并使用 setup/teardown 共享测试状态，确保单个测试执行时长控制在 10s…",
+      "rootCauseCategory": "test_assertion",
+      "sourceIncidentIds": [
+        "inc-c64c848a"
+      ],
+      "hitCount": 1,
+      "appliedCount": 0,
+      "createdAt": "2026-11-22T08:14:35.311Z",
+      "updatedAt": "2026-11-22T08:14:35.311Z"
+    },
     {
       "id": "rsi-13f86936",
       "dedupeKey": "github-concurrency-conflict-retry",
