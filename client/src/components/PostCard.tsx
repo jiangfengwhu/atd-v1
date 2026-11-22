@@ -8,9 +8,10 @@ interface PostCardProps {
   post: PostItem;
   onOpen: (postId: string) => void;
   onToggleLike: (postId: string, e: React.MouseEvent) => void;
+  onOpenAuthor?: (userId: string) => void;
 }
 
-export function PostCard({ post, onOpen, onToggleLike }: PostCardProps) {
+export function PostCard({ post, onOpen, onToggleLike, onOpenAuthor }: PostCardProps) {
   const [imgError, setImgError] = React.useState(false);
 
   return (
@@ -52,17 +53,27 @@ export function PostCard({ post, onOpen, onToggleLike }: PostCardProps) {
         <p className="line-clamp-3 text-xs leading-relaxed text-zinc-500">{post.content}</p>
 
         <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
-          <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              if (onOpenAuthor) {
+                e.stopPropagation();
+                onOpenAuthor(post.author.id);
+              }
+            }}
+            className="flex min-w-0 items-center gap-2 text-left hover:opacity-80 transition-opacity"
+          >
             <AvatarBadge
               nickname={post.author.nickname}
               seed={post.author.avatarSeed}
+              avatarUrl={post.author.avatarUrl}
               size="sm"
             />
             <div className="min-w-0">
               <p className="truncate text-xs font-medium text-zinc-700">{post.author.nickname}</p>
               <p className="text-[10px] text-zinc-400">{formatRelativeTime(post.createdAt)}</p>
             </div>
-          </div>
+          </button>
 
           <div className="flex items-center gap-3 text-xs text-zinc-400">
             <span className="inline-flex items-center gap-1">

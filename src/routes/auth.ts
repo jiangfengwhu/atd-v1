@@ -15,7 +15,7 @@ import {
   randomTokenHex,
   sha256Hex,
 } from '../lib/crypto';
-import { isValidEmail } from '../lib/validation';
+import { isValidEmail, isValidImageUrl } from '../lib/validation';
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_COOLDOWN_MS = 60 * 1000;
@@ -27,6 +27,8 @@ interface UserRow {
   email: string;
   nickname: string;
   avatar_seed: string;
+  avatar_url?: string | null;
+  bio?: string | null;
   created_at: string;
 }
 
@@ -41,9 +43,12 @@ export async function getSessionUser(
 
   const row = await db
     .prepare(
-      `SELECT u.id, u.email, u.nickname, u.avatar_seed, u.created_at
+      `SELECT u.id, u.email, u.nickname, u.avatar_seed, u.created_at,
+              COALESCE(up.avatar_url, '') AS avatar_url,
+              COALESCE(up.bio, '') AS bio
        FROM sessions s
        JOIN users u ON u.id = s.user_id
+       LEFT JOIN user_profiles up ON up.user_id = u.id
        WHERE s.token_hash = ? AND s.expires_at > ?
        LIMIT 1`
     )
@@ -56,6 +61,8 @@ export async function getSessionUser(
     email: row.email,
     nickname: row.nickname,
     avatarSeed: row.avatar_seed,
+    avatarUrl: row.avatar_url ?? '',
+    bio: row.bio ?? '',
     createdAt: row.created_at,
   };
 }
@@ -249,7 +256,13 @@ authRoutes.post('/verify-code', async (c) => {
 
   const nowIso = new Date().toISOString();
   let user = await c.env.DB.prepare(
-    'SELECT id, email, nickname, avatar_seed, created_at FROM users WHERE email = ? LIMIT 1'
+    `SELECT u.id, u.email, u.nickname, u.avatar_seed, u.created_at,
+            COALESCE(up.avatar_url, '') AS avatar_url,
+            COALESCE(up.bio, '') AS bio
+     FROM users u
+     LEFT JOIN user_profiles up ON up.user_id = u.id
+     WHERE u.email = ?
+     LIMIT 1`
   )
     .bind(rawEmail)
     .first<UserRow>();
@@ -271,6 +284,8 @@ authRoutes.post('/verify-code', async (c) => {
       email: rawEmail,
       nickname: defaultNick,
       avatar_seed: avatarSeed,
+      avatar_url: '',
+      bio: '',
       created_at: nowIso,
     };
   }
@@ -299,6 +314,8 @@ authRoutes.post('/verify-code', async (c) => {
       email: user.email,
       nickname: user.nickname,
       avatarSeed: user.avatar_seed,
+      avatarUrl: user.avatar_url ?? '',
+      bio: user.bio ?? '',
       createdAt: user.created_at,
     },
   });
@@ -316,6 +333,9 @@ authRoutes.get('/me', async (c) => {
       email: user.email,
       nickname: user.nickname,
       avatarSeed: user.avatarSeed,
+      avatarUrl: user.avatarUrl,
+      bio: user.bio,
+      createdAt: user.createdAt,
     },
   });
 });
@@ -337,23 +357,93 @@ authRoutes.patch('/profile', async (c) => {
     return c.json({ error: '请先登录' }, 401);
   }
 
-  const body = await c.req.json<{ nickname?: unknown }>().catch(() => null);
-  const nickname = typeof body?.nickname === 'string' ? body.nickname.trim() : '';
-  if (nickname.length < 1 || nickname.length > 30) {
-    return c.json({ error: '昵称长度需在 1 到 30 个字符之间' }, 400);
+  const body = await c.req
+    .json<{ nickname?: unknown; bio?: unknown; avatarUrl?: unknown }>()
+    .catch(() => null);
+  if (!body || typeof body !== 'object') {
+    return c.json({ error: '请求格式错误' }, 400);
   }
 
-  await c.env.DB.prepare('UPDATE users SET nickname = ?, updated_at = ? WHERE id = ?')
-    .bind(nickname, new Date().toISOString(), user.id)
-    .run();
+  const hasNickname = body.nickname !== undefined;
+  const hasBio = body.bio !== undefined;
+  const hasAvatarUrl = body.avatarUrl !== undefined;
+
+  if (!hasNickname && !hasBio && !hasAvatarUrl) {
+    return c.json({ error: '请至少提供一项需要更新的资料字段' }, 400);
+  }
+
+  let nextNickname = user.nickname;
+  if (hasNickname) {
+    if (typeof body.nickname !== 'string') {
+      return c.json({ error: '昵称格式无效' }, 400);
+    }
+    const trimmed = body.nickname.trim();
+    if (trimmed.length < 1 || trimmed.length > 30) {
+      return c.json({ error: '昵称长度需在 1 到 30 个字符之间' }, 400);
+    }
+    nextNickname = trimmed;
+  }
+
+  let nextBio = user.bio;
+  if (hasBio) {
+    if (typeof body.bio !== 'string') {
+      return c.json({ error: '个人简介格式无效' }, 400);
+    }
+    const trimmed = body.bio.trim();
+    if (trimmed.length > 200) {
+      return c.json({ error: '个人简介不能超过 200 个字符' }, 400);
+    }
+    nextBio = trimmed;
+  }
+
+  let nextAvatarUrl = user.avatarUrl;
+  if (hasAvatarUrl) {
+    if (typeof body.avatarUrl !== 'string') {
+      return c.json({ error: '头像链接格式无效' }, 400);
+    }
+    const trimmed = body.avatarUrl.trim();
+    if (!isValidImageUrl(trimmed)) {
+      return c.json({ error: '头像链接仅支持站内上传路径或 http/https 地址' }, 400);
+    }
+    nextAvatarUrl = trimmed;
+  }
+
+  const nowIso = new Date().toISOString();
+  const statements = [];
+  if (hasNickname) {
+    statements.push(
+      c.env.DB.prepare('UPDATE users SET nickname = ?, updated_at = ? WHERE id = ?').bind(
+        nextNickname,
+        nowIso,
+        user.id
+      )
+    );
+  }
+  if (hasBio || hasAvatarUrl) {
+    statements.push(
+      c.env.DB.prepare(
+        `INSERT INTO user_profiles (user_id, avatar_url, bio, updated_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET
+           avatar_url = excluded.avatar_url,
+           bio = excluded.bio,
+           updated_at = excluded.updated_at`
+      ).bind(user.id, nextAvatarUrl, nextBio, nowIso)
+    );
+  }
+
+  await c.env.DB.batch(statements);
 
   return c.json({
     ok: true,
     user: {
       id: user.id,
       email: user.email,
-      nickname,
+      nickname: nextNickname,
       avatarSeed: user.avatarSeed,
+      avatarUrl: nextAvatarUrl,
+      bio: nextBio,
+      createdAt: user.createdAt,
     },
   });
 });

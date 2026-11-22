@@ -4,6 +4,8 @@ import { authRoutes } from './routes/auth';
 import { adminRoutes } from './routes/admin';
 import { postRoutes } from './routes/posts';
 import { uploadRoutes } from './routes/uploads';
+import { userRoutes } from './routes/users';
+import { messageRoutes } from './routes/messages';
 
 const app = new Hono<AppEnv>();
 
@@ -30,6 +32,8 @@ app.route('/api/auth', authRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/posts', postRoutes);
 app.route('/api/uploads', uploadRoutes);
+app.route('/api/users', userRoutes);
+app.route('/api/messages', messageRoutes);
 
 app.all('/api/*', (c) => {
   return c.json({ error: 'API route not found' }, 404);

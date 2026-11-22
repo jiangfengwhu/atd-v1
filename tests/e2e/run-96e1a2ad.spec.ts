@@ -384,7 +384,7 @@ test.describe.serial('社区初期迭代（个人主页、私信、图片裁剪�
       const replyPostPromise = pageB.waitForResponse(
         (res) => res.url().includes(`/api/messages/with/${userA.id}`) && res.request().method() === 'POST'
       );
-      const sendDmBtn = pageB.locator('main').getByRole('button', { name: /发送/i }).first();
+      const sendDmBtn = pageB.locator('main form').getByRole('button', { name: /^发送$/i }).first();
       await sendDmBtn.click();
       const replyPostRes = await replyPostPromise;
       expect(replyPostRes.status()).toBe(201);
