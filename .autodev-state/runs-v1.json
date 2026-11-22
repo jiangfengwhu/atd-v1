@@ -695,7 +695,26 @@
       "source": "estimated",
       "model": "gemini-4-neon-high"
     },
-    "status": "analyzed",
-    "checkedCriteriaIds": []
+    "status": "pr_created",
+    "checkedCriteriaIds": [],
+    "draftPr": {
+      "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/9",
+      "prNumber": 9,
+      "branchName": "autodev/feat-20261122-090206",
+      "baseBranch": "main",
+      "commitSha": "9a455e3b8490d9320ec582d9dde6aebfcec58ae7",
+      "filesCommitted": [
+        "docs/spec.json",
+        "docs/iterations/run-f8b35bdc-spec.json",
+        "docs/prd.md",
+        "docs/iterations/run-f8b35bdc-prd.md",
+        "tests/e2e/run-f8b35bdc.spec.ts"
+      ],
+      "e2eTestPath": "tests/e2e/run-f8b35bdc.spec.ts",
+      "e2eVaultPath": ".autodev-e2e-vault/run-f8b35bdc/e2e.spec.ts",
+      "archivedSpecPath": "docs/iterations/run-f8b35bdc-spec.json",
+      "createdAt": "2026-11-22T09:02:11.811Z",
+      "initializedEmptyRepo": false
+    }
   }
 ]
