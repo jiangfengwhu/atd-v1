@@ -279,7 +279,36 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45004403945",
       "branch": "main",
       "occurredAt": "2026-11-22T08:47:08Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "env_infra",
+        "rootCauseSummary": "Cloudflare Workers 部署流水线在鉴权阶段失败，根本原因是 CI 环境中缺乏必要的 Cloudflare API 凭证（CLOUDFLARE_API_TOKEN 或 CLOUDFLARE_ACCOUNT_ID）配置，导致 Wrangler CLI 无法通过认证。",
+        "shouldCodifyAsRule": true,
+        "decisionRationale": "Decision 门控判定与现有规则语义重叠（重复度 84%），执行合并强化而非新增条目。 该类配置遗漏在 Cloudflare 项目 CI 中具有普适性，应当将强制性的环境变量检查机制固化，防止同类部署失败再次发生。",
+        "confidence": 0.92,
+        "suggestedRule": {
+          "title": "Cloudflare 部署凭证校验",
+          "targetStage": "qa_critic",
+          "severity": "critical",
+          "promptDirective": "在执行 Cloudflare Workers 部署前，必须强制检查 CI 环境变量：确保 CLOUDFLARE_API_TOKEN 与 CLOUDFLARE_ACCOUNT_ID 已正确注入，并优先通过 wrangler whoami 命令校验凭证有效性。",
+          "dedupeKey": "cloudflare-d1-idempotent-migrations"
+        },
+        "decisionGate": {
+          "model": "gemini-decision-1",
+          "generalizableProb": 0.7914,
+          "duplicateProb": 0.843,
+          "generalityScore": 2.218,
+          "chosenAction": "merge_existing",
+          "actionConfidence": 0.9218,
+          "matchedRuleId": "rsi-619c6524",
+          "matchedRuleConfidence": 0.7198,
+          "evaluatedAt": "2026-11-22T09:38:09.761Z"
+        },
+        "appliedOutcome": "merged",
+        "mergedIntoRuleId": "rsi-619c6524",
+        "analyzedAt": "2026-11-22T09:38:09.761Z",
+        "model": "gemini-3.1-flash-lite + gemini-decision-1"
+      }
     },
     {
       "id": "inc-db25f3aa",
@@ -358,12 +387,14 @@
       "promptDirective": "在执行 Cloudflare Workers D1 迁移前，必须先验证：1. wrangler.toml 中 database_id 已正确配置；2. 迁移脚本应保持原子性且具备幂等性；3. CI 环境环境变量已包含有效的 CLOUDFLARE_API_TOKEN 及对应的账户…",
       "rootCauseCategory": "env_infra",
       "sourceIncidentIds": [
-        "inc-66a7a222"
+        "inc-66a7a222",
+        "inc-2dcaf204"
       ],
-      "hitCount": 1,
+      "hitCount": 2,
       "appliedCount": 0,
       "createdAt": "2026-11-22T09:38:01.968Z",
-      "updatedAt": "2026-11-22T09:38:01.968Z"
+      "updatedAt": "2026-11-22T09:38:09.762Z"
     }
-  ]
+  ],
+  "lastSyncedAt": "2026-11-22T09:38:09.763Z"
 }
