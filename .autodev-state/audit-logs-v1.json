@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-6d05af3f",
+    "timestamp": "2026-11-22T09:14:59.567Z",
+    "category": "execution",
+    "action": "agy_coding_dispatched",
+    "label": "派发 AGY 编码执行",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-f8b35bdc",
+    "prdTitle": "初始需求",
+    "branch": "autodev/feat-20261122-090206",
+    "prNumber": 9,
+    "status": "success",
+    "detail": "派发 VPS AGY 在分支 autodev/feat-20261122-090206 执行编码（模型：gemini-4-hydrogen-high · 模式：auto）"
+  },
+  {
     "id": "aud-3f77131d",
     "timestamp": "2026-11-22T09:03:22.926Z",
     "category": "execution",
