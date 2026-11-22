@@ -1,0 +1,16 @@
+{
+  "jobId": "job-92ecd4a2",
+  "repoFullName": "jiangfengwhu/atd-v1",
+  "baseBranch": "main",
+  "prdTitle": "初始需求",
+  "prdContent": "做一款文字社区应用\n1. 使用resend，邮箱验证码登录\n2. 添加隐藏路由/admin，初始密码admin，支持改密码，用来做后台管理，比如resend密钥配置\n3. 首版仅支持图文即可\n4. UI要符合年轻人的审美，具体可以去GitHub看下推荐的组件库以及前端skill等",
+  "effectiveTechStack": "React + Vite + TypeScript (Cloudflare Workers Static Assets) + Hono API on Cloudflare Workers + Cloudflare D1 (SQLite) + Cloudflare KV",
+  "isDefaultCloudflare": true,
+  "agyModel": "gemini-4-neon-high",
+  "createdAt": "2026-11-22T08:53:04.495Z",
+  "rsiSystemPrompts": {
+    "architect": "",
+    "qa_spec": "",
+    "qa_critic": ""
+  }
+}
