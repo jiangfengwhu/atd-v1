@@ -171,13 +171,12 @@ jobs:
           const resumeSessionId = (process.env.RESUME_SESSION_ID || '').trim();
           const maxRepairRounds = Math.max(0, Math.min(5, Number(process.env.MAX_REPAIR_ROUNDS ?? 3) || 3));
           const channelBranch = process.env.REPORT_CHANNEL_BRANCH || 'autodev-plan-channel';
-          const vaultPrefix = process.env.E2E_VAULT_PREFIX || '.autodev-e2e-vault';
+          const activeE2ePath = (process.env.ACTIVE_E2E_PATH || '').trim();
           const capsPath = process.env.VPS_CAPS_PATH || '.autodev-vps-capabilities.json';
           const logFile = process.env.LOG_FILE || '/tmp/autodev-agy.log';
           const issueTitle = '[AutoDev] Live AGY Execution Stream';
           const marker = '<!-- AUTODEV-LIVE-LOG:' + actionsRunId + ' -->';
           const startedAt = Date.now();
-          const blindStashDir = '/tmp/autodev-blind-e2e-' + actionsRunId;
 
           let issueNumber = null;
           let issueCommentCount = 0;
@@ -446,7 +445,7 @@ jobs:
             return [
               'You are the autonomous full-stack coding agent executing inside AutoDev Studio on branch `' + branch + '`.',
               'Current working directory is the root of this repository.',
-              'Read docs/prd.md, docs/spec.json, docs/rsi-guidelines.md (if present), docs/revision-feedback.md (if present), and the repository E2E test files under tests/ (e.g. ' + (e2eTestPath || 'tests/e2e/*.spec.ts') + ') thoroughly.',
+              'Read docs/prd.md, docs/spec.json, docs/rsi-guidelines.md (if present), docs/revision-feedback.md (if present), and the repository E2E test files under tests/ (e.g. ' + (activeE2ePath || 'tests/e2e/*.spec.ts') + ') thoroughly.',
               revBlock,
               '',
               'Engineering Requirements:',
