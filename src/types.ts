@@ -17,6 +17,8 @@ export interface AuthUser {
   email: string;
   nickname: string;
   avatarSeed: string;
+  avatarUrl: string;
+  bio: string;
   createdAt: string;
 }
 

@@ -4,7 +4,7 @@ import { getSessionUser } from './auth';
 import { ensureAdminConfig } from '../lib/admin-config';
 import { escapeSqlLike, isValidImageUrl, sanitizeTags } from '../lib/validation';
 
-interface PostRow {
+export interface PostRow {
   id: string;
   author_id: string;
   title: string;
@@ -16,6 +16,7 @@ interface PostRow {
   created_at: string;
   author_nickname: string;
   author_avatar_seed: string;
+  author_avatar_url?: string | null;
   liked_by_me?: number;
 }
 
@@ -27,6 +28,21 @@ interface CommentRow {
   author_id: string;
   author_nickname: string;
   author_avatar_seed: string;
+  author_avatar_url?: string | null;
+}
+
+interface CommentReplyRow {
+  id: string;
+  comment_id: string;
+  post_id: string;
+  content: string;
+  created_at: string;
+  author_id: string;
+  author_nickname: string;
+  author_avatar_seed: string;
+  author_avatar_url?: string | null;
+  reply_to_user_id: string | null;
+  reply_to_nickname: string | null;
 }
 
 function parseTagsJson(raw: string): string[] {
@@ -38,7 +54,7 @@ function parseTagsJson(raw: string): string[] {
   }
 }
 
-function serializePost(row: PostRow) {
+export function serializePost(row: PostRow) {
   return {
     id: row.id,
     title: row.title,
@@ -52,6 +68,7 @@ function serializePost(row: PostRow) {
       id: row.author_id,
       nickname: row.author_nickname,
       avatarSeed: row.author_avatar_seed,
+      avatarUrl: row.author_avatar_url ?? '',
     },
     createdAt: row.created_at,
   };
@@ -113,9 +130,11 @@ postRoutes.get('/', async (c) => {
     ? `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
               p.likes_count, p.comments_count, p.created_at,
               u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
+              COALESCE(up.avatar_url, '') AS author_avatar_url,
               CASE WHEN pl.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me
        FROM posts p
        JOIN users u ON u.id = p.author_id
+       LEFT JOIN user_profiles up ON up.user_id = u.id
        LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = ?
        ${whereSql}
        ${orderSql}
@@ -123,9 +142,11 @@ postRoutes.get('/', async (c) => {
     : `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
               p.likes_count, p.comments_count, p.created_at,
               u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
+              COALESCE(up.avatar_url, '') AS author_avatar_url,
               0 AS liked_by_me
        FROM posts p
        JOIN users u ON u.id = p.author_id
+       LEFT JOIN user_profiles up ON up.user_id = u.id
        ${whereSql}
        ${orderSql}
        LIMIT ? OFFSET ?`;
@@ -202,6 +223,7 @@ postRoutes.post('/', async (c) => {
           id: user.id,
           nickname: user.nickname,
           avatarSeed: user.avatarSeed,
+          avatarUrl: user.avatarUrl,
         },
         createdAt: nowIso,
       },
@@ -218,18 +240,22 @@ postRoutes.get('/:id', async (c) => {
     ? `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
               p.likes_count, p.comments_count, p.created_at,
               u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
+              COALESCE(up.avatar_url, '') AS author_avatar_url,
               CASE WHEN pl.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me
        FROM posts p
        JOIN users u ON u.id = p.author_id
+       LEFT JOIN user_profiles up ON up.user_id = u.id
        LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = ?
        WHERE p.id = ?
        LIMIT 1`
     : `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
               p.likes_count, p.comments_count, p.created_at,
               u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
+              COALESCE(up.avatar_url, '') AS author_avatar_url,
               0 AS liked_by_me
        FROM posts p
        JOIN users u ON u.id = p.author_id
+       LEFT JOIN user_profiles up ON up.user_id = u.id
        WHERE p.id = ?
        LIMIT 1`;
 
@@ -241,16 +267,70 @@ postRoutes.get('/:id', async (c) => {
     return c.json({ error: '帖子不存在' }, 404);
   }
 
-  const commentRows = await c.env.DB.prepare(
-    `SELECT c.id, c.post_id, c.content, c.created_at,
-            u.id AS author_id, u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed
-     FROM comments c
-     JOIN users u ON u.id = c.author_id
-     WHERE c.post_id = ?
-     ORDER BY c.created_at ASC`
-  )
-    .bind(postId)
-    .all<CommentRow>();
+  const [commentRows, replyRows] = await Promise.all([
+    c.env.DB.prepare(
+      `SELECT c.id, c.post_id, c.content, c.created_at,
+              u.id AS author_id, u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
+              COALESCE(up.avatar_url, '') AS author_avatar_url
+       FROM comments c
+       JOIN users u ON u.id = c.author_id
+       LEFT JOIN user_profiles up ON up.user_id = u.id
+       WHERE c.post_id = ?
+       ORDER BY c.created_at ASC`
+    )
+      .bind(postId)
+      .all<CommentRow>(),
+    c.env.DB.prepare(
+      `SELECT r.id, r.comment_id, r.post_id, r.content, r.created_at,
+              u.id AS author_id, u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
+              COALESCE(up.avatar_url, '') AS author_avatar_url,
+              r.reply_to_user_id,
+              ru.nickname AS reply_to_nickname
+       FROM comment_replies r
+       JOIN users u ON u.id = r.author_id
+       LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN users ru ON ru.id = r.reply_to_user_id
+       WHERE r.post_id = ?
+       ORDER BY r.created_at ASC`
+    )
+      .bind(postId)
+      .all<CommentReplyRow>(),
+  ]);
+
+  const repliesByComment = new Map<
+    string,
+    Array<{
+      id: string;
+      commentId: string;
+      postId: string;
+      content: string;
+      author: { id: string; nickname: string; avatarSeed: string; avatarUrl: string };
+      replyToUser: { id: string; nickname: string } | null;
+      createdAt: string;
+    }>
+  >();
+
+  for (const r of replyRows.results ?? []) {
+    const list = repliesByComment.get(r.comment_id) ?? [];
+    list.push({
+      id: r.id,
+      commentId: r.comment_id,
+      postId: r.post_id,
+      content: r.content,
+      author: {
+        id: r.author_id,
+        nickname: r.author_nickname,
+        avatarSeed: r.author_avatar_seed,
+        avatarUrl: r.author_avatar_url ?? '',
+      },
+      replyToUser:
+        r.reply_to_user_id && r.reply_to_nickname
+          ? { id: r.reply_to_user_id, nickname: r.reply_to_nickname }
+          : null,
+      createdAt: r.created_at,
+    });
+    repliesByComment.set(r.comment_id, list);
+  }
 
   return c.json({
     post: serializePost(row),
@@ -261,7 +341,9 @@ postRoutes.get('/:id', async (c) => {
         id: cm.author_id,
         nickname: cm.author_nickname,
         avatarSeed: cm.author_avatar_seed,
+        avatarUrl: cm.author_avatar_url ?? '',
       },
+      replies: repliesByComment.get(cm.id) ?? [],
       createdAt: cm.created_at,
     })),
   });
@@ -287,6 +369,7 @@ postRoutes.delete('/:id', async (c) => {
 
   await c.env.DB.batch([
     c.env.DB.prepare('DELETE FROM post_likes WHERE post_id = ?').bind(postId),
+    c.env.DB.prepare('DELETE FROM comment_replies WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM comments WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM posts WHERE id = ?').bind(postId),
   ]);
@@ -399,7 +482,88 @@ postRoutes.post('/:id/comments', async (c) => {
           id: user.id,
           nickname: user.nickname,
           avatarSeed: user.avatarSeed,
+          avatarUrl: user.avatarUrl,
         },
+        replies: [],
+        createdAt: nowIso,
+      },
+    },
+    201
+  );
+});
+
+postRoutes.post('/:id/comments/:commentId/replies', async (c) => {
+  const user = await getSessionUser(c.env.DB, c.req.header('cookie'));
+  if (!user) {
+    return c.json({ error: '请先登录后再回复评论' }, 401);
+  }
+
+  const postId = c.req.param('id');
+  const commentId = c.req.param('commentId');
+
+  // Verify the comment exists and belongs to the specified post
+  const parentComment = await c.env.DB.prepare(
+    'SELECT id, author_id FROM comments WHERE id = ? AND post_id = ? LIMIT 1'
+  )
+    .bind(commentId, postId)
+    .first<{ id: string; author_id: string }>();
+
+  if (!parentComment) {
+    return c.json({ error: '帖子或评论不存在' }, 404);
+  }
+
+  const body = await c.req
+    .json<{ content?: unknown; replyToUserId?: unknown }>()
+    .catch(() => null);
+  if (!body || typeof body !== 'object') {
+    return c.json({ error: '请求格式错误' }, 400);
+  }
+
+  const content = typeof body.content === 'string' ? body.content.trim() : '';
+  if (content.length < 1 || content.length > 1000) {
+    return c.json({ error: '回复内容长度需在 1 到 1000 个字符之间' }, 400);
+  }
+
+  let replyToUser: { id: string; nickname: string } | null = null;
+  if (typeof body.replyToUserId === 'string' && body.replyToUserId.trim()) {
+    const targetId = body.replyToUserId.trim();
+    const targetRow = await c.env.DB.prepare('SELECT id, nickname FROM users WHERE id = ? LIMIT 1')
+      .bind(targetId)
+      .first<{ id: string; nickname: string }>();
+    if (!targetRow) {
+      return c.json({ error: '被回复的用户不存在' }, 404);
+    }
+    replyToUser = { id: targetRow.id, nickname: targetRow.nickname };
+  }
+
+  const replyId = crypto.randomUUID();
+  const nowIso = new Date().toISOString();
+
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      `INSERT INTO comment_replies (id, comment_id, post_id, author_id, reply_to_user_id, content, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).bind(replyId, commentId, postId, user.id, replyToUser ? replyToUser.id : null, content, nowIso),
+    c.env.DB.prepare('UPDATE posts SET comments_count = comments_count + 1 WHERE id = ?').bind(
+      postId
+    ),
+  ]);
+
+  return c.json(
+    {
+      ok: true,
+      reply: {
+        id: replyId,
+        commentId,
+        postId,
+        content,
+        author: {
+          id: user.id,
+          nickname: user.nickname,
+          avatarSeed: user.avatarSeed,
+          avatarUrl: user.avatarUrl,
+        },
+        replyToUser,
         createdAt: nowIso,
       },
     },
