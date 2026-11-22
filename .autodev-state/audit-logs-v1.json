@@ -1,5 +1,19 @@
 [
   {
+    "id": "aud-43b68c4d",
+    "timestamp": "2026-11-22T11:00:48.231Z",
+    "category": "planning",
+    "action": "prd_analysis_cancelled",
+    "label": "取消需求规划",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "jobId": "job-7ada34bf",
+    "prdTitle": "日常迭代-个人主页",
+    "branch": "main",
+    "status": "success",
+    "detail": "手动取消进行中的规划任务「日常迭代-个人主页」"
+  },
+  {
     "id": "aud-43eb184c",
     "timestamp": "2026-11-22T10:58:41.765Z",
     "category": "planning",

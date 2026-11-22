@@ -2,7 +2,7 @@
   {
     "id": "job-7ada34bf",
     "createdAt": "2026-11-22T10:58:41.758Z",
-    "updatedAt": "2026-11-22T11:00:41.102Z",
+    "updatedAt": "2026-11-22T11:00:48.228Z",
     "repoFullName": "jiangfengwhu/atd-v1",
     "defaultBranch": "main",
     "prdTitle": "日常迭代-个人主页",
@@ -11,15 +11,15 @@
     "planMode": "unified_single_turn",
     "agyModel": "gemini-4-neon-high",
     "agyMode": "auto",
-    "status": "running",
+    "status": "error",
     "steps": [
       {
         "id": "architect",
         "label": "01. Architect Agent",
         "roleTitle": "读取仓库真实代码 · 增量架构 · 任务树",
-        "status": "running",
+        "status": "error",
         "startedAt": "2026-11-22T10:58:41.761Z",
-        "message": "已入队，等待 Instabox AGY Runner 检出最新代码并启动单对话联合规划…"
+        "message": "已手动取消"
       },
       {
         "id": "qa_spec",
@@ -103,7 +103,8 @@
     },
     "planChannelBranch": "autodev-plan-channel",
     "planActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45015013560",
-    "planActionsRunId": 45015013560
+    "planActionsRunId": 45015013560,
+    "error": "已手动取消本次需求规划任务。"
   },
   {
     "id": "job-92ecd4a2",
