@@ -1,0 +1,234 @@
+{
+  "ambiguities": [
+    {
+      "id": "AMB-1",
+      "severity": "high",
+      "title": "私信功能的实时刷新机制与基础设施边界",
+      "detail": "当前仓库仅绑定 Cloudflare D1 数据库（wrangler.toml 未配置 Durable Objects 或第三方 WebSocket 推送服务），若强行引入长连接会破坏现有自动部署流程。",
+      "clarificationSuggestion": "本迭代将私信消息持久化在 D1 新增的 direct_messages 表中，进入会话自动标记已读，前端在私信界面打开时采用轻量定时轮询（如 5 秒刷新当前会话、15 秒刷新侧边栏未读数），兼顾即时体验与零额外基础设施部署。"
+    },
+    {
+      "id": "AMB-2",
+      "severity": "medium",
+      "title": "个人主页中「回复」与「评论」的展示口径区分",
+      "detail": "需求同时提及「回复」与「评论」，现有系统仅支持帖子下的一级评论，尚未定义二级评论回复以及个人主页「回复」标签页是展示发出的回复还是收到的回复。",
+      "clarificationSuggestion": "新增针对评论的二级回复能力；个人主页「评论」标签展示该用户发表的帖子一级评论，「回复」标签聚合该用户发出的回复与收到的针对其评论的回复，并清晰标注发出/收到方向、被回复对象与来源帖子。"
+    },
+    {
+      "id": "AMB-3",
+      "severity": "medium",
+      "title": "发布图片编辑/裁剪库选型与体积限制策略",
+      "detail": "需求希望采用 GitHub 推荐开源库实现图片裁剪等编辑能力，同时现有上传接口限定单图 ≤ 2MB，且 Cloudflare Workers 运行时不支持原生 C++ 图像处理依赖。",
+      "clarificationSuggestion": "前端引入 GitHub 高星轻量 React 18 兼容库 react-easy-crop（ValentinH/react-easy-crop），通过浏览器 HTML5 Canvas 完成选区裁剪、缩放与 90° 旋转导出，并在体积接近 2MB 时自动调节压缩质量后复用现有 /api/uploads 接口；裁剪作为可选非阻塞操作，不打断原有快速发布流程。"
+    },
+    {
+      "id": "AMB-4",
+      "severity": "low",
+      "title": "左右分栏布局的移动端适配与他人主页入口路径",
+      "detail": "需求指定桌面端采用左侧导航栏（动态、私信、主页 + 底部个人资料按钮弹出退出登录）加右侧内容区，但未明确窄屏移动端形态及点击他人头像查看主页的方式。",
+      "clarificationSuggestion": "桌面端采用固定左侧导航栏 + 右侧自适应主内容区，移动端自动折叠为底部导航栏；点击任意帖子、评论、回复或私信中的用户头像/昵称均可进入对应用户主页，且严格延续公开界面零 /admin 入口的隐藏后台规则。"
+    }
+  ],
+  "architectureSummary": "基于现有 Cloudflare Workers + Hono + D1 + React 18/Vite/Tailwind CSS 架构执行增量演进，保留全部既有认证、帖子、图片上传及 /admin 隐藏后台模块与已生效迁移 migrations/0001_init.sql。数据层新增严格幂等且原子化的迁移文件 migrations/0002_social_profile_dm.sql（仅使用 CREATE TABLE IF NOT EXISTS 与 CREATE INDEX IF NOT EXISTS，零 ALTER TABLE 风险，部署前依据 D1 迁移规范核验 wrangler.toml 的 database_id 与 CI 环境变量 CLOUDFLARE_API_TOKEN），扩展 user_profiles、user_follows、comment_replies、direct_messages 四张表与查询索引。后端新增 src/routes/users.ts（个人主页聚合统计、关注/取消关注、关注与粉丝列表、四维动态查询）与 src/routes/messages.ts（规范化会话键私信收发、已读回执与会话未读计数），并向后兼容地扩展 /api/auth/profile（支持头像与简介）及 /api/posts/:id/comments/:commentId/replies（评论二级回复）。前端重构 CommunityPage 为现代左右分栏架构（左侧固定导航栏含动态、私信未读角标、主页、发布图文主按钮与底部个人资料弹出菜单/退出登录），引入 GitHub 开源库 react-easy-crop 封装通用 Canvas 图片裁剪弹窗，统一赋能发文配图编辑与个人主页圆形头像更换。",
+  "techDecisions": [
+    "严格遵守增量迁移与 Cloudflare D1 规范：绝不修改已应用的 migrations/0001_init.sql；新增 migrations/0002_social_profile_dm.sql，全部 DDL 仅使用 CREATE TABLE IF NOT EXISTS 与 CREATE INDEX IF NOT EXISTS 保持原子性与可重复执行幂等性（通过独立 user_profiles 与 comment_replies 表规避 SQLite ALTER TABLE ADD COLUMN 不支持 IF NOT EXISTS 的重放失败风险）；执行远程迁移前验证 wrangler.toml 的 database_id（由部署工作流或配置确保为有效真实 ID）及 CI 中的 CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID。",
+    "图片编辑库选型采用 GitHub 开源库 react-easy-crop（ValentinH/react-easy-crop）：原生支持 React 18 与 TypeScript、体积极小、同时支持自由/固定比例（1:1、4:3、3:4、16:9）图文裁剪、缩放、90° 旋转与圆形（cropShape=round）头像裁剪，结合 HTML5 Canvas 客户端导出并控制在 2MB 以内，直接复用现有 POST /api/uploads 持久化至 D1 media_assets。",
+    "保持向后兼容与原有 E2E 回归零破坏：ComposeDialog 选择本地图片后立即预览，支持一键直接发布，同时提供非阻塞的「裁剪/编辑」按钮打开裁剪弹窗；PATCH /api/auth/profile 兼容仅传 nickname 的旧调用，同时支持 bio 与 avatarUrl 增量更新；GET /api/posts/:id 保留既有 comments 结构并为每条评论附加 replies 数组。",
+    "私信会话与隐私安全边界：direct_messages 采用字典序拼接双方用户 ID 的 conversation_key 建立会话索引，所有私信接口严格校验登录态并限定仅会话参与者可读写，禁止给自己发私信；公开接口 GET /api/users/:id 绝不向非本人返回 email 隐私字段，avatarUrl 严格复用 isValidImageUrl 白名单拦截 javascript:/data: 协议。",
+    "左右布局与路由设计：利用 wrangler.toml 既有的 SPA fallback，在客户端同步 /（动态）、/messages（私信）、/profile 及 /users/:id（主页）视图状态，同时保证 /admin 隐藏后台路由在 App.tsx 中完全隔离、公开导航零暴露。"
+  ],
+  "apiContracts": [
+    {
+      "id": "API-1",
+      "method": "PATCH",
+      "path": "/api/auth/profile",
+      "summary": "更新当前登录用户的昵称、个人简介与头像链接（向后兼容仅修改昵称）",
+      "requestSchema": "{ nickname?: string (1..30 chars), bio?: string (0..200 chars), avatarUrl?: string ('' | '/api/uploads/...' | 'http(s)://...') }",
+      "responseSchema": "{ ok: true, user: { id: string, email: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string, createdAt: string } }",
+      "errorCodes": [
+        "400",
+        "401"
+      ]
+    },
+    {
+      "id": "API-2",
+      "method": "GET",
+      "path": "/api/users/:id",
+      "summary": "获取指定用户（支持 :id='me' 获取本人）的个人主页资料、关注/粉丝及发帖互动统计",
+      "requestSchema": "Path param id: userId | 'me'",
+      "responseSchema": "{ user: { id: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string, email?: string (only when isSelf), createdAt: string, postsCount: number, followingCount: number, followersCount: number, likesCount: number, commentsCount: number, repliesCount: number, isFollowing: boolean, isSelf: boolean } }",
+      "errorCodes": [
+        "401",
+        "404"
+      ]
+    },
+    {
+      "id": "API-3",
+      "method": "POST",
+      "path": "/api/users/:id/follow",
+      "summary": "关注或取消关注指定用户（幂等切换，禁止关注自己）",
+      "requestSchema": "Path param id: targetUserId (session cookie required)",
+      "responseSchema": "{ ok: true, following: boolean, followersCount: number, followingCount: number }",
+      "errorCodes": [
+        "400",
+        "401",
+        "404"
+      ]
+    },
+    {
+      "id": "API-4",
+      "method": "GET",
+      "path": "/api/users/:id/follows",
+      "summary": "分页获取指定用户的关注列表或粉丝列表",
+      "requestSchema": "Query: type='following'|'followers', limit?: number (1..50, default 30), offset?: number (>=0)",
+      "responseSchema": "{ type: 'following'|'followers', users: [{ id: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string, isFollowing: boolean, followedAt: string }], total: number }",
+      "errorCodes": [
+        "400",
+        "404"
+      ]
+    },
+    {
+      "id": "API-5",
+      "method": "GET",
+      "path": "/api/users/:id/activity",
+      "summary": "分页获取指定用户个人主页四类内容：历史发帖(posts)、点赞(likes)、评论(comments)、回复(replies)",
+      "requestSchema": "Query: tab='posts'|'likes'|'comments'|'replies', limit?: number (1..50, default 24), offset?: number (>=0)",
+      "responseSchema": "{ tab: 'posts'|'likes'|'comments'|'replies', items: Array<PostItem | CommentActivityItem | ReplyActivityItem>, total: number }",
+      "errorCodes": [
+        "400",
+        "404"
+      ]
+    },
+    {
+      "id": "API-6",
+      "method": "POST",
+      "path": "/api/posts/:id/comments/:commentId/replies",
+      "summary": "对指定帖子下的某条一级评论发表回复并更新帖子评论总数",
+      "requestSchema": "{ content: string (1..1000 chars), replyToUserId?: string }",
+      "responseSchema": "{ ok: true, reply: { id: string, commentId: string, postId: string, content: string, author: { id: string, nickname: string, avatarSeed: string, avatarUrl: string }, replyToUser: { id: string, nickname: string } | null, createdAt: string } }",
+      "errorCodes": [
+        "400",
+        "401",
+        "404"
+      ]
+    },
+    {
+      "id": "API-7",
+      "method": "GET",
+      "path": "/api/messages/conversations",
+      "summary": "获取当前登录用户的私信会话列表、最新一条消息摘要与全局未读消息总数",
+      "requestSchema": "Session cookie required",
+      "responseSchema": "{ conversations: [{ peer: { id: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string }, lastMessage: { id: string, senderId: string, content: string, createdAt: string }, unreadCount: number }], totalUnread: number }",
+      "errorCodes": [
+        "401"
+      ]
+    },
+    {
+      "id": "API-8",
+      "method": "GET",
+      "path": "/api/messages/with/:peerId",
+      "summary": "获取当前用户与指定对象的私信历史记录，并将对方发来的未读消息自动标记为已读",
+      "requestSchema": "Path param peerId; Query: limit?: number (1..100, default 50), offset?: number (>=0)",
+      "responseSchema": "{ peer: { id: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string }, messages: [{ id: string, senderId: string, receiverId: string, content: string, isRead: boolean, createdAt: string }] }",
+      "errorCodes": [
+        "400",
+        "401",
+        "404"
+      ]
+    },
+    {
+      "id": "API-9",
+      "method": "POST",
+      "path": "/api/messages/with/:peerId",
+      "summary": "向指定社区用户发送一条私信（禁止发给自己，校验目标存在性与正文长度）",
+      "requestSchema": "{ content: string (1..2000 chars) }",
+      "responseSchema": "{ ok: true, message: { id: string, conversationKey: string, senderId: string, receiverId: string, content: string, isRead: false, createdAt: string } }",
+      "errorCodes": [
+        "400",
+        "401",
+        "404"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-01",
+      "title": "增量数据迁移与个人主页、关注粉丝、评论回复后端接口",
+      "module": "backend/social-profile",
+      "description": "不修改 migrations/0001_init.sql，新建幂等迁移脚本 migrations/0002_social_profile_dm.sql（仅用 CREATE TABLE IF NOT EXISTS 与 CREATE INDEX IF NOT EXISTS 创建 user_profiles、user_follows、comment_replies、direct_messages 及查询索引；执行远程迁移前按 Cloudflare D1 规范核验 wrangler.toml 的 database_id 与 CI 环境变量 CLOUDFLARE_API_TOKEN）。扩展 src/routes/auth.ts 的 /api/auth/me 与 PATCH /api/auth/profile 支持 avatarUrl（复用 isValidImageUrl 校验）与 bio（0..200 字符）；新建 src/routes/users.ts 并挂载至 /api/users 实现主页资料聚合（非本人严禁返回 email）、关注/取消关注切换（禁止自关注）、关注/粉丝列表与四维活动查询（posts/likes/comments/replies）；在 src/routes/posts.ts 新增 POST /api/posts/:id/comments/:commentId/replies，更新 GET /api/posts 与 GET /api/posts/:id 附带 author.avatarUrl 及每条评论下的 replies，删帖时同步清理 comment_replies。",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "已登录用户在个人资料中修改头像、昵称或个人简介后，刷新页面仍展示最新保存的资料，且社区帖子与评论中的作者头像同步更新。",
+        "用户访问自己或他人的个人主页时，页面准确展示头像、昵称、个人简介、关注数、粉丝数，以及历史发帖、点赞、评论、回复四类记录，且访问他人主页不会泄露对方邮箱隐私。",
+        "用户在他人主页点击关注后，对方粉丝数与本人关注数同步加一，再次点击可取消关注且计数回退，系统同时阻止用户关注自己。",
+        "用户在帖子详情中回复某条评论后，回复内容会持久展示在对应评论下方；作者删除帖子时，关联的评论与回复会一并移除。"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-02",
+      "title": "站内私信后端服务与未读消息计数管理",
+      "module": "backend/direct-messages",
+      "description": "新建 src/routes/messages.ts 并挂载至 /api/messages，基于 direct_messages 表与规范化 conversation_key（按字典序拼接双方 userId）实现会话列表与全局未读数统计（GET /api/messages/conversations）、与指定用户的消息历史拉取及自动已读标记（GET /api/messages/with/:peerId）和发送私信（POST /api/messages/with/:peerId）。校验登录态、禁止给自己发送私信、校验目标用户存在及消息正文 1..2000 字符，严格隔离会话访问权限确保第三方用户无法读取他人私信。",
+      "dependsOn": [
+        "T-01"
+      ],
+      "acceptanceCriteria": [
+        "已登录用户向社区其他用户发送私信后，双方在私信记录中都能看到消息内容，刷新页面后历史对话保持完整。",
+        "接收方收到新私信后，私信入口会展示未读消息数量提示，点开对应会话查看消息后该会话未读提示自动清零。",
+        "未登录访客无法查看或发送私信，已登录用户也无法给自己发送私信，且任意用户都无法窥探不属于自己的他人私信内容。"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-03",
+      "title": "左右分栏布局重构与左侧导航栏交互升级",
+      "module": "frontend/layout-navigation",
+      "description": "重构 client/src/pages/CommunityPage.tsx 与 client/src/App.tsx 为响应式左右分栏布局：桌面端左侧固定导航栏（约 240px）顶部展示品牌标识，中部依次展示「动态」「私信」（带未读角标）「主页」三项核心导航与「发布图文」主按钮，底部固定个人资料按钮（已登录时展示真实头像与昵称，点击弹出操作菜单包含「查看主页」「编辑资料」及「退出登录」选项；未登录时展示「登录」按钮打开邮箱验证码登录弹窗）。移动端小屏自动折叠为底部导航栏。升级 AvatarBadge 组件支持渲染自定义 avatarUrl 并在图片加载失败时平滑回退渐变首字母头像。严格维持 /admin 隐藏路由独立且公开导航无任何入口。",
+      "dependsOn": [
+        "T-01",
+        "T-02"
+      ],
+      "acceptanceCriteria": [
+        "用户在桌面端打开社区首页时看到清晰的左右分栏结构，左侧导航栏依次展示动态、私信、主页选项，点击后右侧主内容区平滑切换对应页面。",
+        "左侧导航栏底部展示个人资料按钮，已登录用户点击后会弹出包含退出登录在内的功能选项，点击退出登录后立即清除登录状态并恢复未登录视图。",
+        "未登录访客点击底部登录按钮或尝试进入私信、主页和发布图文时，页面弹出邮箱验证码登录窗口，登录成功后可正常使用对应功能。",
+        "公开社区界面全程不展示任何管理后台入口，原有搜索、话题标签筛选、最新/最热排序与图文浏览功能均保持正常。"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-04",
+      "title": "个人主页全功能视图、评论回复交互与私信中心前端实现",
+      "module": "frontend/profile-messages",
+      "description": "扩展 client/src/lib/api.ts 接入用户主页、关注粉丝、评论回复与私信接口；新增个人主页页面组件（支持查看本人主页与点击帖子/评论/私信作者进入他人主页），包含封面与头像展示、本人可点击更换头像（复用圆形裁剪上传）与编辑昵称/个人简介、他人主页展示关注/已关注按钮与「发私信」直达按钮、可点击展开的关注/粉丝用户列表弹窗、以及基于 @radix-ui/react-tabs 的「历史发帖」「点赞」「评论」「回复」四标签页。升级 PostDetailDialog.tsx 支持针对单条评论发起二级回复并嵌套渲染；新增私信中心双栏组件（会话列表与未读徽标 + 聊天消息流 + 发送框 + 轻量定时轮询）。",
+      "dependsOn": [
+        "T-02",
+        "T-03",
+        "T-05"
+      ],
+      "acceptanceCriteria": [
+        "用户进入自己的个人主页后，可以上传并裁剪更换头像、编辑昵称与个人简介，保存后新头像和简介立即在主页及左侧导航栏生效。",
+        "用户在个人主页可以切换浏览历史发帖、点赞、评论和回复四个列表，点击关注数或粉丝数可查看对应的用户列表并点进对方主页。",
+        "用户在浏览他人主页时可以一键关注或取消关注，也可以点击发私信直接跳转至与对方的私信对话窗口并发送消息。",
+        "用户在帖子详情页可以对某条评论点击回复并提交内容，回复会立即展示在该评论下方，并同步出现在个人主页的回复列表中。"
+      ],
+      "estimatedComplexity": "L"
+    },
+    {
+      "id": "T-05",
+      "title": "图文发布图片编辑与裁剪能力（集成 react-easy-crop）",
+      "module": "frontend/image-editor",
+      "description": "在 package.json 中安装 GitHub 开源库 react-easy-crop，编写浏览器 HTML5 Canvas 裁剪与旋转导出工具 client/src/lib/image-crop.ts（自动控制导出图片体积 ≤ 2MB）以及通用裁剪弹窗 client/src/components/ImageCropDialog.tsx（支持拖拽移动、缩放滑块、90° 左/右旋转、1:1 / 4:3 / 3:4 / 16:9 常见比例切换、重置以及头像专用圆形 1:1 裁剪模式）。升级 ComposeDialog.tsx：选择本地图片后保持非阻塞立即预览与直接发布能力，同时在配图预览区提供清晰的「裁剪/编辑」按钮打开编辑弹窗，确认裁剪后更新待上传文件与预览图，并向个人主页头像更换流程复用该裁剪组件。",
+      "dependsOn": [
+        "T-03"
+      ],
+      "acceptanceCriteria": [
+        "用户在发布图文弹窗选择本地图片后，可点击裁剪或编辑按钮进入图片编辑界面，自由拖拽调整构图、放大缩小、旋转方向以及切换常见裁剪比例。",
+        "用户在编辑界面点击确认裁剪后，发布弹窗中的配图预览立即变为裁剪后的新图片，点击立即发布后社区动态中展示的是编辑后的配图。",
+        "用户选择本地图片后如果无需裁剪，仍可直接输入标题和正文点击立即发布，原有快捷发帖体验不受影响。"
+      ],
+      "estimatedComplexity": "M"
+    }
+  ]
+}
