@@ -1,0 +1,325 @@
+{
+  "schemaVersion": "1.1",
+  "generatedBy": "AutoDev Studio",
+  "runId": "run-e0c23e40",
+  "createdAt": "2026-11-21T16:29:04.891Z",
+  "repository": "jiangfengwhu/atd-v1",
+  "baseBranch": "main",
+  "baseCommitSha": "47da7f3347a7e83b8d99d56ed117929120bdd6ea",
+  "e2eTestPath": "tests/e2e/run-e0c23e40.spec.ts",
+  "e2eVaultPath": ".autodev-e2e-vault/run-e0c23e40/e2e.spec.ts",
+  "blindE2eVerification": true,
+  "archivedSpecPath": "docs/iterations/run-e0c23e40-spec.json",
+  "prdTitle": "动态详情页",
+  "architecture": {
+    "summary": "基于现有 Cloudflare Workers (Hono + D1) / Node SQLite 双端架构与 React 19 + Vite 6 前端进行增量演进，不修改既有 0001~0003 SQL 迁移、无需新增表结构。服务端层面：1) 升级 wrangler.toml 的 compatibility_date 至 2025-04-01 并显式绑定 [assets] binding = \"ASSETS\"，在 src/types.ts 声明 ASSETS?: Fetcher，并在 src/index.ts 的 app.notFound 中实现双保险 SPA 回退——所有 /api/* 未匹配路径继续返回 JSON 404_NOT_FOUND，缺失静态文件（如 .js/.css/.png 等扩展名）返回 404，其余 GET/HEAD 前端路由（/admin、/admin/、/posts/:id 等）回退拉取根路径 / 的 index.html 返回 200 HTML；同步对齐 src/node-server.ts 对缺失静态文件的 404 行为。2) 复用现有 GET /api/v1/posts/:id 与 POST /api/v1/posts/:id/click 接口，增量加固 src/routes/comments.ts：GET /api/v1/posts/:postId/comments 校验目标动态存在性（不存在返回 404_POST_NOT_FOUND），POST /api/v1/posts/:postId/comments 校验传入 parent_id 必须归属同一动态（非法返回 400_INVALID_PARENT_COMMENT）。前端层面：1) 在 client/App.tsx 引入基于 History API（pushState + popstate）的轻量客户端路由，统一分发 /admin*（隐藏管理后台，全站不留入口）、/posts/:id（动态详情页）与 /（动态 Feed / 站内信），并确保 vite.config.ts 使用 base: '/' 使深层路径静态资源正常加载。2) 重构 client/components/Feed.tsx，彻底移除信息流卡片内联 Comments 渲染，点击正文/时间/评论按钮或右侧热门动态均跳转至 /posts/:id，点赞/转发/联系作者/图片灯箱阻止冒泡保持原位交互。3) 新增 client/components/PostDetail.tsx，顶部提供返回导航与详情标题，主体采用 <article className=\"post-card x-post-detail-card\"> 展示完整图文、绝对时间、四维统计、互动操作及内置 Comments 评论与嵌套回复区，具备首屏缓存秒开、骨架屏、404 友好提示与 500 重试兜底，并补充 client/styles.css 明暗双色与响应式样式。",
+    "techDecisions": [
+      "不引入 react-router 等重型路由依赖，在 client/App.tsx 基于原生 window.history.pushState 与 popstate 事件实现零依赖轻量 SPA 路由，精准匹配 /、/posts/:id 与 /admin(/.*)，保证包体积精简且兼容明暗主题切换与侧边栏导航状态。",
+      "Cloudflare Workers SPA 回退采用配置与代码双重保障：wrangler.toml 升级 compatibility_date = \"2025-04-01\" 并配置 binding = \"ASSETS\"（兼容当前锁定的 Wrangler 3.114.x），src/index.ts 在 app.notFound 中通过 c.env.ASSETS.fetch(new Request(new URL('/', c.req.url), ...)) 回退拉取根路径而非 /index.html，避免 Cloudflare 默认 auto-trailing-slash 产生 307 重定向，同时保证直连 HTTP GET（无 Sec-Fetch-Mode: navigate）亦稳定返回 200 HTML。",
+      "src/index.ts 仅在 app.notFound 中按需使用 c.env?.ASSETS，不注册顶层 app.get('*')，确保本地 src/node-server.ts 的 serveStatic 与 SPA 回退逻辑不受覆盖，双端行为严格一致。",
+      "详情页 PostDetail.tsx 采用 <article className=\"post-card x-post-detail-card\"> 包裹完整动态内容与 Comments 评论区，既符合语义化 HTML 与 X.com 详情页视觉规范，又无缝兼容存量只读测试 tests/e2e/run-f734f054.spec.ts 的动态卡片评论断言。",
+      "不新增数据库迁移，直接复用 posts、post_media、media_assets、comments、post_likes、post_reposts、post_views 现有表与 GET /api/v1/posts/:id 等接口，仅在 comments 路由补充存在性与跨帖 parent_id 归属校验。"
+    ]
+  },
+  "ambiguities": [
+    {
+      "id": "AMB-1",
+      "severity": "medium",
+      "title": "信息流列表评论交互迁移策略与存量只读 E2E 回归兼容",
+      "detail": "PRD 要求为每条动态添加详情页并将评论放到详情页，但未明确信息流卡片点击哪些区域进入详情页，且仓库存在只读回归测试 tests/e2e/run-f734f054.spec.ts（其在卡片上点击评论按钮后，依赖动态定位器 .post-card, article 匹配含帖子正文的容器并在其内部填写 .comment-form 评论）。",
+      "clarificationSuggestion": "在 Feed 列表页（/）彻底移除内联 Comments 组件与展开状态，点击动态正文、发布时间或评论按钮均通过 SPA 路由跳转至 /posts/:id 动态详情页（点赞、转发、联系作者与图片灯箱阻止事件冒泡保持原位交互）；详情页外层采用 <article className=\"post-card x-post-detail-card\"> 同时包裹动态正文与 Comments 评论区，既彻底满足 PRD 业务形态，又天然无缝兼容既有只读回归测试。"
+    },
+    {
+      "id": "AMB-2",
+      "severity": "medium",
+      "title": "动态详情页 URL 规范、直链访问与点击量统计口径",
+      "detail": "PRD 未规定详情页的具体路由格式，也未明确通过列表进入或直接打开详情 URL 时是否自动计入点击/浏览统计。",
+      "clarificationSuggestion": "统一采用 /posts/:id 前端路径（支持列表跳转、深链直达、浏览器刷新及前进/后退），进入详情页成功加载动态后自动触发一次 POST /api/v1/posts/:id/click 原子累加浏览/点击数（使用 ref 防 React StrictMode 开发态重复计数），并在顶部提供返回按钮与链接复制能力。"
+    },
+    {
+      "id": "AMB-3",
+      "severity": "low",
+      "title": "Cloudflare Workers 线上 /admin 显示 Not Found 的根因与双保险修复",
+      "detail": "线上 https://atd-v1.809740942.workers.dev/admin 返回纯文本 Not Found，经排查系 wrangler.toml 的 compatibility_date（2024-09-23）早于 Cloudflare Workers Static Assets 启用导航优先静态回退的 2025-04-01，且未声明 ASSETS binding；同时 src/index.ts 的 app.notFound 对非 /api 路径直接返回 404 Not Found，未回退至静态资源 index.html（而本地 src/node-server.ts 额外挂载了 app.get('*') 掩盖了该问题）。",
+      "clarificationSuggestion": "在不升级 Wrangler 主版本（保持锁定 3.114.x 兼容、不使用仅 Wrangler 4 支持的 run_worker_first 数组语法）的前提下，升级 wrangler.toml 的 compatibility_date 至 2025-04-01 并显式配置 binding = \"ASSETS\"，同时在 src/index.ts 的 app.notFound 中为非 /api 且非静态资源后缀的 GET/HEAD 请求通过 c.env.ASSETS.fetch 回退返回根路径 / 的 index.html（避免请求 /index.html 触发 Cloudflare auto-trailing-slash 307 重定向），一并解决 /admin、/admin/ 与 /posts/:id 在线上的 404 故障。"
+    }
+  ],
+  "apiContracts": [
+    {
+      "id": "API-1",
+      "method": "GET",
+      "path": "/api/v1/posts/:id",
+      "summary": "获取单条动态详情，包含作者信息、正文、图片列表、实时四维统计及当前用户点赞/转发状态（现有接口，供详情页拉取）",
+      "requestSchema": "Path param: id (string); Optional Auth Header: Authorization Bearer <token> 或 x-browser-fingerprint",
+      "responseSchema": "{ id: string, user_id: string, author_name: string, content: string, images: Array<{ id: string, url: string, mime_type: string }>, clicks_count: number, views_count: number, likes_count: number, reposts_count: number, comments_count: number, user_liked: boolean, user_reposted: boolean, created_at: string }",
+      "errorCodes": [
+        "404",
+        "500"
+      ]
+    },
+    {
+      "id": "API-2",
+      "method": "GET",
+      "path": "/api/v1/posts/:postId/comments",
+      "summary": "获取指定动态的全部评论与嵌套回复列表（按时间正序），动态不存在时明确返回 404",
+      "requestSchema": "Path param: postId (string); Optional Auth Header",
+      "responseSchema": "{ comments: Array<{ id: string, post_id: string, user_id: string, author_name: string, parent_id: string | null, content: string, created_at: string }> }",
+      "errorCodes": [
+        "404",
+        "500"
+      ]
+    },
+    {
+      "id": "API-3",
+      "method": "POST",
+      "path": "/api/v1/posts/:postId/comments",
+      "summary": "在动态详情页发表评论或嵌套回复，校验登录态、非空内容、目标动态存在性及可选 parent_id 必须归属同动态",
+      "requestSchema": "Headers: Authorization Bearer <token> 或 x-browser-fingerprint; Body JSON: { content: string (non-empty trimmed), parent_id?: string | null }",
+      "responseSchema": "{ id: string, post_id: string, user_id: string, author_name: string, parent_id: string | null, content: string, created_at: string }",
+      "errorCodes": [
+        "400",
+        "401",
+        "404",
+        "500"
+      ]
+    },
+    {
+      "id": "API-4",
+      "method": "POST",
+      "path": "/api/v1/posts/:id/click",
+      "summary": "进入动态详情页时原子递增点击/浏览计数并返回最新值",
+      "requestSchema": "Path param: id (string)",
+      "responseSchema": "{ post_id: string, clicks_count: number, views_count: number }",
+      "errorCodes": [
+        "404",
+        "500"
+      ]
+    },
+    {
+      "id": "API-5",
+      "method": "GET",
+      "path": "/admin (及 /admin/、/posts/:id 等非 /api 前端路由)",
+      "summary": "SPA 静态入口回退路由：在 Cloudflare Workers 与本地 Node 环境下均为前端页面路径返回 200 HTML（dist/index.html），同时保留 /api/* 的 JSON 404 与缺失静态文件的 404",
+      "requestSchema": "GET/HEAD 请求任意非 /api 且非静态资源文件扩展名的前端路径（如 /admin、/admin/、/posts/:id）",
+      "responseSchema": "HTTP 200 text/html (dist/index.html)",
+      "errorCodes": [
+        "404"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-01",
+      "title": "修复 Cloudflare Workers 与本地 Node 的 SPA 路由回退（解决 /admin 与 /posts/:id 404）",
+      "module": "worker-routing",
+      "description": "1. 更新 wrangler.toml：将 compatibility_date 升级至 \"2025-04-01\"，在 [assets] 区块显式添加 binding = \"ASSETS\"（保留 directory = \"./dist\" 与 not_found_handling = \"single-page-application\"，不添加不兼容 Wrangler 3.114 的数组型 run_worker_first）。2. 在 src/types.ts 的 Env 接口及 worker-configuration.d.ts 中补充 ASSETS?: Fetcher。3. 升级 src/index.ts 的 app.notFound 为异步处理：/api 开头路径继续返回 404 JSON (404_NOT_FOUND)；若存在 c.env?.ASSETS 且方法为 GET/HEAD，先调用 c.env.ASSETS.fetch(c.req.raw)，若返回 404 且路径不属于缺失静态资源文件（排除匹配 /\\.[a-z0-9]+$/i 且非 .html 的扩展名），则构造根路径 URL（new URL('/', c.req.url)）调用 c.env.ASSETS.fetch 返回 200 HTML 避免 307 重定向。4. 对齐 src/node-server.ts 的 app.get('*')：对非 /api 的缺失静态资源扩展名路径返回 404，其余前端路径返回 dist/index.html。",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "wrangler.toml 包含 compatibility_date = \"2025-04-01\" 与 [assets] binding = \"ASSETS\"，且通过 tsc --noEmit 与现有 Wrangler 3.114 配置校验",
+        "直接发起 HTTP GET /admin、GET /admin/、GET /posts/test-id（无论是否携带 Sec-Fetch-Mode: navigate）均返回 HTTP 200 且 Content-Type 为 text/html、响应包含 SPA 根节点，不再返回 Not Found",
+        "未匹配的 API 路径（如 GET /api/v1/non-existent）继续返回 HTTP 404 且响应体为包含 404_NOT_FOUND 的 JSON，不被 SPA HTML 劫持",
+        "缺失的静态资源路径（如 GET /assets/missing-file.js）返回 HTTP 404，不误返回 index.html"
+      ],
+      "estimatedComplexity": "S"
+    },
+    {
+      "id": "T-02",
+      "title": "加固动态详情关联评论接口的边界校验",
+      "module": "backend-api",
+      "description": "检查 src/routes/posts.ts 的 GET /api/v1/posts/:id（保持现有完整字段与 404_POST_NOT_FOUND 行为不变），并增量完善 src/routes/comments.ts：1) 在 GET /api/v1/posts/:postId/comments 中先查询 posts 表确认目标动态存在，不存在时返回 404 { error: '404_POST_NOT_FOUND', message: 'Target post not found' }；2) 在 POST /api/v1/posts/:postId/comments 中，当请求体提供非空 parent_id 时校验该父评论存在且其 post_id 等于当前路径参数 postId，否则返回 400 { error: '400_INVALID_PARENT_COMMENT', message: 'Parent comment not found in this post' }，防止跨帖或悬空父评论注入。",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "GET /api/v1/posts/:id 对存在动态返回 200 及完整正文、images、likes_count、reposts_count、comments_count、clicks_count、views_count、user_liked、user_reposted；对不存在动态返回 404 (404_POST_NOT_FOUND)",
+        "GET /api/v1/posts/:postId/comments 对不存在动态返回 404 (404_POST_NOT_FOUND)，对存在动态返回 200 { comments: [...] }",
+        "POST /api/v1/posts/:postId/comments 传入不存在或属于其他动态的 parent_id 时返回 400 (400_INVALID_PARENT_COMMENT)，合法同帖 parent_id 正常创建并返回 201"
+      ],
+      "estimatedComplexity": "S"
+    },
+    {
+      "id": "T-03",
+      "title": "前端引入 History SPA 路由并重构 Feed 卡片跳转（将评论移出列表）",
+      "module": "frontend-routing-feed",
+      "description": "1. 在 vite.config.ts 显式配置 base: '/'，保证嵌套路径（/posts/:id、/admin/）下构建产物的静态资源引用始终基于根路径加载。2. 在 client/App.tsx 实现基于 pathname 状态、window.history.pushState 与 popstate 监听的轻量路由分发：/admin 及 /admin/* 渲染 AdminPage（且公开界面继续保持零管理员入口链接）；/posts/:id 提取 postId 渲染 PostDetail 视图；其余路径渲染 Feed/Messages。同时支持从右侧栏热门动态列表点击直接进入 /posts/:id，并确保在详情页点击左侧栏“动态 Feed”/Logo/“写动态”/“站内信”能正确切回对应视图并同步 URL。3. 重构 client/components/Feed.tsx：彻底移除内联 Comments 导入、activeCommentsPostId 状态与卡片内评论区渲染；新增 onOpenPostDetail(post, { focusComment? }) 回调，点击动态文本、时间或评论按钮均导航至 /posts/:id（正文点击避开文本划选）；点赞、转发、联系作者与图片灯箱按钮调用 e.stopPropagation() 保持原位交互不误跳转。",
+      "dependsOn": [
+        "T-01"
+      ],
+      "acceptanceCriteria": [
+        "访问 / 信息流页面时，动态卡片内不再渲染评论输入框或内联评论列表",
+        "在信息流点击某条动态的正文或评论按钮，浏览器 URL 变为 /posts/<id> 并进入该动态详情页；点击点赞、转发、联系作者或查看大图时留在当前页不触发详情页跳转",
+        "浏览器前进/后退按钮及左侧导航栏切换可正确同步 URL 与页面视图，右侧热门动态点击可直达对应动态详情页",
+        "直接访问 /admin 与 /admin/ 正常渲染管理员登录/控制台页面，公开页面中不存在任何指向 /admin 的链接"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-04",
+      "title": "开发动态详情页组件 PostDetail 并完善详情页评论体验",
+      "module": "frontend-post-detail",
+      "description": "1. 新建 client/components/PostDetail.tsx：顶部渲染吸顶详情头部（含“返回”按钮与“动态详情”标题）；进入页面后基于 postId 拉取 GET /api/v1/posts/:id（若从列表带入 initialPost 则先展示再后台刷新最新数据），并仅在动态存在时通过 ref 去重调用一次 POST /api/v1/posts/:id/click 累加浏览量；使用 <article className=\"post-card x-post-detail-card\" data-testid=\"post-detail\"> 包裹作者头像/昵称/handle/联系作者、完整保留换行的正文、多图网格（接入 ImageLightbox）、完整发布时间、四维统计摘要栏、互动操作栏（评论聚焦、转发、点赞、复制分享链接）以及内嵌的 Comments 评论组件。2. 处理完善的状态兜底：加载中显示骨架屏；404 显示友好“该动态不存在或已被删除”及返回首页按钮；网络/500 错误显示带“重试”按钮的告警卡片。3. 增强 client/components/Comments.tsx：支持 autoFocus 属性自动聚焦评论框、补充评论列表加载失败错误提示与重试、添加 submittingRef 防止双击重复提交评论、评论发送成功后实时回调更新详情页 comments_count 与全局统计。",
+      "dependsOn": [
+        "T-02",
+        "T-03"
+      ],
+      "acceptanceCriteria": [
+        "直接访问或刷新 /posts/:id 时能完整展示动态正文、图片、发布时间、点赞/转发/评论/点击统计以及全部评论列表",
+        "在详情页可发表顶级评论与针对某条评论的嵌套回复（含空内容拦截提示与防双击重复提交），评论提交后实时显示且刷新页面后持久化保留，同时动态评论计数准确递增",
+        "在详情页可执行点赞、转发切换与图片灯箱查看，并可通过顶部“返回”按钮回到信息流首页",
+        "访问不存在的 /posts/non-existent-id 时展示友好的不存在提示与返回按钮，接口异常 500 时展示错误态并支持重试恢复",
+        "存量只读回归测试 tests/e2e.spec.ts 与 tests/e2e/run-f734f054.spec.ts 全部保持通过"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-05",
+      "title": "完善动态详情页明暗双色样式与响应式布局，完成构建与全量验证",
+      "module": "frontend-styling",
+      "description": "在 client/styles.css 中为动态详情页补充符合 X.com 视觉规范的样式规则，包括详情页吸顶顶栏（.x-detail-header、.x-detail-back-btn）、详情正文排版与图片展示（.x-post-detail-card、.x-detail-content）、发布时间与四维统计分割栏（.x-detail-timestamp、.x-detail-stats-strip）、操作栏与分享反馈、404/错误兜底卡片，以及明暗主题变量适配与移动端断点优化；并在信息流卡片添加可点击指针与柔和悬浮反馈。最后执行 npm run build 与 npx playwright test 验证全量无报错。",
+      "dependsOn": [
+        "T-04"
+      ],
+      "acceptanceCriteria": [
+        "亮色与暗色主题下动态详情页排版清晰、对比度良好，与现有 X.com 风格无缝融合",
+        "桌面端三栏布局与移动端窄屏下详情页、返回按钮及评论表单均可正常交互且无横向溢出",
+        "npm run build（vite build && tsc --noEmit）执行通过，所有存量与新增测试全部通过"
+      ],
+      "estimatedComplexity": "S"
+    }
+  ],
+  "qaSpec": {
+    "coverageNotes": [
+      "覆盖 /admin 页面 HTTP 200 SPA 回退与管理后台登录页渲染",
+      "覆盖信息流列表移除内联评论、点击动态进入 /posts/:id 详情页、在详情页发表评论及点击返回首页主链路",
+      "覆盖 GET /api/v1/posts/:id、POST /api/v1/posts/:id/click 及评论读写基础 API 契约"
+    ],
+    "initialApiTestCount": 7
+  },
+  "qaCritic": {
+    "reviewSummary": "经对初版 QA 规格进行边界、异常输入、交互隔离、安全及并发五维审计，发现 6 项关键缺口（含 /admin/ 尾斜杠与 API/静态资源 404 不被 SPA 劫持验证、无效 postId 与跨帖 parent_id 校验、列表卡片点赞/转发防冒泡隔离、详情页正文与评论 XSS 防护、并发评论/点击原子性及 500 恢复验证）。已在终版接口清单与盲测 E2E 脚本中全面补齐，并严格执行 Playwright 严格模式卫生规范（所有 .or() 链均附带 .first()，且主内容断言均限定在 main 区域内避免与右侧热门动态冲突）。",
+    "findings": [
+      {
+        "id": "CRIT-01",
+        "category": "security",
+        "severity": "high",
+        "issue": "初版仅测试 GET /admin，未验证带尾斜杠的 /admin/、管理员登录鉴权（错误凭据拦截与默认 admin/admin 登录）、公开首页不暴露 /admin 隐藏入口，且未检验未匹配 /api/* 与缺失静态文件（如 /assets/missing.js）不会被 SPA 回退错误返回 200 HTML。",
+        "recommendation": "在终版测试中补齐 /admin 与 /admin/ 双路径 200 HTML 验证、错误密码拒绝与默认管理员登录验证（不修改密码保证幂等）、公开页零 /admin 链接检查，以及 /api/v1/non-existent JSON 404 与缺失静态资源 404 回归断言。"
+      },
+      {
+        "id": "CRIT-02",
+        "category": "invalid_input",
+        "severity": "high",
+        "issue": "初版未测试访问不存在动态详情页（/posts/non-existent-post-99999）的前端 404 友好兜底与返回首页能力，也未验证 GET /api/v1/posts/:postId/comments 对不存在动态返回 404 及 POST 评论传入跨帖/不存在 parent_id 的非法参数拦截。",
+        "recommendation": "新增不存在动态详情页的浏览器直达 404 兜底测试，以及评论接口的未鉴权 401、空白内容 400、不存在动态 404 与跨帖/无效 parent_id 拒绝契约测试。"
+      },
+      {
+        "id": "CRIT-03",
+        "category": "ui_interaction",
+        "severity": "medium",
+        "issue": "初版未验证信息流卡片内点击点赞或转发按钮时阻止事件冒泡（不误跳转到详情页），也未验证点击卡片评论按钮直达详情页、详情页内空评论拦截、嵌套回复（parent_id）及刷新后评论持久化。",
+        "recommendation": "补全列表卡片点赞/转发留页断言、点击评论按钮进入 /posts/:id 断言、详情页空评论错误提示、顶级评论与嵌套回复发表、以及 page.reload() 深链刷新后动态与评论完整持久化验证。"
+      },
+      {
+        "id": "CRIT-04",
+        "category": "security",
+        "severity": "high",
+        "issue": "新增的动态详情页独立渲染动态正文与评论内容，初版缺少针对详情页的 XSS 注入防护检测，存在新组件误用危险 HTML 注入的风险。",
+        "recommendation": "向详情页注入包含事件处理器的脚本载荷（动态正文与评论内容双重注入），验证内容按纯文本安全转义展示，无弹窗且全局标记未被执行。"
+      },
+      {
+        "id": "CRIT-05",
+        "category": "concurrency",
+        "severity": "medium",
+        "issue": "初版缺少对同一动态并发发表多条评论及并发点击计数的原子性与无碰撞验证，也缺少详情接口返回 500 时的前端错误恢复测试。",
+        "recommendation": "新增同帖 5 并发评论写入（断言 5 个唯一 comment id 且详情 comments_count 精确增长 5）与 5 并发点击累加测试，并在浏览器端拦截单帖详情接口返回 500 后验证错误提示与重试恢复。"
+      },
+      {
+        "id": "CRIT-06",
+        "category": "boundary",
+        "severity": "medium",
+        "issue": "详情页中右侧栏可能同时渲染热门动态摘要，直接全局 page.getByText 易触发 Playwright strict mode 多元素冲突；同时需验证详情页内点赞/转发交互持久化及顶部返回导航。",
+        "recommendation": "所有动态与评论页面断言严格限定在 page.getByRole('main') 作用域并规范使用 .first()，补充详情页点赞/转发刷新持久化与返回首页验证。"
+      }
+    ],
+    "finalApiTestChecklist": [
+      {
+        "id": "TC-01",
+        "endpoint": "/admin",
+        "method": "GET",
+        "scenario": "直接 HTTP GET 请求 /admin 与 /admin/（无浏览器导航头）验证 SPA 回退",
+        "expectedStatus": 200,
+        "assertion": "两者均返回 HTTP 200、Content-Type 包含 text/html、响应体含 #root 且不等于 Not Found"
+      },
+      {
+        "id": "TC-02",
+        "endpoint": "/posts/:id",
+        "method": "GET",
+        "scenario": "直接 HTTP GET 请求动态详情深链 /posts/:id 验证 SPA 回退",
+        "expectedStatus": 200,
+        "assertion": "返回 HTTP 200 且 Content-Type 包含 text/html"
+      },
+      {
+        "id": "TC-03",
+        "endpoint": "/api/v1/non-existent-route",
+        "method": "GET",
+        "scenario": "访问不存在的 API 路径确保不被 SPA HTML 劫持",
+        "expectedStatus": 404,
+        "assertion": "返回 HTTP 404 且响应为包含 404_NOT_FOUND 的 JSON"
+      },
+      {
+        "id": "TC-04",
+        "endpoint": "/assets/non-existent-bundle-99999.js",
+        "method": "GET",
+        "scenario": "访问不存在的静态资源文件确保不错误回退返回 index.html",
+        "expectedStatus": 404,
+        "assertion": "返回 HTTP 404 而非 200 HTML"
+      },
+      {
+        "id": "TC-05",
+        "endpoint": "/api/v1/posts/:id",
+        "method": "GET",
+        "scenario": "查询已存在动态与不存在动态的单条详情",
+        "expectedStatus": 200,
+        "assertion": "存在动态返回 200 及完整正文、images、likes_count、reposts_count、comments_count、clicks_count、views_count、user_liked、user_reposted；不存在动态返回 404 (404_POST_NOT_FOUND)"
+      },
+      {
+        "id": "TC-06",
+        "endpoint": "/api/v1/posts/:postId/comments",
+        "method": "GET",
+        "scenario": "分别查询存在动态与不存在动态的评论列表",
+        "expectedStatus": 200,
+        "assertion": "存在动态返回 200 { comments: [...] }；不存在动态返回 404 (404_POST_NOT_FOUND)"
+      },
+      {
+        "id": "TC-07",
+        "endpoint": "/api/v1/posts/:postId/comments",
+        "method": "POST",
+        "scenario": "校验评论未鉴权、空/空白内容、不存在动态、跨帖或无效 parent_id，以及正常顶级评论与同帖嵌套回复",
+        "expectedStatus": 201,
+        "assertion": "未鉴权返回 401、空内容返回 400、不存在动态返回 404、无效/跨帖 parent_id 返回 400/404；合法请求返回 201 且 GET /api/v1/posts/:id 的 comments_count 精确增长"
+      },
+      {
+        "id": "TC-08",
+        "endpoint": "/api/v1/posts/:id/click",
+        "method": "POST",
+        "scenario": "对不存在动态点击返回 404，对存在动态发起 5 并发点击验证原子递增",
+        "expectedStatus": 200,
+        "assertion": "不存在动态返回 404；存在动态 5 并发点击全部 200 且最终 clicks_count 精确递增 5"
+      },
+      {
+        "id": "TC-09",
+        "endpoint": "/api/v1/posts/:postId/comments",
+        "method": "POST",
+        "scenario": "对同一动态并发提交 5 条评论验证无 ID 冲突与计数一致",
+        "expectedStatus": 201,
+        "assertion": "5 个响应均成功且 comment id 互不相同，评论列表长度与动态详情 comments_count 精确一致"
+      },
+      {
+        "id": "TC-10",
+        "endpoint": "/api/v1/admin/login",
+        "method": "POST",
+        "scenario": "验证管理员错误凭据拒绝与有效凭据登录鉴权及配置读取",
+        "expectedStatus": 200,
+        "assertion": "错误密码返回 401；有效凭据返回 200 token 且凭 token 可访问 GET /api/v1/admin/settings"
+      }
+    ]
+  }
+}

@@ -1,765 +1,324 @@
 {
   "schemaVersion": "1.1",
   "generatedBy": "AutoDev Studio",
-  "runId": "run-ec6c3c00",
-  "createdAt": "2026-11-20T11:26:55.249Z",
+  "runId": "run-e0c23e40",
+  "createdAt": "2026-11-21T16:29:04.891Z",
   "repository": "jiangfengwhu/atd-v1",
   "baseBranch": "main",
-  "baseCommitSha": "f19988fb68bdbc3ea4e0c91c2b19a6fea1d0ab71",
-  "e2eTestPath": "tests/e2e/run-ec6c3c00.spec.ts",
-  "e2eVaultPath": ".autodev-e2e-vault/run-ec6c3c00/e2e.spec.ts",
+  "baseCommitSha": "47da7f3347a7e83b8d99d56ed117929120bdd6ea",
+  "e2eTestPath": "tests/e2e/run-e0c23e40.spec.ts",
+  "e2eVaultPath": ".autodev-e2e-vault/run-e0c23e40/e2e.spec.ts",
   "blindE2eVerification": true,
-  "archivedSpecPath": "docs/iterations/run-ec6c3c00-spec.json",
-  "prdTitle": "新版社区",
+  "archivedSpecPath": "docs/iterations/run-e0c23e40-spec.json",
+  "prdTitle": "动态详情页",
   "architecture": {
-    "summary": "基于现有 Cloudflare Workers + Hono + D1（以及本地 node:sqlite 双端适配）与 React 19 + Vite 6 架构进行增量升级重构，不修改已有 0001_initial.sql 与 0002_post_stats.sql 迁移，通过新增幂等迁移 0003_community_v2.sql 扩展媒体资源表（media_assets、post_media）、邮箱验证码与会话表（user_auth_emails、email_otp_codes、user_sessions）、转发统计表（post_reposts）以及管理员与系统配置表（admin_users、admin_sessions、system_settings），并在 src/node-server.ts 中补充迁移执行追踪机制。后端新增 Resend REST API 邮件服务、Web Crypto PBKDF2/SHA-256 鉴权与加密工具、邮箱 OTP 认证路由、图片上传/读取路由、真实点击/点赞/转发/评论统计聚合接口以及独立鉴权的管理员配置接口（默认 admin/admin 懒初始化哈希并支持改密，API Key 脱敏返回）。前端引入 lucide-react、@radix-ui/react-dialog 与 sonner 等成熟开源组件库，打造仿 X / Bluesky 风格的三栏响应式明暗双色社区界面，支持多图上传预览与灯箱浏览，彻底移除侧边栏与卡片中的 Mock 数据与占位按钮，并通过 SPA 路由在无任何界面入口的隐藏路径 /admin 提供独立管理员控制台。",
+    "summary": "基于现有 Cloudflare Workers (Hono + D1) / Node SQLite 双端架构与 React 19 + Vite 6 前端进行增量演进，不修改既有 0001~0003 SQL 迁移、无需新增表结构。服务端层面：1) 升级 wrangler.toml 的 compatibility_date 至 2025-04-01 并显式绑定 [assets] binding = \"ASSETS\"，在 src/types.ts 声明 ASSETS?: Fetcher，并在 src/index.ts 的 app.notFound 中实现双保险 SPA 回退——所有 /api/* 未匹配路径继续返回 JSON 404_NOT_FOUND，缺失静态文件（如 .js/.css/.png 等扩展名）返回 404，其余 GET/HEAD 前端路由（/admin、/admin/、/posts/:id 等）回退拉取根路径 / 的 index.html 返回 200 HTML；同步对齐 src/node-server.ts 对缺失静态文件的 404 行为。2) 复用现有 GET /api/v1/posts/:id 与 POST /api/v1/posts/:id/click 接口，增量加固 src/routes/comments.ts：GET /api/v1/posts/:postId/comments 校验目标动态存在性（不存在返回 404_POST_NOT_FOUND），POST /api/v1/posts/:postId/comments 校验传入 parent_id 必须归属同一动态（非法返回 400_INVALID_PARENT_COMMENT）。前端层面：1) 在 client/App.tsx 引入基于 History API（pushState + popstate）的轻量客户端路由，统一分发 /admin*（隐藏管理后台，全站不留入口）、/posts/:id（动态详情页）与 /（动态 Feed / 站内信），并确保 vite.config.ts 使用 base: '/' 使深层路径静态资源正常加载。2) 重构 client/components/Feed.tsx，彻底移除信息流卡片内联 Comments 渲染，点击正文/时间/评论按钮或右侧热门动态均跳转至 /posts/:id，点赞/转发/联系作者/图片灯箱阻止冒泡保持原位交互。3) 新增 client/components/PostDetail.tsx，顶部提供返回导航与详情标题，主体采用 <article className=\"post-card x-post-detail-card\"> 展示完整图文、绝对时间、四维统计、互动操作及内置 Comments 评论与嵌套回复区，具备首屏缓存秒开、骨架屏、404 友好提示与 500 重试兜底，并补充 client/styles.css 明暗双色与响应式样式。",
     "techDecisions": [
-      "增量迁移与双端幂等兼容：严格保留 0001_initial.sql 与 0002_post_stats.sql，新增 migrations/0003_community_v2.sql 全部采用 CREATE TABLE IF NOT EXISTS 独立扩展表设计（避免 SQLite ALTER TABLE 重复执行报错），并在 src/node-server.ts 中增加 _applied_migrations 记录表保障本地与 D1 迁移语义一致。",
-      "零 SDK 依赖直连 Resend REST API：通过标准 fetch 调用 https://api.resend.com/emails，优先读取 D1 system_settings 表中管理员动态配置的 resend_api_key 与 resend_from_email（支持环境变量兜底），确保 Cloudflare Workers 边缘运行时与 Node.js 环境 100% 行为一致。",
-      "Web Crypto 统一安全原语：使用标准 Web Crypto API（crypto.subtle PBKDF2-SHA256 加随机盐哈希管理员密码、SHA-256 哈希邮箱 OTP 与会话令牌、crypto.getRandomValues 生成 6 位验证码与高熵 Session Token），无需引入原生 bcrypt 二进制依赖即可跨 Workers 与 Node 运行。",
-      "双轨兼容的认证中间件设计：新建 src/middleware/auth.ts，优先验证邮箱登录签发的 Bearer Token / HttpOnly Cookie 会话；为遵循增量演进原则并保障仓库只读 E2E 回归契约通过，在接口层平滑兼容回退 x-browser-fingerprint 身份头，前端则以邮箱验证码登录作为核心用户体系。",
-      "D1/SQLite 媒体资源表承载图文附件：新增 media_assets 与 post_media 表存储校验后的图片数据（白名单 MIME、单图上限 1MB、单帖最多 4 张），Feed 接口仅返回轻量 /api/v1/media/:id 地址并由读取接口输出不可变缓存头与 nosniff 安全头，无需额外配置 R2 即可开箱运行。",
-      "开源组件库与无 Mock 社交 UI 体系：引入 lucide-react（图标）、@radix-ui/react-dialog（无障碍登录弹窗与图片灯箱）与 sonner（全局轻提示），在现有语义化亮暗双色主题变量体系上重构仿 X / Bluesky 三栏布局，彻底清除硬编码暗色、假浏览量哈希与占位 Mock 卡片，右栏接入真实社区统计与热帖数据。",
-      "无入口隐藏路径管理后台：借助 wrangler.toml 与 node-server.ts 既有的 SPA 回退机制，通过 pathname 识别 /admin 渲染独立 AdminPage 组件，主社区页面不留任何入口；管理员配置页对 Resend API Key 执行后端脱敏（仅返回配置状态与掩码）并提供测试发信与账密修改能力。"
+      "不引入 react-router 等重型路由依赖，在 client/App.tsx 基于原生 window.history.pushState 与 popstate 事件实现零依赖轻量 SPA 路由，精准匹配 /、/posts/:id 与 /admin(/.*)，保证包体积精简且兼容明暗主题切换与侧边栏导航状态。",
+      "Cloudflare Workers SPA 回退采用配置与代码双重保障：wrangler.toml 升级 compatibility_date = \"2025-04-01\" 并配置 binding = \"ASSETS\"（兼容当前锁定的 Wrangler 3.114.x），src/index.ts 在 app.notFound 中通过 c.env.ASSETS.fetch(new Request(new URL('/', c.req.url), ...)) 回退拉取根路径而非 /index.html，避免 Cloudflare 默认 auto-trailing-slash 产生 307 重定向，同时保证直连 HTTP GET（无 Sec-Fetch-Mode: navigate）亦稳定返回 200 HTML。",
+      "src/index.ts 仅在 app.notFound 中按需使用 c.env?.ASSETS，不注册顶层 app.get('*')，确保本地 src/node-server.ts 的 serveStatic 与 SPA 回退逻辑不受覆盖，双端行为严格一致。",
+      "详情页 PostDetail.tsx 采用 <article className=\"post-card x-post-detail-card\"> 包裹完整动态内容与 Comments 评论区，既符合语义化 HTML 与 X.com 详情页视觉规范，又无缝兼容存量只读测试 tests/e2e/run-f734f054.spec.ts 的动态卡片评论断言。",
+      "不新增数据库迁移，直接复用 posts、post_media、media_assets、comments、post_likes、post_reposts、post_views 现有表与 GET /api/v1/posts/:id 等接口，仅在 comments 路由补充存在性与跨帖 parent_id 归属校验。"
     ]
   },
   "ambiguities": [
     {
       "id": "AMB-1",
-      "severity": "high",
-      "title": "“忽略现有实现重做”与既有只读 E2E 回归契约及增量演进规范的兼容边界",
-      "detail": "PRD 提出忽略现有实现重新构建图文社区，但仓库已部署 0001/0002 迁移脚本、站内信/评论路由以及 tests/e2e.spec.ts、tests/e2e/run-f734f054.spec.ts 只读 Playwright 契约（依赖匿名浏览器指纹头发帖与站内信导航）。若直接删除存量路由或强制阻断旧指纹请求，将导致存量只读测试失败。",
-      "clarificationSuggestion": "建议在后端采取增量演进与双轨鉴权策略：完整保留 0001/0002 迁移及评论/站内信接口，主界面围绕新版图文社区与邮箱验证码登录重构；鉴权中间件优先解析邮箱登录会话 Token，兼容回退 x-browser-fingerprint 请求头。若确认彻底废弃匿名发帖与站内信，需同步更新或归档历史 E2E 契约。"
+      "severity": "medium",
+      "title": "信息流列表评论交互迁移策略与存量只读 E2E 回归兼容",
+      "detail": "PRD 要求为每条动态添加详情页并将评论放到详情页，但未明确信息流卡片点击哪些区域进入详情页，且仓库存在只读回归测试 tests/e2e/run-f734f054.spec.ts（其在卡片上点击评论按钮后，依赖动态定位器 .post-card, article 匹配含帖子正文的容器并在其内部填写 .comment-form 评论）。",
+      "clarificationSuggestion": "在 Feed 列表页（/）彻底移除内联 Comments 组件与展开状态，点击动态正文、发布时间或评论按钮均通过 SPA 路由跳转至 /posts/:id 动态详情页（点赞、转发、联系作者与图片灯箱阻止事件冒泡保持原位交互）；详情页外层采用 <article className=\"post-card x-post-detail-card\"> 同时包裹动态正文与 Comments 评论区，既彻底满足 PRD 业务形态，又天然无缝兼容既有只读回归测试。"
     },
     {
       "id": "AMB-2",
-      "severity": "high",
-      "title": "社区图片持久化存储介质（D1 表存储 vs Cloudflare R2）与上传规格",
-      "detail": "当前 wrangler.toml 仅绑定了 D1 数据库（DB），未配置 R2 对象存储 Bucket，且本地测试运行在 node:sqlite 适配器上。PRD 未明确图片上传体积上限、单帖张数上限及是否引入外部对象存储。",
-      "clarificationSuggestion": "建议首期新增 D1/SQLite 媒体资源表 media_assets 并提供 /api/v1/media/upload 与 /api/v1/media/:id 接口，前端压缩后限制单帖最多 4 张图、单图不超过 1MB（白名单 JPEG/PNG/WebP/GIF），实现 Cloudflare Workers 与本地 Node SQLite 双端零额外依赖运行；后续流量增长再平滑迁移至 R2。"
+      "severity": "medium",
+      "title": "动态详情页 URL 规范、直链访问与点击量统计口径",
+      "detail": "PRD 未规定详情页的具体路由格式，也未明确通过列表进入或直接打开详情 URL 时是否自动计入点击/浏览统计。",
+      "clarificationSuggestion": "统一采用 /posts/:id 前端路径（支持列表跳转、深链直达、浏览器刷新及前进/后退），进入详情页成功加载动态后自动触发一次 POST /api/v1/posts/:id/click 原子累加浏览/点击数（使用 ref 防 React StrictMode 开发态重复计数），并在顶部提供返回按钮与链接复制能力。"
     },
     {
       "id": "AMB-3",
-      "severity": "medium",
-      "title": "未配置 Resend API Key 时的登录降级行为与访客权限策略",
-      "detail": "管理员尚未在后台配置 Resend API Key 时无法真实发信；此外 PRD 未明确未登录访客是否可浏览动态流，以及未登录点击发帖/点赞/转发时的交互方式。",
-      "clarificationSuggestion": "建议允许未登录访客只读浏览动态与真实统计数据，触发发帖或互动时引导弹出邮箱验证码登录框；当 Resend API Key 未配置时，发送验证码接口明确返回 503_EMAIL_NOT_CONFIGURED 提示管理员先前往后台配置，避免静默失败或伪造发送成功。"
-    },
-    {
-      "id": "AMB-4",
-      "severity": "medium",
-      "title": "点击、点赞、转发、评论四类统计数据的去重与业务口径",
-      "detail": "PRD 要求添加点击、点赞、转发、评论数等必要统计，但未明确“点击数”按浏览/点击事件累计还是按用户去重，以及“转发”采用轻量计数转发还是创建引用新帖。",
-      "clarificationSuggestion": "建议点赞与转发基于 (post_id, user_id) 联合主键实现真实切换（Toggle）防重复刷数；评论数实时统计 comments 表；点击数复用现有 post_views 表在点击帖子详情或图片时原子累加，并在 API 中同时返回 clicks_count 与 views_count。"
-    },
-    {
-      "id": "AMB-5",
       "severity": "low",
-      "title": "隐藏管理员入口 URL 路径与 Resend 发件人邮箱配置项",
-      "detail": "PRD 要求管理员页面不在页面留入口、仅通过 URL 进入且初始账密为 admin/admin，但未指定具体路径，且 Resend 生产发信通常需要同时配置发件人邮箱地址。",
-      "clarificationSuggestion": "建议将管理后台挂载在隐藏前端路径 /admin（全站公开页面不保留任何链接或文案入口），后台表单除 Resend API Key 外同时支持配置发件人邮箱（resend_from_email）、站点名称及测试发信功能，并在使用默认密码时提示尽快修改。"
+      "title": "Cloudflare Workers 线上 /admin 显示 Not Found 的根因与双保险修复",
+      "detail": "线上 https://atd-v1.809740942.workers.dev/admin 返回纯文本 Not Found，经排查系 wrangler.toml 的 compatibility_date（2024-09-23）早于 Cloudflare Workers Static Assets 启用导航优先静态回退的 2025-04-01，且未声明 ASSETS binding；同时 src/index.ts 的 app.notFound 对非 /api 路径直接返回 404 Not Found，未回退至静态资源 index.html（而本地 src/node-server.ts 额外挂载了 app.get('*') 掩盖了该问题）。",
+      "clarificationSuggestion": "在不升级 Wrangler 主版本（保持锁定 3.114.x 兼容、不使用仅 Wrangler 4 支持的 run_worker_first 数组语法）的前提下，升级 wrangler.toml 的 compatibility_date 至 2025-04-01 并显式配置 binding = \"ASSETS\"，同时在 src/index.ts 的 app.notFound 中为非 /api 且非静态资源后缀的 GET/HEAD 请求通过 c.env.ASSETS.fetch 回退返回根路径 / 的 index.html（避免请求 /index.html 触发 Cloudflare auto-trailing-slash 307 重定向），一并解决 /admin、/admin/ 与 /posts/:id 在线上的 404 故障。"
     }
   ],
   "apiContracts": [
     {
       "id": "API-1",
-      "method": "POST",
-      "path": "/api/v1/auth/send-code",
-      "summary": "校验邮箱格式并施加 60 秒发送频控，生成 6 位验证码入库并通过管理员配置的 Resend 服务发送登录邮件",
-      "requestSchema": "{ \"email\": \"string (valid email)\" }",
-      "responseSchema": "{ \"sent\": true, \"expires_in_seconds\": 600, \"cooldown_seconds\": 60 }",
+      "method": "GET",
+      "path": "/api/v1/posts/:id",
+      "summary": "获取单条动态详情，包含作者信息、正文、图片列表、实时四维统计及当前用户点赞/转发状态（现有接口，供详情页拉取）",
+      "requestSchema": "Path param: id (string); Optional Auth Header: Authorization Bearer <token> 或 x-browser-fingerprint",
+      "responseSchema": "{ id: string, user_id: string, author_name: string, content: string, images: Array<{ id: string, url: string, mime_type: string }>, clicks_count: number, views_count: number, likes_count: number, reposts_count: number, comments_count: number, user_liked: boolean, user_reposted: boolean, created_at: string }",
       "errorCodes": [
-        "400_INVALID_EMAIL",
-        "429_RATE_LIMITED",
-        "502_EMAIL_SEND_FAILED",
-        "503_EMAIL_NOT_CONFIGURED"
+        "404",
+        "500"
       ]
     },
     {
       "id": "API-2",
-      "method": "POST",
-      "path": "/api/v1/auth/verify-code",
-      "summary": "校验邮箱与 6 位验证码（限 5 次尝试与有效期），自动创建或绑定社区用户并签发会话令牌与 HttpOnly Cookie",
-      "requestSchema": "{ \"email\": \"string\", \"code\": \"string (6 digits)\" }",
-      "responseSchema": "{ \"token\": \"string\", \"user\": { \"id\": \"string\", \"username\": \"string\", \"email\": \"string\", \"created_at\": \"string\" } }",
+      "method": "GET",
+      "path": "/api/v1/posts/:postId/comments",
+      "summary": "获取指定动态的全部评论与嵌套回复列表（按时间正序），动态不存在时明确返回 404",
+      "requestSchema": "Path param: postId (string); Optional Auth Header",
+      "responseSchema": "{ comments: Array<{ id: string, post_id: string, user_id: string, author_name: string, parent_id: string | null, content: string, created_at: string }> }",
       "errorCodes": [
-        "400_INVALID_CODE",
-        "410_CODE_EXPIRED",
-        "429_TOO_MANY_ATTEMPTS"
+        "404",
+        "500"
       ]
     },
     {
       "id": "API-3",
-      "method": "GET",
-      "path": "/api/v1/auth/me",
-      "summary": "获取当前请求对应的登录态与用户信息（区分邮箱已登录用户与未登录状态）",
-      "requestSchema": "Headers: Authorization: Bearer <token> 或 Cookie: session_token",
-      "responseSchema": "{ \"authenticated\": true, \"auth_type\": \"email|fingerprint\", \"user\": { \"id\": \"string\", \"username\": \"string\", \"email\": \"string|null\", \"created_at\": \"string\" } }",
+      "method": "POST",
+      "path": "/api/v1/posts/:postId/comments",
+      "summary": "在动态详情页发表评论或嵌套回复，校验登录态、非空内容、目标动态存在性及可选 parent_id 必须归属同动态",
+      "requestSchema": "Headers: Authorization Bearer <token> 或 x-browser-fingerprint; Body JSON: { content: string (non-empty trimmed), parent_id?: string | null }",
+      "responseSchema": "{ id: string, post_id: string, user_id: string, author_name: string, parent_id: string | null, content: string, created_at: string }",
       "errorCodes": [
-        "401_UNAUTHORIZED"
+        "400",
+        "401",
+        "404",
+        "500"
       ]
     },
     {
       "id": "API-4",
       "method": "POST",
-      "path": "/api/v1/auth/logout",
-      "summary": "吊销当前邮箱登录会话令牌并清除客户端 Cookie",
-      "requestSchema": "Headers: Authorization: Bearer <token> 或 Cookie: session_token",
-      "responseSchema": "{ \"success\": true }",
+      "path": "/api/v1/posts/:id/click",
+      "summary": "进入动态详情页时原子递增点击/浏览计数并返回最新值",
+      "requestSchema": "Path param: id (string)",
+      "responseSchema": "{ post_id: string, clicks_count: number, views_count: number }",
       "errorCodes": [
-        "500_DB_ERROR"
+        "404",
+        "500"
       ]
     },
     {
       "id": "API-5",
-      "method": "POST",
-      "path": "/api/v1/media/upload",
-      "summary": "上传帖子图片（支持 multipart/form-data 或 JSON data_url），校验图片 MIME 白名单与体积限制并持久化",
-      "requestSchema": "multipart/form-data (file: File) 或 { \"data_url\": \"string\", \"filename\": \"string\" }",
-      "responseSchema": "{ \"id\": \"string\", \"url\": \"/api/v1/media/:id\", \"mime_type\": \"string\", \"size_bytes\": 12345 }",
-      "errorCodes": [
-        "400_INVALID_MEDIA",
-        "401_UNAUTHORIZED",
-        "413_MEDIA_TOO_LARGE",
-        "500_DB_ERROR"
-      ]
-    },
-    {
-      "id": "API-6",
       "method": "GET",
-      "path": "/api/v1/media/:id",
-      "summary": "按媒体 ID 输出图片二进制内容，附带 Content-Type、Cache-Control 与 X-Content-Type-Options 安全头",
-      "requestSchema": "Path param: id (string)",
-      "responseSchema": "Binary image stream",
+      "path": "/admin (及 /admin/、/posts/:id 等非 /api 前端路由)",
+      "summary": "SPA 静态入口回退路由：在 Cloudflare Workers 与本地 Node 环境下均为前端页面路径返回 200 HTML（dist/index.html），同时保留 /api/* 的 JSON 404 与缺失静态文件的 404",
+      "requestSchema": "GET/HEAD 请求任意非 /api 且非静态资源文件扩展名的前端路径（如 /admin、/admin/、/posts/:id）",
+      "responseSchema": "HTTP 200 text/html (dist/index.html)",
       "errorCodes": [
-        "404_MEDIA_NOT_FOUND"
-      ]
-    },
-    {
-      "id": "API-7",
-      "method": "POST",
-      "path": "/api/v1/posts",
-      "summary": "发布图文动态（支持纯文、纯图或图文混排，兼容存量纯文本请求；无文字且无图时拒绝）",
-      "requestSchema": "{ \"content\": \"string\", \"media_ids\": [\"string (optional, max 4)\"] }",
-      "responseSchema": "{ \"id\": \"string\", \"created_at\": \"string\", \"images\": [{ \"id\": \"string\", \"url\": \"string\", \"mime_type\": \"string\" }] }",
-      "errorCodes": [
-        "400_INVALID_CONTENT",
-        "400_INVALID_MEDIA",
-        "401_UNAUTHORIZED",
-        "500_DB_ERROR"
-      ]
-    },
-    {
-      "id": "API-8",
-      "method": "GET",
-      "path": "/api/v1/feed",
-      "summary": "游标分页获取社区图文动态流，返回作者昵称、图片数组及真实点击/点赞/转发/评论数与当前用户互动状态",
-      "requestSchema": "Query: limit (1-100, default 20), cursor (optional), sort (latest|hot, default latest), q (optional search)",
-      "responseSchema": "{ \"posts\": [{ \"id\": \"string\", \"user_id\": \"string\", \"author_name\": \"string\", \"content\": \"string\", \"images\": [{ \"id\": \"string\", \"url\": \"string\" }], \"clicks_count\": 0, \"views_count\": 0, \"likes_count\": 0, \"reposts_count\": 0, \"comments_count\": 0, \"user_liked\": false, \"user_reposted\": false, \"created_at\": \"string\" }], \"next_cursor\": \"string\" }",
-      "errorCodes": [
-        "500_DB_ERROR"
-      ]
-    },
-    {
-      "id": "API-9",
-      "method": "POST",
-      "path": "/api/v1/posts/:id/like",
-      "summary": "切换当前用户对指定帖子的点赞状态（幂等防刷）并返回最新真实点赞数",
-      "requestSchema": "Path param: id (post id)",
-      "responseSchema": "{ \"post_id\": \"string\", \"liked\": true, \"likes_count\": 1 }",
-      "errorCodes": [
-        "401_UNAUTHORIZED",
-        "404_POST_NOT_FOUND",
-        "500_DB_ERROR"
-      ]
-    },
-    {
-      "id": "API-10",
-      "method": "POST",
-      "path": "/api/v1/posts/:id/repost",
-      "summary": "切换当前用户对指定帖子的转发状态并返回最新真实转发数",
-      "requestSchema": "Path param: id (post id)",
-      "responseSchema": "{ \"post_id\": \"string\", \"reposted\": true, \"reposts_count\": 1 }",
-      "errorCodes": [
-        "401_UNAUTHORIZED",
-        "404_POST_NOT_FOUND",
-        "500_DB_ERROR"
-      ]
-    },
-    {
-      "id": "API-11",
-      "method": "POST",
-      "path": "/api/v1/posts/:id/click",
-      "summary": "原子递增指定帖子的点击/浏览计数（复用 post_views 表）并返回最新统计",
-      "requestSchema": "Path param: id (post id)",
-      "responseSchema": "{ \"post_id\": \"string\", \"clicks_count\": 1, \"views_count\": 1 }",
-      "errorCodes": [
-        "404_POST_NOT_FOUND",
-        "500_DB_ERROR"
-      ]
-    },
-    {
-      "id": "API-12",
-      "method": "GET",
-      "path": "/api/v1/stats/overview",
-      "summary": "获取社区真实汇总统计（总帖数、总用户数、总点击、总点赞、总转发、总评论）及真实热门动态摘要",
-      "requestSchema": "None",
-      "responseSchema": "{ \"totals\": { \"posts\": 0, \"users\": 0, \"comments\": 0, \"likes\": 0, \"reposts\": 0, \"clicks\": 0 }, \"hot_posts\": [{ \"id\": \"string\", \"content\": \"string\", \"author_name\": \"string\", \"likes_count\": 0, \"comments_count\": 0, \"clicks_count\": 0 }] }",
-      "errorCodes": [
-        "500_DB_ERROR"
-      ]
-    },
-    {
-      "id": "API-13",
-      "method": "POST",
-      "path": "/api/v1/admin/login",
-      "summary": "管理员账号密码登录（若无管理员记录则自动以 PBKDF2 哈希初始化 admin/admin），签发独立管理员会话",
-      "requestSchema": "{ \"username\": \"string\", \"password\": \"string\" }",
-      "responseSchema": "{ \"token\": \"string\", \"admin\": { \"id\": \"string\", \"username\": \"string\", \"must_change_password\": true } }",
-      "errorCodes": [
-        "400_INVALID_CREDENTIALS",
-        "401_INVALID_CREDENTIALS",
-        "500_DB_ERROR"
-      ]
-    },
-    {
-      "id": "API-14",
-      "method": "GET",
-      "path": "/api/v1/admin/settings",
-      "summary": "获取后台系统配置与平台统计概览（Resend API Key 仅返回已配置状态与脱敏掩码，绝不返回明文）",
-      "requestSchema": "Headers: Authorization: Bearer <admin_token> 或管理员 Cookie",
-      "responseSchema": "{ \"admin\": { \"id\": \"string\", \"username\": \"string\", \"must_change_password\": false }, \"settings\": { \"resend_api_key_configured\": true, \"resend_api_key_masked\": \"****1234\", \"resend_from_email\": \"string\", \"site_name\": \"string\", \"otp_expiry_minutes\": 10, \"max_images_per_post\": 4 }, \"stats\": { \"users\": 0, \"email_users\": 0, \"posts\": 0, \"media\": 0, \"comments\": 0, \"likes\": 0, \"reposts\": 0, \"clicks\": 0 } }",
-      "errorCodes": [
-        "401_ADMIN_UNAUTHORIZED",
-        "500_DB_ERROR"
-      ]
-    },
-    {
-      "id": "API-15",
-      "method": "PUT",
-      "path": "/api/v1/admin/settings",
-      "summary": "保存管理员配置的 Resend API Key（留空不覆盖、支持显式清空）、发件人邮箱、社区名称等参数",
-      "requestSchema": "{ \"resend_api_key\": \"YOUR_RESEND_API_KEY_HERE (optional)\", \"clear_resend_api_key\": false, \"resend_from_email\": \"string\", \"site_name\": \"string\", \"otp_expiry_minutes\": 10, \"max_images_per_post\": 4 }",
-      "responseSchema": "{ \"success\": true, \"settings\": { \"resend_api_key_configured\": true, \"resend_api_key_masked\": \"****1234\", \"resend_from_email\": \"string\", \"site_name\": \"string\", \"otp_expiry_minutes\": 10, \"max_images_per_post\": 4 } }",
-      "errorCodes": [
-        "400_INVALID_SETTINGS",
-        "401_ADMIN_UNAUTHORIZED",
-        "500_DB_ERROR"
-      ]
-    },
-    {
-      "id": "API-16",
-      "method": "POST",
-      "path": "/api/v1/admin/settings/test-email",
-      "summary": "使用当前已保存的 Resend API Key 与发件人邮箱向目标邮箱发送配置验证邮件",
-      "requestSchema": "{ \"to_email\": \"string (valid email)\" }",
-      "responseSchema": "{ \"success\": true, \"provider_id\": \"string\" }",
-      "errorCodes": [
-        "400_INVALID_EMAIL",
-        "401_ADMIN_UNAUTHORIZED",
-        "502_EMAIL_SEND_FAILED",
-        "503_EMAIL_NOT_CONFIGURED"
-      ]
-    },
-    {
-      "id": "API-17",
-      "method": "PUT",
-      "path": "/api/v1/admin/credentials",
-      "summary": "校验当前密码后修改管理员登录用户名与密码，并重新生成随机盐与 PBKDF2 哈希",
-      "requestSchema": "{ \"current_password\": \"string\", \"new_username\": \"string (optional)\", \"new_password\": \"string (min 6 chars)\" }",
-      "responseSchema": "{ \"success\": true, \"admin\": { \"id\": \"string\", \"username\": \"string\", \"must_change_password\": false } }",
-      "errorCodes": [
-        "400_INVALID_CREDENTIALS",
-        "401_ADMIN_UNAUTHORIZED",
-        "403_WRONG_PASSWORD",
-        "500_DB_ERROR"
+        "404"
       ]
     }
   ],
   "tasks": [
     {
       "id": "T-01",
-      "title": "数据库增量迁移与双端数据层扩展",
-      "module": "database",
-      "description": "保留既有 migrations/0001_initial.sql 与 0002_post_stats.sql 不变，新增幂等迁移文件 migrations/0003_community_v2.sql，建表涵盖 media_assets、post_media、post_reposts、user_auth_emails、email_otp_codes、user_sessions、admin_users、admin_sessions 与 system_settings，并补充必要索引与默认配置项。更新 src/types.ts 定义新增领域模型类型，同时在 src/node-server.ts 中完善迁移执行幂等追踪（_applied_migrations）。",
+      "title": "修复 Cloudflare Workers 与本地 Node 的 SPA 路由回退（解决 /admin 与 /posts/:id 404）",
+      "module": "worker-routing",
+      "description": "1. 更新 wrangler.toml：将 compatibility_date 升级至 \"2025-04-01\"，在 [assets] 区块显式添加 binding = \"ASSETS\"（保留 directory = \"./dist\" 与 not_found_handling = \"single-page-application\"，不添加不兼容 Wrangler 3.114 的数组型 run_worker_first）。2. 在 src/types.ts 的 Env 接口及 worker-configuration.d.ts 中补充 ASSETS?: Fetcher。3. 升级 src/index.ts 的 app.notFound 为异步处理：/api 开头路径继续返回 404 JSON (404_NOT_FOUND)；若存在 c.env?.ASSETS 且方法为 GET/HEAD，先调用 c.env.ASSETS.fetch(c.req.raw)，若返回 404 且路径不属于缺失静态资源文件（排除匹配 /\\.[a-z0-9]+$/i 且非 .html 的扩展名），则构造根路径 URL（new URL('/', c.req.url)）调用 c.env.ASSETS.fetch 返回 200 HTML 避免 307 重定向。4. 对齐 src/node-server.ts 的 app.get('*')：对非 /api 的缺失静态资源扩展名路径返回 404，其余前端路径返回 dist/index.html。",
       "dependsOn": [],
       "acceptanceCriteria": [
-        "migrations/0001_initial.sql 与 migrations/0002_post_stats.sql 保持原样未被修改",
-        "migrations/0003_community_v2.sql 在 Cloudflare D1 与本地 node:sqlite 环境下重复执行均无报错",
-        "所有新增外键、唯一约束（如 email 唯一、post_reposts 联合主键）与查询索引正确创建",
-        "npm run build:server 类型检查通过，无 TypeScript 错误"
+        "wrangler.toml 包含 compatibility_date = \"2025-04-01\" 与 [assets] binding = \"ASSETS\"，且通过 tsc --noEmit 与现有 Wrangler 3.114 配置校验",
+        "直接发起 HTTP GET /admin、GET /admin/、GET /posts/test-id（无论是否携带 Sec-Fetch-Mode: navigate）均返回 HTTP 200 且 Content-Type 为 text/html、响应包含 SPA 根节点，不再返回 Not Found",
+        "未匹配的 API 路径（如 GET /api/v1/non-existent）继续返回 HTTP 404 且响应体为包含 404_NOT_FOUND 的 JSON，不被 SPA HTML 劫持",
+        "缺失的静态资源路径（如 GET /assets/missing-file.js）返回 HTTP 404，不误返回 index.html"
       ],
       "estimatedComplexity": "S"
     },
     {
       "id": "T-02",
-      "title": "邮箱验证码登录认证与 Resend 邮件服务集成",
-      "module": "backend-auth",
-      "description": "实现基于 Web Crypto 的通用哈希与令牌工具（src/utils/crypto.ts）、Resend REST API 发信服务（src/services/resend.ts，优先读取 D1 system_settings 配置）、双轨鉴权中间件（src/middleware/auth.ts，优先校验邮箱会话 Token/Cookie，平滑兼容存量 x-browser-fingerprint 头）以及认证路由（src/routes/auth.ts：send-code、verify-code、me、logout，含 60 秒发送频控、10 分钟过期与最多 5 次错码锁定）。",
+      "title": "加固动态详情关联评论接口的边界校验",
+      "module": "backend-api",
+      "description": "检查 src/routes/posts.ts 的 GET /api/v1/posts/:id（保持现有完整字段与 404_POST_NOT_FOUND 行为不变），并增量完善 src/routes/comments.ts：1) 在 GET /api/v1/posts/:postId/comments 中先查询 posts 表确认目标动态存在，不存在时返回 404 { error: '404_POST_NOT_FOUND', message: 'Target post not found' }；2) 在 POST /api/v1/posts/:postId/comments 中，当请求体提供非空 parent_id 时校验该父评论存在且其 post_id 等于当前路径参数 postId，否则返回 400 { error: '400_INVALID_PARENT_COMMENT', message: 'Parent comment not found in this post' }，防止跨帖或悬空父评论注入。",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "GET /api/v1/posts/:id 对存在动态返回 200 及完整正文、images、likes_count、reposts_count、comments_count、clicks_count、views_count、user_liked、user_reposted；对不存在动态返回 404 (404_POST_NOT_FOUND)",
+        "GET /api/v1/posts/:postId/comments 对不存在动态返回 404 (404_POST_NOT_FOUND)，对存在动态返回 200 { comments: [...] }",
+        "POST /api/v1/posts/:postId/comments 传入不存在或属于其他动态的 parent_id 时返回 400 (400_INVALID_PARENT_COMMENT)，合法同帖 parent_id 正常创建并返回 201"
+      ],
+      "estimatedComplexity": "S"
+    },
+    {
+      "id": "T-03",
+      "title": "前端引入 History SPA 路由并重构 Feed 卡片跳转（将评论移出列表）",
+      "module": "frontend-routing-feed",
+      "description": "1. 在 vite.config.ts 显式配置 base: '/'，保证嵌套路径（/posts/:id、/admin/）下构建产物的静态资源引用始终基于根路径加载。2. 在 client/App.tsx 实现基于 pathname 状态、window.history.pushState 与 popstate 监听的轻量路由分发：/admin 及 /admin/* 渲染 AdminPage（且公开界面继续保持零管理员入口链接）；/posts/:id 提取 postId 渲染 PostDetail 视图；其余路径渲染 Feed/Messages。同时支持从右侧栏热门动态列表点击直接进入 /posts/:id，并确保在详情页点击左侧栏“动态 Feed”/Logo/“写动态”/“站内信”能正确切回对应视图并同步 URL。3. 重构 client/components/Feed.tsx：彻底移除内联 Comments 导入、activeCommentsPostId 状态与卡片内评论区渲染；新增 onOpenPostDetail(post, { focusComment? }) 回调，点击动态文本、时间或评论按钮均导航至 /posts/:id（正文点击避开文本划选）；点赞、转发、联系作者与图片灯箱按钮调用 e.stopPropagation() 保持原位交互不误跳转。",
       "dependsOn": [
         "T-01"
       ],
       "acceptanceCriteria": [
-        "POST /api/v1/auth/send-code 正确校验邮箱格式与 60 秒频控，未配置 Resend API Key 时返回 503_EMAIL_NOT_CONFIGURED，配置有效时正确请求 Resend API",
-        "POST /api/v1/auth/verify-code 正确校验 6 位验证码、过期时间与尝试次数，成功后创建/关联用户并返回可用会话 Token 与 HttpOnly Cookie",
-        "GET /api/v1/auth/me 与 POST /api/v1/auth/logout 完整支持会话查询与失效吊销",
-        "存量使用 x-browser-fingerprint 请求头的接口（发帖、评论、私信）继续兼容通过，无回归破坏"
-      ],
-      "estimatedComplexity": "M"
-    },
-    {
-      "id": "T-03",
-      "title": "图文发布、媒体存储与真实互动统计后端 API",
-      "module": "backend-community",
-      "description": "新增 src/routes/media.ts 实现图片上传（MIME 白名单、单图大小校验、返回 /api/v1/media/:id）与安全流式读取；升级 src/routes/posts.ts 支持图文混排与多图关联（最多 4 张，保留空内容 400_INVALID_CONTENT 契约），在 GET /api/v1/feed 与 GET /api/v1/posts/:id 中真实聚合图片、作者名及 clicks_count/views_count、likes_count、reposts_count、comments_count、user_liked、user_reposted；新增点赞、转发切换接口、点击自增接口及社区真实统计概览路由 src/routes/stats.ts。",
-      "dependsOn": [
-        "T-01",
-        "T-02"
-      ],
-      "acceptanceCriteria": [
-        "支持上传 JPEG/PNG/WebP/GIF 图片并返回可访问的 /api/v1/media/:id，非法类型返回 400、超限返回 413",
-        "POST /api/v1/posts 支持纯文本、纯图片与图文混排发布，空内容且无图时返回 400_INVALID_CONTENT",
-        "POST /api/v1/posts/:id/like、/repost 支持按用户幂等切换并持久化至 post_likes、post_reposts，POST /api/v1/posts/:id/click 原子递增 post_views",
-        "GET /api/v1/feed 与 GET /api/v1/stats/overview 全部返回数据库真实统计数据，零硬编码或伪造数值"
+        "访问 / 信息流页面时，动态卡片内不再渲染评论输入框或内联评论列表",
+        "在信息流点击某条动态的正文或评论按钮，浏览器 URL 变为 /posts/<id> 并进入该动态详情页；点击点赞、转发、联系作者或查看大图时留在当前页不触发详情页跳转",
+        "浏览器前进/后退按钮及左侧导航栏切换可正确同步 URL 与页面视图，右侧热门动态点击可直达对应动态详情页",
+        "直接访问 /admin 与 /admin/ 正常渲染管理员登录/控制台页面，公开页面中不存在任何指向 /admin 的链接"
       ],
       "estimatedComplexity": "M"
     },
     {
       "id": "T-04",
-      "title": "隐藏式管理员后台鉴权与系统配置 API",
-      "module": "backend-admin",
-      "description": "实现 src/services/admin-auth.ts 与 src/routes/admin.ts 并在 src/index.ts 挂载：首次登录自动使用 PBKDF2-SHA256 哈希初始化默认管理员账号 admin / 密码 admin，签发独立管理员会话（与普通社区用户隔离）；提供 GET/PUT /api/v1/admin/settings 管理 Resend API Key（脱敏返回，绝不回显明文）、发件人邮箱、社区名及发图上限；提供 POST /api/v1/admin/settings/test-email 验证发信，以及 PUT /api/v1/admin/credentials 支持修改管理员账号与密码；更新 CORS 允许方法。",
-      "dependsOn": [
-        "T-01",
-        "T-02"
-      ],
-      "acceptanceCriteria": [
-        "首次启动无需手动操作即可使用默认账号 admin、密码 admin 登录 POST /api/v1/admin/login",
-        "所有管理员配置与改密接口均严格校验独立管理员会话，未授权或普通用户 Token 一律返回 401_ADMIN_UNAUTHORIZED",
-        "PUT /api/v1/admin/settings 保存的 Resend API Key 实时生效于邮箱登录发信流程，GET 接口仅返回已配置标志与掩码",
-        "PUT /api/v1/admin/credentials 修改账号密码后，旧密码立即失效、新密码可正常登录且 must_change_password 置为 false"
-      ],
-      "estimatedComplexity": "M"
-    },
-    {
-      "id": "T-05",
-      "title": "社交媒体风格图文社区前端重构与开源组件库集成",
-      "module": "frontend-community",
-      "description": "安装并集成 lucide-react、@radix-ui/react-dialog 与 sonner，重构 client/App.tsx、client/components/Feed.tsx、client/api.ts 与 client/styles.css，新增 AuthModal.tsx（邮箱验证码登录弹窗）与 ImageLightbox.tsx（多图灯箱）。打造仿 X / Bluesky 风格的三栏响应式亮暗主题界面：支持多图上传预览与 1-4 图网格排版、真实点击/点赞/转发/评论计数与交互动画、真实社区数据与热帖右栏；彻底清除历史 Mock 趋势、订阅卡片、伪造浏览量与未实现占位按钮；保持既有只读 E2E 契约定位器兼容且不在公开界面暴露任何管理后台入口。",
+      "title": "开发动态详情页组件 PostDetail 并完善详情页评论体验",
+      "module": "frontend-post-detail",
+      "description": "1. 新建 client/components/PostDetail.tsx：顶部渲染吸顶详情头部（含“返回”按钮与“动态详情”标题）；进入页面后基于 postId 拉取 GET /api/v1/posts/:id（若从列表带入 initialPost 则先展示再后台刷新最新数据），并仅在动态存在时通过 ref 去重调用一次 POST /api/v1/posts/:id/click 累加浏览量；使用 <article className=\"post-card x-post-detail-card\" data-testid=\"post-detail\"> 包裹作者头像/昵称/handle/联系作者、完整保留换行的正文、多图网格（接入 ImageLightbox）、完整发布时间、四维统计摘要栏、互动操作栏（评论聚焦、转发、点赞、复制分享链接）以及内嵌的 Comments 评论组件。2. 处理完善的状态兜底：加载中显示骨架屏；404 显示友好“该动态不存在或已被删除”及返回首页按钮；网络/500 错误显示带“重试”按钮的告警卡片。3. 增强 client/components/Comments.tsx：支持 autoFocus 属性自动聚焦评论框、补充评论列表加载失败错误提示与重试、添加 submittingRef 防止双击重复提交评论、评论发送成功后实时回调更新详情页 comments_count 与全局统计。",
       "dependsOn": [
         "T-02",
         "T-03"
       ],
       "acceptanceCriteria": [
-        "页面采用统一语义化亮暗双色主题变量，无硬编码灰暗色块、无任何 Mock 趋势/推荐/伪造浏览量与未实现按钮",
-        "用户可在发帖框选择多张图片预览并发布图文动态，点击图片可打开 Radix Dialog 灯箱查看原图",
-        "每条动态展示真实的点击、点赞、转发、评论数，交互后持久化至后端并在刷新页面后保持一致",
-        "支持打开邮箱验证码登录弹窗完成发码与验证流程并展示已登录邮箱状态与退出按钮，且页面中不存在任何指向 /admin 的链接或入口"
-      ],
-      "estimatedComplexity": "L"
-    },
-    {
-      "id": "T-06",
-      "title": "隐藏 URL 管理员前端页面与全链路 E2E 验证",
-      "module": "frontend-admin-and-qa",
-      "description": "在 client/App.tsx 中基于 window.location.pathname 接入隐藏路径 /admin，开发独立美观的 client/components/AdminPage.tsx：包含管理员登录表单、首次默认密码安全提示、Resend API Key 与发件人邮箱/站点配置表单（支持测试发信）、平台真实统计看板以及管理员账号密码修改面板。编写增量 Playwright E2E 测试覆盖图文发帖、真实四维统计、邮箱验证码登录（含 Resend 拦截模拟）、/admin 隐藏入口校验、默认 admin/admin 登录改密与 Resend 配置生效，并确保全部既有与新增测试及构建命令通过。",
-      "dependsOn": [
-        "T-04",
-        "T-05"
-      ],
-      "acceptanceCriteria": [
-        "直接访问 /admin 可进入管理员登录页并完成 admin/admin 登录，主社区页面 DOM 中搜索不到任何 /admin 入口链接",
-        "管理员可在后台保存 Resend API Key（脱敏展示）、发件人邮箱并触发测试发信，且可修改账号密码后使用新凭据重新登录",
-        "npm run build（vite build && tsc --noEmit）构建与类型检查零报错",
-        "全部既有只读 E2E 契约与新增社区/管理后台 Playwright E2E 测试全部通过"
+        "直接访问或刷新 /posts/:id 时能完整展示动态正文、图片、发布时间、点赞/转发/评论/点击统计以及全部评论列表",
+        "在详情页可发表顶级评论与针对某条评论的嵌套回复（含空内容拦截提示与防双击重复提交），评论提交后实时显示且刷新页面后持久化保留，同时动态评论计数准确递增",
+        "在详情页可执行点赞、转发切换与图片灯箱查看，并可通过顶部“返回”按钮回到信息流首页",
+        "访问不存在的 /posts/non-existent-id 时展示友好的不存在提示与返回按钮，接口异常 500 时展示错误态并支持重试恢复",
+        "存量只读回归测试 tests/e2e.spec.ts 与 tests/e2e/run-f734f054.spec.ts 全部保持通过"
       ],
       "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-05",
+      "title": "完善动态详情页明暗双色样式与响应式布局，完成构建与全量验证",
+      "module": "frontend-styling",
+      "description": "在 client/styles.css 中为动态详情页补充符合 X.com 视觉规范的样式规则，包括详情页吸顶顶栏（.x-detail-header、.x-detail-back-btn）、详情正文排版与图片展示（.x-post-detail-card、.x-detail-content）、发布时间与四维统计分割栏（.x-detail-timestamp、.x-detail-stats-strip）、操作栏与分享反馈、404/错误兜底卡片，以及明暗主题变量适配与移动端断点优化；并在信息流卡片添加可点击指针与柔和悬浮反馈。最后执行 npm run build 与 npx playwright test 验证全量无报错。",
+      "dependsOn": [
+        "T-04"
+      ],
+      "acceptanceCriteria": [
+        "亮色与暗色主题下动态详情页排版清晰、对比度良好，与现有 X.com 风格无缝融合",
+        "桌面端三栏布局与移动端窄屏下详情页、返回按钮及评论表单均可正常交互且无横向溢出",
+        "npm run build（vite build && tsc --noEmit）执行通过，所有存量与新增测试全部通过"
+      ],
+      "estimatedComplexity": "S"
     }
   ],
   "qaSpec": {
     "coverageNotes": [
-      "全量覆盖 Stage 1 全部 17 项 API 契约（API-1 至 API-17），包含邮箱验证码认证、图片媒体上传与安全流式读取、图文混排发帖、动态流分页排序搜索、四维真实互动统计（点击/点赞/转发/评论）、社区总览统计以及隐藏式管理员鉴权、Resend 配置与改密接口。",
-      "所有测试夹具与配置占位符均采用无敏感密钥特征串的安全占位文本（如 YOUR_RESEND_API_KEY_PLACEHOLDER_9876），严格规避密钥扫描拦截风险，同时通过验证未配置 503 与已配置后触发上游请求来确保 Resend 配置实时生效。",
-      "所有 Playwright 组合定位器均遵循严格模式规范（每个 .or(...) 表达式末尾均显式附加 .first()），并优先采用语义角色、标签与占位文本，避免依赖未文档化的私有样式类名。",
-      "浏览器端邮箱验证码登录 E2E 通过拦截 /api/v1/auth/* 接口稳定模拟 Resend 邮件送达、6 位验证码登录、邮箱身份态展示及退出流程，不依赖外部真实邮箱收件箱或第三方密钥。",
-      "管理员 E2E 套件使用 test.describe.serial 严格按序执行：先验证主社区 DOM 零 /admin 入口暴露与管理员权限隔离，再使用默认 admin/admin 完成 API 与 UI 配置测试，最后执行改密测试并验证旧密码失效与新凭据重新登录。",
-      "所有 API 测试均使用独立指纹标识（qa-v2-user-a-001 / qa-v2-user-b-002），与既有只读 E2E 契约测试（tests/e2e.spec.ts 与 tests/e2e/run-f734f054.spec.ts）完全解耦兼容，无数据冲突。"
+      "覆盖 /admin 页面 HTTP 200 SPA 回退与管理后台登录页渲染",
+      "覆盖信息流列表移除内联评论、点击动态进入 /posts/:id 详情页、在详情页发表评论及点击返回首页主链路",
+      "覆盖 GET /api/v1/posts/:id、POST /api/v1/posts/:id/click 及评论读写基础 API 契约"
     ],
-    "initialApiTestCount": 35
+    "initialApiTestCount": 7
   },
   "qaCritic": {
-    "reviewSummary": "已完成对 Stage 2 草案的盲测合规性、严格模式与安全边界审计，共识别 7 项问题（4 项高危、3 项中危）并在终版测试套件中全部加固修复。核心改进包括：移除非 PRD 强约束的图片灯箱弹窗断言、为发帖与评论定位补齐表单与主内容区作用域以规避三栏侧边栏误匹配和右侧热门榜重名冲突、兼容弹窗/非弹窗与标签页形态的邮箱登录及隐藏管理后台交互、解决选图即上传及刷新水合竞态、修复 PUT 配置全量字段与 11MB 超大文件边界，并新增并发原子点击/并发上传、JSON 通道恶意 MIME、路径遍历与无效令牌隔离等安全测试，严格遵循无密钥特征占位符规范。",
+    "reviewSummary": "经对初版 QA 规格进行边界、异常输入、交互隔离、安全及并发五维审计，发现 6 项关键缺口（含 /admin/ 尾斜杠与 API/静态资源 404 不被 SPA 劫持验证、无效 postId 与跨帖 parent_id 校验、列表卡片点赞/转发防冒泡隔离、详情页正文与评论 XSS 防护、并发评论/点击原子性及 500 恢复验证）。已在终版接口清单与盲测 E2E 脚本中全面补齐，并严格执行 Playwright 严格模式卫生规范（所有 .or() 链均附带 .first()，且主内容断言均限定在 main 区域内避免与右侧热门动态冲突）。",
     "findings": [
       {
         "id": "CRIT-01",
-        "category": "ui_interaction",
+        "category": "security",
         "severity": "high",
-        "issue": "草案在图文发布 E2E 中强制断言点击帖子图片必须弹出 role=\"dialog\" 灯箱，且帖子卡片仅匹配 article/.post-card/[data-testid=\"post-card\"]。PRD 与 Stage 1 契约均未要求图片预览必须实现为 dialog 角色，且引入主流组件库时帖子卡片可能渲染为普通 div；此外若右侧栏展示热门动态（hot_posts），未限定在 main 区域的卡片定位可能误匹配侧边栏摘要卡片。",
-        "recommendation": "移除非契约强约束的 role=\"dialog\" 灯箱强制断言，聚焦验证图片正常渲染（naturalWidth > 0）与刷新后持久展示；引入限定于主内容区（main）的渐进式 findPostCard 定位辅助函数，优先匹配语义卡片元素并安全回退至包含互动按钮的最内层卡片容器。"
+        "issue": "初版仅测试 GET /admin，未验证带尾斜杠的 /admin/、管理员登录鉴权（错误凭据拦截与默认 admin/admin 登录）、公开首页不暴露 /admin 隐藏入口，且未检验未匹配 /api/* 与缺失静态文件（如 /assets/missing.js）不会被 SPA 回退错误返回 200 HTML。",
+        "recommendation": "在终版测试中补齐 /admin 与 /admin/ 双路径 200 HTML 验证、错误密码拒绝与默认管理员登录验证（不修改密码保证幂等）、公开页零 /admin 链接检查，以及 /api/v1/non-existent JSON 404 与缺失静态资源 404 回归断言。"
       },
       {
         "id": "CRIT-02",
-        "category": "ui_interaction",
+        "category": "invalid_input",
         "severity": "high",
-        "issue": "在仿知名社交媒体的三栏布局中，左侧导航栏常包含“发布/发帖”快捷按钮，草案使用全局 page.getByRole('button', { name: /发布|发帖|.../i }).first() 极易误点侧边栏按钮而非发帖表单提交按钮；此外 fileInput.setInputFiles 后立即点击发布，若前端在选图 onChange 时异步调用 POST /api/v1/media/upload，将触发 media_ids 尚未就绪的竞态失败。",
-        "recommendation": "将发帖输入框、文件选择器和发布按钮严格限定在包含文本框的 form 或 main 容器作用域内；在 setInputFiles 后增加对可选 /api/v1/media/upload 响应的短暂等待并确认发布按钮处于可点击状态后再提交。"
+        "issue": "初版未测试访问不存在动态详情页（/posts/non-existent-post-99999）的前端 404 友好兜底与返回首页能力，也未验证 GET /api/v1/posts/:postId/comments 对不存在动态返回 404 及 POST 评论传入跨帖/不存在 parent_id 的非法参数拦截。",
+        "recommendation": "新增不存在动态详情页的浏览器直达 404 兜底测试，以及评论接口的未鉴权 401、空白内容 400、不存在动态 404 与跨帖/无效 parent_id 拒绝契约测试。"
       },
       {
         "id": "CRIT-03",
         "category": "ui_interaction",
-        "severity": "high",
-        "issue": "多处页面交互对 UI 结构做了过度假设：邮箱登录强制要求 role=\"dialog\" 且假设登出按钮直接可见（未兼容账户下拉菜单）；评论区仅在 postCard 内部查找输入框（未兼容点击评论弹出回复 Modal 的社交产品形态）；隐藏后台 /admin 未兼容标签页切换，发件人输入框占位符正则含过宽的 /@/（易误匹配测试发信收件箱输入），且 page.reload() 后未等待前端水合即判断登录按钮可见性存在竞态。",
-        "recommendation": "将邮箱登录、评论输入与管理后台配置均改造为自适应容器定位（同时兼容弹窗与内联、直接登出与菜单登出、平铺配置与标签页配置），移除发件人定位中过宽的 /@/ 匹配，并在 reload 后先显式等待登录按钮或配置表单可见再分支执行。"
+        "severity": "medium",
+        "issue": "初版未验证信息流卡片内点击点赞或转发按钮时阻止事件冒泡（不误跳转到详情页），也未验证点击卡片评论按钮直达详情页、详情页内空评论拦截、嵌套回复（parent_id）及刷新后评论持久化。",
+        "recommendation": "补全列表卡片点赞/转发留页断言、点击评论按钮进入 /posts/:id 断言、详情页空评论错误提示、顶级评论与嵌套回复发表、以及 page.reload() 深链刷新后动态与评论完整持久化验证。"
       },
       {
         "id": "CRIT-04",
-        "category": "boundary",
+        "category": "security",
         "severity": "high",
-        "issue": "两处边界假设存在盲测误报风险：其一，Stage 1 API-15 的 PUT /api/v1/admin/settings 仅声明 resend_api_key 为可选，草案仅传 { clear_resend_api_key: true } 等局部字段，若服务端按严格全量 PUT 校验将误返 400；其二，API-5 未规定单图体积上限具体数值，草案使用 6MB 文件测试 413，若实现采用 10MB 上限则无法触发 413_MEDIA_TOO_LARGE。",
-        "recommendation": "在合法的 PUT /api/v1/admin/settings 用例中始终传递完整的合法站点配置字段（兼容全量与局部 PUT 实现），并将超限图片样本调整为 11MB，稳定覆盖 2MB/5MB/8MB/10MB 等常见服务端限制。"
+        "issue": "新增的动态详情页独立渲染动态正文与评论内容，初版缺少针对详情页的 XSS 注入防护检测，存在新组件误用危险 HTML 注入的风险。",
+        "recommendation": "向详情页注入包含事件处理器的脚本载荷（动态正文与评论内容双重注入），验证内容按纯文本安全转义展示，无弹窗且全局标记未被执行。"
       },
       {
         "id": "CRIT-05",
         "category": "concurrency",
         "severity": "medium",
-        "issue": "缺少针对高并发写操作的原子性与无碰撞验证：API-11 明确要求 POST /api/v1/posts/:id/click 原子递增点击统计，但草案仅串行请求两次，无法捕获“先读后写”竞态丢数问题；同时未覆盖多图并发上传时的唯一 ID 生成稳定性。",
-        "recommendation": "新增 5 路并发 POST /api/v1/posts/:id/click 原子计数校验（精确递增 5）与 4 路并发 POST /api/v1/media/upload 无 ID 碰撞及可读取性校验。"
+        "issue": "初版缺少对同一动态并发发表多条评论及并发点击计数的原子性与无碰撞验证，也缺少详情接口返回 500 时的前端错误恢复测试。",
+        "recommendation": "新增同帖 5 并发评论写入（断言 5 个唯一 comment id 且详情 comments_count 精确增长 5）与 5 并发点击累加测试，并在浏览器端拦截单帖详情接口返回 500 后验证错误提示与重试恢复。"
       },
       {
         "id": "CRIT-06",
-        "category": "security",
+        "category": "boundary",
         "severity": "medium",
-        "issue": "安全与隔离验证存在覆盖缺口：媒体上传仅测试了 multipart 通道的 SVG 拦截，未验证 JSON data_url 通道的非法 MIME（如 text/html、image/svg+xml）拦截与 GET /api/v1/media/:id 路径遍历防护；管理后台未测试伪造 Bearer Token 拦截与空凭据校验，主站隐藏入口仅检测 <a> 链接未检测管理入口按钮；且未验证配置占位 Resend Key 后 POST /api/v1/auth/send-code 真实走出未配置 503 分支，以及新版前端的帖子 XSS 转义安全。",
-        "recommendation": "补全 JSON data_url 恶意载荷拦截、媒体路径遍历 404/400 防护、伪造管理员令牌 401 拦截、空凭据校验、主站管理入口按钮零暴露断言、配置占位 Key 后 send-code 非 503 链路校验及页面级 XSS 安全渲染断言，全程严禁出现任何密钥特征前缀。"
-      },
-      {
-        "id": "CRIT-07",
-        "category": "invalid_input",
-        "severity": "medium",
-        "issue": "邮箱认证与令牌异常输入覆盖单一：POST /api/v1/auth/verify-code 仅验证了不匹配的 6 位数字，未测试非 6 位、包含字母或空字符串等畸形验证码；GET /api/v1/auth/me 未验证携带伪造或格式错误的 Authorization Bearer 令牌时返回 401_UNAUTHORIZED。",
-        "recommendation": "扩充 verify-code 畸形输入用例矩阵（空值、不足 6 位、非数字）并增加伪造 Bearer Token 访问 /api/v1/auth/me 返回 401_UNAUTHORIZED 的断言。"
+        "issue": "详情页中右侧栏可能同时渲染热门动态摘要，直接全局 page.getByText 易触发 Playwright strict mode 多元素冲突；同时需验证详情页内点赞/转发交互持久化及顶部返回导航。",
+        "recommendation": "所有动态与评论页面断言严格限定在 page.getByRole('main') 作用域并规范使用 .first()，补充详情页点赞/转发刷新持久化与返回首页验证。"
       }
     ],
     "finalApiTestChecklist": [
       {
         "id": "TC-01",
-        "endpoint": "/api/v1/auth/send-code",
-        "method": "POST",
-        "scenario": "提交非法邮箱格式请求发送登录验证码",
-        "expectedStatus": 400,
-        "assertion": "响应状态码为 400，错误体包含 400_INVALID_EMAIL，不写入验证码记录也不调用发信服务"
+        "endpoint": "/admin",
+        "method": "GET",
+        "scenario": "直接 HTTP GET 请求 /admin 与 /admin/（无浏览器导航头）验证 SPA 回退",
+        "expectedStatus": 200,
+        "assertion": "两者均返回 HTTP 200、Content-Type 包含 text/html、响应体含 #root 且不等于 Not Found"
       },
       {
         "id": "TC-02",
-        "endpoint": "/api/v1/auth/send-code",
-        "method": "POST",
-        "scenario": "管理员未配置 Resend API Key 时请求发送邮箱验证码",
-        "expectedStatus": 503,
-        "assertion": "响应状态码为 503，错误体包含 503_EMAIL_NOT_CONFIGURED，明确提示邮件服务未配置"
+        "endpoint": "/posts/:id",
+        "method": "GET",
+        "scenario": "直接 HTTP GET 请求动态详情深链 /posts/:id 验证 SPA 回退",
+        "expectedStatus": 200,
+        "assertion": "返回 HTTP 200 且 Content-Type 包含 text/html"
       },
       {
         "id": "TC-03",
-        "endpoint": "/api/v1/auth/send-code",
-        "method": "POST",
-        "scenario": "Resend 服务配置有效且邮箱格式合法时发送 6 位登录验证码",
-        "expectedStatus": 200,
-        "assertion": "响应状态码为 200，返回 sent 为 true、expires_in_seconds 为 600、cooldown_seconds 为 60，并将 6 位验证码哈希入库"
+        "endpoint": "/api/v1/non-existent-route",
+        "method": "GET",
+        "scenario": "访问不存在的 API 路径确保不被 SPA HTML 劫持",
+        "expectedStatus": 404,
+        "assertion": "返回 HTTP 404 且响应为包含 404_NOT_FOUND 的 JSON"
       },
       {
         "id": "TC-04",
-        "endpoint": "/api/v1/auth/send-code",
-        "method": "POST",
-        "scenario": "60 秒冷却期内对同一邮箱重复请求发送验证码",
-        "expectedStatus": 429,
-        "assertion": "响应状态码为 429，错误体包含 429_RATE_LIMITED，拦截高频重复发信"
+        "endpoint": "/assets/non-existent-bundle-99999.js",
+        "method": "GET",
+        "scenario": "访问不存在的静态资源文件确保不错误回退返回 index.html",
+        "expectedStatus": 404,
+        "assertion": "返回 HTTP 404 而非 200 HTML"
       },
       {
         "id": "TC-05",
-        "endpoint": "/api/v1/auth/send-code",
-        "method": "POST",
-        "scenario": "已配置无密钥特征的安全占位 Key 后触发登录发信，上游 Resend 返回拒绝或网络异常",
-        "expectedStatus": 502,
-        "assertion": "响应状态码为 502（非 503），错误体包含 502_EMAIL_SEND_FAILED，证明后台配置已实时接入发信链路"
+        "endpoint": "/api/v1/posts/:id",
+        "method": "GET",
+        "scenario": "查询已存在动态与不存在动态的单条详情",
+        "expectedStatus": 200,
+        "assertion": "存在动态返回 200 及完整正文、images、likes_count、reposts_count、comments_count、clicks_count、views_count、user_liked、user_reposted；不存在动态返回 404 (404_POST_NOT_FOUND)"
       },
       {
         "id": "TC-06",
-        "endpoint": "/api/v1/auth/verify-code",
-        "method": "POST",
-        "scenario": "提交空值、不足 6 位、含非数字字符或与邮箱不匹配的验证码",
-        "expectedStatus": 400,
-        "assertion": "响应状态码为 400，错误体包含 400_INVALID_CODE，不签发会话令牌"
+        "endpoint": "/api/v1/posts/:postId/comments",
+        "method": "GET",
+        "scenario": "分别查询存在动态与不存在动态的评论列表",
+        "expectedStatus": 200,
+        "assertion": "存在动态返回 200 { comments: [...] }；不存在动态返回 404 (404_POST_NOT_FOUND)"
       },
       {
         "id": "TC-07",
-        "endpoint": "/api/v1/auth/verify-code",
+        "endpoint": "/api/v1/posts/:postId/comments",
         "method": "POST",
-        "scenario": "提交已超过 10 分钟有效期的历史验证码",
-        "expectedStatus": 410,
-        "assertion": "响应状态码为 410，错误体包含 410_CODE_EXPIRED，拒绝过期验证码登录"
+        "scenario": "校验评论未鉴权、空/空白内容、不存在动态、跨帖或无效 parent_id，以及正常顶级评论与同帖嵌套回复",
+        "expectedStatus": 201,
+        "assertion": "未鉴权返回 401、空内容返回 400、不存在动态返回 404、无效/跨帖 parent_id 返回 400/404；合法请求返回 201 且 GET /api/v1/posts/:id 的 comments_count 精确增长"
       },
       {
         "id": "TC-08",
-        "endpoint": "/api/v1/auth/verify-code",
+        "endpoint": "/api/v1/posts/:id/click",
         "method": "POST",
-        "scenario": "同一验证码连续输错超过 5 次触发暴力破解防护锁定",
-        "expectedStatus": 429,
-        "assertion": "响应状态码为 429，错误体包含 429_TOO_MANY_ATTEMPTS，拒绝继续校验"
+        "scenario": "对不存在动态点击返回 404，对存在动态发起 5 并发点击验证原子递增",
+        "expectedStatus": 200,
+        "assertion": "不存在动态返回 404；存在动态 5 并发点击全部 200 且最终 clicks_count 精确递增 5"
       },
       {
         "id": "TC-09",
-        "endpoint": "/api/v1/auth/verify-code",
+        "endpoint": "/api/v1/posts/:postId/comments",
         "method": "POST",
-        "scenario": "提交合法邮箱与正确 6 位验证码完成登录或自动注册",
-        "expectedStatus": 200,
-        "assertion": "响应状态码为 200，返回非空 token 与 user(id, username, email, created_at)，并在响应头设置 HttpOnly session_token Cookie"
+        "scenario": "对同一动态并发提交 5 条评论验证无 ID 冲突与计数一致",
+        "expectedStatus": 201,
+        "assertion": "5 个响应均成功且 comment id 互不相同，评论列表长度与动态详情 comments_count 精确一致"
       },
       {
         "id": "TC-10",
-        "endpoint": "/api/v1/auth/me",
-        "method": "GET",
-        "scenario": "未携带认证凭据或携带伪造 Bearer Token 查询当前登录态",
-        "expectedStatus": 401,
-        "assertion": "响应状态码为 401，错误体包含 401_UNAUTHORIZED"
-      },
-      {
-        "id": "TC-11",
-        "endpoint": "/api/v1/auth/me",
-        "method": "GET",
-        "scenario": "携带存量 x-browser-fingerprint 请求头查询当前身份状态",
-        "expectedStatus": 200,
-        "assertion": "响应状态码为 200，返回 authenticated 为 true、auth_type 为 fingerprint，并包含有效 user 对象"
-      },
-      {
-        "id": "TC-12",
-        "endpoint": "/api/v1/auth/me",
-        "method": "GET",
-        "scenario": "携带有效邮箱登录会话令牌或 Cookie 查询当前身份状态",
-        "expectedStatus": 200,
-        "assertion": "响应状态码为 200，返回 authenticated 为 true、auth_type 为 email，user.email 为已绑定邮箱"
-      },
-      {
-        "id": "TC-13",
-        "endpoint": "/api/v1/auth/logout",
-        "method": "POST",
-        "scenario": "退出登录并吊销当前邮箱会话令牌与客户端 Cookie",
-        "expectedStatus": 200,
-        "assertion": "响应状态码为 200，返回 success 为 true；吊销后使用原令牌请求 /api/v1/auth/me 返回 401"
-      },
-      {
-        "id": "TC-14",
-        "endpoint": "/api/v1/media/upload",
-        "method": "POST",
-        "scenario": "未登录且未携带指纹头直接上传图片",
-        "expectedStatus": 401,
-        "assertion": "响应状态码为 401，错误体包含 401_UNAUTHORIZED"
-      },
-      {
-        "id": "TC-15",
-        "endpoint": "/api/v1/media/upload",
-        "method": "POST",
-        "scenario": "已认证用户通过 multipart/form-data 上传合法 PNG 图片",
-        "expectedStatus": 201,
-        "assertion": "响应状态码为 201（或 200），返回 id、精确匹配 /api/v1/media/:id 的 url、image/png 的 mime_type 以及大于 0 的 size_bytes"
-      },
-      {
-        "id": "TC-16",
-        "endpoint": "/api/v1/media/upload",
-        "method": "POST",
-        "scenario": "已认证用户通过 JSON data_url 方式上传合法图片",
-        "expectedStatus": 201,
-        "assertion": "响应状态码为 201（或 200），成功解码持久化并返回可访问的 /api/v1/media/:id"
-      },
-      {
-        "id": "TC-17",
-        "endpoint": "/api/v1/media/upload",
-        "method": "POST",
-        "scenario": "通过 multipart 上传不在 MIME 白名单内的文件（如 image/svg+xml 或 text/plain）",
-        "expectedStatus": 400,
-        "assertion": "响应状态码为 400，错误体包含 400_INVALID_MEDIA，拒绝非白名单图片及潜在 XSS 矢量文件"
-      },
-      {
-        "id": "TC-18",
-        "endpoint": "/api/v1/media/upload",
-        "method": "POST",
-        "scenario": "上传超出单图体积上限的 11MB 大文件（覆盖 2MB/5MB/10MB 等常见上限）",
-        "expectedStatus": 413,
-        "assertion": "响应状态码为 413，错误体包含 413_MEDIA_TOO_LARGE"
-      },
-      {
-        "id": "TC-19",
-        "endpoint": "/api/v1/media/:id",
-        "method": "GET",
-        "scenario": "按有效媒体 ID 获取已上传图片二进制流",
-        "expectedStatus": 200,
-        "assertion": "响应状态码为 200，返回非空二进制图片内容，响应头包含正确的 Content-Type、Cache-Control 及 X-Content-Type-Options: nosniff"
-      },
-      {
-        "id": "TC-20",
-        "endpoint": "/api/v1/media/:id",
-        "method": "GET",
-        "scenario": "请求不存在的媒体 ID",
-        "expectedStatus": 404,
-        "assertion": "响应状态码为 404，错误体包含 404_MEDIA_NOT_FOUND"
-      },
-      {
-        "id": "TC-21",
-        "endpoint": "/api/v1/posts",
-        "method": "POST",
-        "scenario": "发布无正文且无图片附件的空白动态",
-        "expectedStatus": 400,
-        "assertion": "响应状态码为 400，错误体包含 400_INVALID_CONTENT，保持对存量空内容校验契约的兼容"
-      },
-      {
-        "id": "TC-22",
-        "endpoint": "/api/v1/posts",
-        "method": "POST",
-        "scenario": "发布纯图片动态或图文混排动态（关联 1 至 4 张已上传图片）",
-        "expectedStatus": 201,
-        "assertion": "响应状态码为 201（或 200），返回帖子 id、created_at 与包含完整 id/url/mime_type 的 images 数组"
-      },
-      {
-        "id": "TC-23",
-        "endpoint": "/api/v1/posts",
-        "method": "POST",
-        "scenario": "发布动态时关联超过 4 张图片或传入不存在的 media_ids",
-        "expectedStatus": 400,
-        "assertion": "响应状态码为 400，错误体包含 400_INVALID_MEDIA"
-      },
-      {
-        "id": "TC-24",
-        "endpoint": "/api/v1/feed",
-        "method": "GET",
-        "scenario": "按游标分页、排序（latest/hot）与关键词 q 获取图文动态流",
-        "expectedStatus": 200,
-        "assertion": "响应状态码为 200，每条动态包含 author_name、images 数组以及真实的 clicks_count、views_count、likes_count、reposts_count、comments_count、user_liked、user_reposted 字段"
-      },
-      {
-        "id": "TC-25",
-        "endpoint": "/api/v1/posts/:id/like",
-        "method": "POST",
-        "scenario": "已认证用户对指定帖子连续两次调用点赞切换接口",
-        "expectedStatus": 200,
-        "assertion": "首次调用返回 liked 为 true 且 likes_count 递增 1，再次调用返回 liked 为 false 且 likes_count 减 1，实现单用户幂等防刷；未登录返回 401，帖子不存在返回 404"
-      },
-      {
-        "id": "TC-26",
-        "endpoint": "/api/v1/posts/:id/repost",
-        "method": "POST",
-        "scenario": "已认证用户对指定帖子连续两次调用转发切换接口",
-        "expectedStatus": 200,
-        "assertion": "首次调用返回 reposted 为 true 且 reposts_count 递增 1，再次调用返回 reposted 为 false 且 reposts_count 减 1；未登录返回 401，帖子不存在返回 404"
-      },
-      {
-        "id": "TC-27",
-        "endpoint": "/api/v1/posts/:id/click",
-        "method": "POST",
-        "scenario": "对指定帖子多次触发点击/浏览计数递增",
-        "expectedStatus": 200,
-        "assertion": "每次调用原子递增 clicks_count 与 views_count 并持久化落库；帖子不存在时返回 404_POST_NOT_FOUND"
-      },
-      {
-        "id": "TC-28",
-        "endpoint": "/api/v1/stats/overview",
-        "method": "GET",
-        "scenario": "获取社区真实汇总统计与热门动态摘要",
-        "expectedStatus": 200,
-        "assertion": "响应状态码为 200，totals 中 posts/users/comments/likes/reposts/clicks 与数据库真实增量一致，hot_posts 返回真实动态而非硬编码 Mock 数据"
-      },
-      {
-        "id": "TC-29",
         "endpoint": "/api/v1/admin/login",
         "method": "POST",
-        "scenario": "系统首次启动使用默认账号 admin 与默认密码 admin 登录管理员后台",
+        "scenario": "验证管理员错误凭据拒绝与有效凭据登录鉴权及配置读取",
         "expectedStatus": 200,
-        "assertion": "响应状态码为 200，自动完成默认管理员初始化并返回独立管理员 token 与 admin(username: admin, must_change_password: true)；错误凭据返回 401_INVALID_CREDENTIALS"
-      },
-      {
-        "id": "TC-30",
-        "endpoint": "/api/v1/admin/settings",
-        "method": "GET",
-        "scenario": "未授权请求、普通社区用户凭据或伪造管理员令牌越权访问管理员配置接口",
-        "expectedStatus": 401,
-        "assertion": "响应状态码为 401，错误体包含 401_ADMIN_UNAUTHORIZED，确保管理员会话与普通用户严格隔离"
-      },
-      {
-        "id": "TC-31",
-        "endpoint": "/api/v1/admin/settings",
-        "method": "GET",
-        "scenario": "管理员携带有效管理员令牌获取后台系统配置与统计看板",
-        "expectedStatus": 200,
-        "assertion": "响应状态码为 200，返回 settings 与真实 stats，Resend API Key 仅返回 configured 布尔值与脱敏掩码，绝不暴露明文"
-      },
-      {
-        "id": "TC-32",
-        "endpoint": "/api/v1/admin/settings",
-        "method": "PUT",
-        "scenario": "管理员提交完整合法配置以保存、留空保留及显式清空 Resend API Key 与站点参数",
-        "expectedStatus": 200,
-        "assertion": "保存安全占位 Key 后 configured 为 true 且仅返回脱敏掩码；后续留空提交不覆盖原 Key；clear_resend_api_key 为 true 时成功清空；非法邮箱或越界数量返回 400_INVALID_SETTINGS"
-      },
-      {
-        "id": "TC-33",
-        "endpoint": "/api/v1/admin/settings/test-email",
-        "method": "POST",
-        "scenario": "管理员在未配置 Resend API Key 时触发测试发信",
-        "expectedStatus": 503,
-        "assertion": "响应状态码为 503，错误体包含 503_EMAIL_NOT_CONFIGURED；邮箱格式错误返回 400_INVALID_EMAIL；配置安全占位 Key 后尝试调用 Resend 返回 502_EMAIL_SEND_FAILED"
-      },
-      {
-        "id": "TC-34",
-        "endpoint": "/api/v1/admin/credentials",
-        "method": "PUT",
-        "scenario": "管理员提供错误的当前密码尝试修改账号密码",
-        "expectedStatus": 403,
-        "assertion": "响应状态码为 403，错误体包含 403_WRONG_PASSWORD，拒绝修改"
-      },
-      {
-        "id": "TC-35",
-        "endpoint": "/api/v1/admin/credentials",
-        "method": "PUT",
-        "scenario": "管理员校验当前密码后成功修改登录用户名与新密码（至少 6 位）",
-        "expectedStatus": 200,
-        "assertion": "响应状态码为 200，返回 success 为 true 且 must_change_password 置为 false；旧密码 admin 立即失效（401），新凭据可正常登录"
-      },
-      {
-        "id": "TC-36",
-        "endpoint": "/api/v1/media/upload",
-        "method": "POST",
-        "scenario": "通过 JSON data_url 通道提交非白名单 MIME（text/html 或 image/svg+xml）或畸形编码载荷",
-        "expectedStatus": 400,
-        "assertion": "响应状态码为 400，错误体包含 400_INVALID_MEDIA，杜绝 JSON 上传路径绕过白名单"
-      },
-      {
-        "id": "TC-37",
-        "endpoint": "/api/v1/posts/:id/click",
-        "method": "POST",
-        "scenario": "对同一帖子并发发起 5 次点击计数请求验证原子递增",
-        "expectedStatus": 200,
-        "assertion": "全部请求返回 200，最终落库的 clicks_count 与 views_count 精确递增 5，无竞态丢失"
-      },
-      {
-        "id": "TC-38",
-        "endpoint": "/api/v1/media/upload",
-        "method": "POST",
-        "scenario": "并发上传 4 张合法 PNG 图片验证唯一媒体 ID 与可读取性",
-        "expectedStatus": 201,
-        "assertion": "全部请求返回 200/201，生成 4 个互不重复的媒体 ID 且均可通过 GET /api/v1/media/:id 正常读取"
-      },
-      {
-        "id": "TC-39",
-        "endpoint": "/api/v1/media/:id",
-        "method": "GET",
-        "scenario": "使用编码后的路径遍历字符请求媒体资源接口",
-        "expectedStatus": 404,
-        "assertion": "响应状态码为 404（或 400），拒绝路径穿越且不泄露服务器文件内容"
-      },
-      {
-        "id": "TC-40",
-        "endpoint": "/api/v1/admin/login",
-        "method": "POST",
-        "scenario": "提交空用户名或空密码尝试管理员登录",
-        "expectedStatus": 400,
-        "assertion": "响应状态码为 400 或 401，错误体包含 INVALID_CREDENTIALS，拒绝空白凭据登录"
+        "assertion": "错误密码返回 401；有效凭据返回 200 token 且凭 token 可访问 GET /api/v1/admin/settings"
       }
     ]
   }
