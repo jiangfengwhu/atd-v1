@@ -1,0 +1,83 @@
+{
+  "apiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/api/auth/profile",
+      "method": "PATCH",
+      "scenario": "已登录用户更新昵称、个人简介与站内上传的头像 URL",
+      "expectedStatus": 200,
+      "assertion": "返回 ok=true，user 包含更新后的 nickname、bio 与 avatarUrl，且 GET /api/auth/me 持久返回一致数据"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/api/users/:id",
+      "method": "GET",
+      "scenario": "查询个人主页资料与互动统计（发帖/关注/粉丝/点赞/评论/回复计数）",
+      "expectedStatus": 200,
+      "assertion": "返回 user 对象，包含 bio、avatarUrl、postsCount、followingCount、followersCount 及 isFollowing/isSelf 标识"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/users/:id/follow",
+      "method": "POST",
+      "scenario": "用户 A 关注用户 B 后再次请求取消关注",
+      "expectedStatus": 200,
+      "assertion": "首次返回 following=true 且 followersCount=1，二次返回 following=false 且 followersCount=0"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/api/users/:id/follows",
+      "method": "GET",
+      "scenario": "查询用户的关注列表(type=following)与粉丝列表(type=followers)",
+      "expectedStatus": 200,
+      "assertion": "返回对应关注/粉丝用户数组与 total 总数"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/posts/:id/comments/:commentId/replies",
+      "method": "POST",
+      "scenario": "已登录用户对帖子下某条一级评论发表回复",
+      "expectedStatus": 201,
+      "assertion": "返回新建 reply 对象，且 GET /api/posts/:id 中对应评论的 replies 数组包含该回复"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/api/users/:id/activity",
+      "method": "GET",
+      "scenario": "依次查询 tab=posts、likes、comments、replies 四个维度的个人主页列表",
+      "expectedStatus": 200,
+      "assertion": "四个 tab 均正确返回对应历史发帖、点赞帖子、发表评论与回复记录及 total"
+    },
+    {
+      "id": "TC-07",
+      "endpoint": "/api/messages/with/:peerId",
+      "method": "POST",
+      "scenario": "用户 A 向用户 B 发送私信消息",
+      "expectedStatus": 201,
+      "assertion": "返回新建 message 对象，senderId 为 A、receiverId 为 B、isRead=false"
+    },
+    {
+      "id": "TC-08",
+      "endpoint": "/api/messages/conversations",
+      "method": "GET",
+      "scenario": "用户 B 拉取私信会话列表并检查未读计数",
+      "expectedStatus": 200,
+      "assertion": "conversations 包含与用户 A 的会话，unreadCount>=1 且 totalUnread>=1"
+    },
+    {
+      "id": "TC-09",
+      "endpoint": "/api/messages/with/:peerId",
+      "method": "GET",
+      "scenario": "用户 B 打开与用户 A 的聊天记录触发已读回执",
+      "expectedStatus": 200,
+      "assertion": "返回历史消息列表，随后再次查询 /api/messages/conversations 时该会话未读数清零"
+    }
+  ],
+  "e2eTestCode": "import { test, expect, type APIRequestContext } from '@playwright/test';\n\nconst PNG_32X32 = Buffer.from(\n  'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKklEQVR4nGP4Yh9HU8QwasGoBaMWjFowasGoBaMWjFowasGoBaMWDBULAN4gRFtH0KHXAAAAAElFTkSuQmCC',\n  'base64'\n);\n\nfunction makeEmail(prefix: string): string {\n  const rand = Math.random().toString(36).slice(2, 7);\n  return `${prefix}-${Date.now()}-${rand}@example.com`;\n}\n\nasync function loginUser(request: APIRequestContext, email: string, nickname: string) {\n  const sendRes = await request.post('/api/auth/send-code', { data: { email } });\n  expect(sendRes.status()).toBe(200);\n  const { devCode } = await sendRes.json();\n  const verifyRes = await request.post('/api/auth/verify-code', {\n    data: { email, code: devCode, nickname },\n  });\n  expect(verifyRes.status()).toBe(200);\n  const data = await verifyRes.json();\n  return data.user as { id: string; email: string; nickname: string };\n}\n\ntest.describe.serial('社区迭代核心功能 E2E 草案', () => {\n  test('1. 左右布局导航、底部个人资料弹出菜单与退出登录', async ({ page }) => {\n    await page.setViewportSize({ width: 1280, height: 800 });\n    const user = await loginUser(page.request, makeEmail('layout'), '小光测试');\n\n    await page.goto('/');\n    await expect(page.getByText('动态').first()).toBeVisible();\n    await expect(page.getByText('私信').first()).toBeVisible();\n    await expect(page.getByText('主页').first()).toBeVisible();\n\n    const profileBtn = page\n      .getByRole('button', { name: new RegExp(`${user.nickname}|个人资料`) })\n      .first();\n    await expect(profileBtn).toBeVisible();\n    await profileBtn.click();\n\n    const logoutBtn = page.getByRole('button', { name: /退出登录/i }).or(page.getByRole('menuitem', { name: /退出登录/i })).first();\n    await expect(logoutBtn).toBeVisible();\n    await logoutBtn.click();\n\n    await expect.poll(async () => (await (await page.request.get('/api/auth/me')).json()).authenticated).toBe(false);\n  });\n\n  test('2. 个人主页资料、关注粉丝、评论回复与四维记录闭环', async ({ page, browser }) => {\n    const ctxB = await browser.newContext();\n    try {\n      const userA = await loginUser(page.request, makeEmail('prof-a'), '创作者A');\n      const userB = await loginUser(ctxB.request, makeEmail('prof-b'), '旅人B');\n\n      const uploadRes = await page.request.post('/api/uploads', {\n        multipart: { file: { name: 'avatar.png', mimeType: 'image/png', buffer: PNG_32X32 } },\n      });\n      expect(uploadRes.status()).toBe(201);\n      const { url: avatarUrl } = await uploadRes.json();\n\n      const patchRes = await page.request.patch('/api/auth/profile', {\n        data: { nickname: '创作者A新版', bio: '热爱摄影与咖啡的社区记录者', avatarUrl },\n      });\n      expect(patchRes.status()).toBe(200);\n\n      const postRes = await page.request.post('/api/posts', {\n        data: { title: `主页发帖-${Date.now()}`, content: '用于校验个人主页历史发帖与互动' },\n      });\n      expect(postRes.status()).toBe(201);\n      const postId = (await postRes.json()).post.id;\n\n      await page.request.post(`/api/posts/${postId}/like`);\n      const commentRes = await ctxB.request.post(`/api/posts/${postId}/comments`, {\n        data: { content: '拍得真不错！' },\n      });\n      expect(commentRes.status()).toBe(201);\n      const commentId = (await commentRes.json()).comment.id;\n\n      const replyRes = await page.request.post(`/api/posts/${postId}/comments/${commentId}/replies`, {\n        data: { content: '谢谢喜欢，欢迎来玩' },\n      });\n      expect(replyRes.status()).toBe(201);\n\n      const followRes = await page.request.post(`/api/users/${userB.id}/follow`);\n      expect(followRes.status()).toBe(200);\n      expect((await followRes.json()).following).toBe(true);\n\n      await page.goto('/');\n      await page.getByRole('button', { name: /主页/ }).or(page.getByRole('link', { name: /主页/ })).first().click();\n      await expect(page.getByText('创作者A新版').first()).toBeVisible();\n      await expect(page.getByText('热爱摄影与咖啡的社区记录者').first()).toBeVisible();\n\n      for (const tab of ['posts', 'likes', 'comments', 'replies']) {\n        const actRes = await page.request.get(`/api/users/${userA.id}/activity?tab=${tab}`);\n        expect(actRes.status()).toBe(200);\n      }\n    } finally {\n      await ctxB.close();\n    }\n  });\n\n  test('3. 私信收发与未读已读闭环', async ({ page, browser }) => {\n    const ctxB = await browser.newContext();\n    try {\n      const userA = await loginUser(page.request, makeEmail('dm-a'), '私信甲');\n      const userB = await loginUser(ctxB.request, makeEmail('dm-b'), '私信乙');\n      const msgText = `你好，交流一下摄影参数-${Date.now()}`;\n\n      const sendDm = await page.request.post(`/api/messages/with/${userB.id}`, {\n        data: { content: msgText },\n      });\n      expect(sendDm.status()).toBe(201);\n\n      const convB = await ctxB.request.get('/api/messages/conversations');\n      expect(convB.status()).toBe(200);\n      const convBJson = await convB.json();\n      expect(convBJson.totalUnread).toBeGreaterThanOrEqual(1);\n\n      const threadB = await ctxB.request.get(`/api/messages/with/${userA.id}`);\n      expect(threadB.status()).toBe(200);\n      const threadBJson = await threadB.json();\n      expect(threadBJson.messages.some((m: { content: string }) => m.content === msgText)).toBe(true);\n\n      const convBAfter = await ctxB.request.get('/api/messages/conversations');\n      expect((await convBAfter.json()).totalUnread).toBe(0);\n    } finally {\n      await ctxB.close();\n    }\n  });\n\n  test('4. 发布图文图片裁剪编辑流程', async ({ page }) => {\n    await page.setViewportSize({ width: 1280, height: 800 });\n    await loginUser(page.request, makeEmail('crop'), '裁剪测试员');\n    await page.goto('/');\n\n    await page.getByRole('button', { name: /发布图文/ }).first().click();\n    await page.locator('input[type=\"file\"]').first().setInputFiles({\n      name: 'sample.png',\n      mimeType: 'image/png',\n      buffer: PNG_32X32,\n    });\n\n    const cropTrigger = page.getByRole('button', { name: /裁剪|编辑/i }).first();\n    await expect(cropTrigger).toBeVisible();\n    await cropTrigger.click();\n\n    const confirmCropBtn = page.getByRole('button', { name: /确认裁剪|应用裁剪|确认|完成/i }).first();\n    await expect(confirmCropBtn).toBeVisible();\n    await confirmCropBtn.click();\n\n    const title = `裁剪发帖-${Date.now()}`;\n    await page.getByPlaceholder(/标题/i).first().fill(title);\n    await page.locator('textarea').first().fill('已使用前端裁剪工具完成构图调整');\n    await page.getByRole('button', { name: /立即发布/i }).last().click();\n    await expect(page.getByText(title).first()).toBeVisible();\n  });\n});\n",
+  "coverageNotes": [
+    "覆盖左右分栏导航（动态、私信、主页）、底部个人资料按钮弹出菜单与退出登录闭环",
+    "覆盖个人资料头像/昵称/简介修改持久化、关注与粉丝统计及四维活动接口",
+    "覆盖评论二级回复、私信收发与未读数清零回执",
+    "覆盖图文发布弹窗中的图片裁剪编辑与发布链路"
+  ]
+}
