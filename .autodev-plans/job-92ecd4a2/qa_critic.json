@@ -1,0 +1,186 @@
+{
+  "reviewSummary": "初版 QA 方案已覆盖核心正向路径，但在安全性、非法输入边界、隐藏路由审计、并发状态隔离及 Playwright 交互断言完整性方面存在 6 项中高等级缺口：1) 缺少对 Resend 密钥脱敏回显与 /admin 未鉴权访问拦截的断言；2) 未校验公开页面是否真正隐藏 /admin 入口及用户间越权删帖（403）；3) 缺少恶意 javascript: 图片链接、非图片文件上传及空白标题的负向验证；4) 未验证 OTP 一次性防重放、错误验证码拒绝与同邮箱发送冷却；5) 修改管理员密码和写入测试用 Resend Key 后未做串行隔离与 finally 回滚，会导致后续测试及重跑失败；6) 图文发布、点赞、评论与管理员改密需强化 UI+API 双向断言并确保所有定位器符合 Playwright 严格模式。",
+  "findings": [
+    {
+      "id": "CRIT-01",
+      "category": "security",
+      "severity": "high",
+      "issue": "Resend API Key 明文泄露风险与后台未鉴权访问未验证：初版未断言 GET /api/admin/settings 不得返回明文密钥，也未校验未登录访问后台接口返回 401。",
+      "recommendation": "新增未认证访问 GET/PUT /api/admin/settings 与 POST /api/admin/password 返回 401 的用例；保存测试密钥后调用 GET /api/admin/settings 断言响应文本绝不包含原始明文密钥，仅返回 hasResendApiKey: true 与脱敏掩码。"
+    },
+    {
+      "id": "CRIT-02",
+      "category": "security",
+      "severity": "high",
+      "issue": "隐藏路由可见性与用户越权操作缺失：未验证公开社区页面是否隐藏了 /admin 入口，且未验证未登录发帖/上传返回 401 以及用户 B 删除用户 A 帖子返回 403。",
+      "recommendation": "在首页 E2E 中断言 page.locator('a[href=\"/admin\"]') 计数为 0；在安全测试中建立双用户上下文，验证未登录写入接口返回 401、跨用户删帖返回 403、作者本人与管理员删帖返回 200。"
+    },
+    {
+      "id": "CRIT-03",
+      "category": "invalid_input",
+      "severity": "high",
+      "issue": "图文输入与文件上传安全边界未覆盖：未测试非图片 MIME（如 text/html）上传、空白标题/超长内容发帖以及 javascript:alert(1) 等 XSS 图片链接拦截。",
+      "recommendation": "补充负向用例验证上传 HTML 文件返回 400/415、提交 javascript:alert(1) 作为 imageUrl 或空白标题发帖返回 400，且 GET /api/uploads/:id 必须携带 X-Content-Type-Options: nosniff 响应头。"
+    },
+    {
+      "id": "CRIT-04",
+      "category": "boundary",
+      "severity": "medium",
+      "issue": "OTP 验证码防重放、错误码拦截、发送冷却与改密弱密码边界缺失。",
+      "recommendation": "补充验证非法邮箱发送验证码返回 400、同邮箱立即重发触发 429 冷却、错误 6 位验证码被拒绝（400/401）、已使用的验证码二次验证被拒（防重放），以及新密码少于 6 位或原密码错误时修改管理员密码返回 400/401。"
+    },
+    {
+      "id": "CRIT-05",
+      "category": "concurrency",
+      "severity": "high",
+      "issue": "后台修改管理员密码与写入虚构 Resend API Key 会污染共享 D1 状态，导致并发或后续重复运行时 OTP dev_fallback 失效且默认密码 admin 无法登录。",
+      "recommendation": "将涉及 admin_config 变更的后台测试包裹在 test.describe.serial 中，并在 try/finally 块内确保将管理员密码恢复为 admin 且清空测试用 resendApiKey，同时所有用户测试均使用带随机后缀的独立邮箱与帖子标题。"
+    },
+    {
+      "id": "CRIT-06",
+      "category": "ui_interaction",
+      "severity": "medium",
+      "issue": "初版仅通过 API 发帖且未验证 UI 发帖交互、点赞/评论界面反馈与后台改密后的 UI 重登流程，且部分按钮使用 .last() 存在盲测误点风险。",
+      "recommendation": "全面采用语义化角色/占位符定位器并严格为所有 .or() 链追加 .first()；覆盖完整 UI 图文发布、详情页点赞与评论、刷新后持久化校验，以及 /admin 界面登录、保存配置、修改密码与旧密码被拒验证。"
+    }
+  ],
+  "finalApiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/api/health",
+      "method": "GET",
+      "scenario": "健康检查验证服务与 D1 数据库可用",
+      "expectedStatus": 200,
+      "assertion": "返回 ok: true 且 db 为 connected"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/api/auth/send-code",
+      "method": "POST",
+      "scenario": "非法邮箱格式请求验证码被拒绝",
+      "expectedStatus": 400,
+      "assertion": "返回错误信息且不写入 OTP 记录"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/auth/send-code",
+      "method": "POST",
+      "scenario": "合法邮箱发送验证码（本地 dev_fallback）及 60 秒内同邮箱重复发送触发冷却",
+      "expectedStatus": 200,
+      "assertion": "首次返回 200 与 6 位 devCode；紧接着同邮箱第二次请求返回 429"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/api/auth/verify-code",
+      "method": "POST",
+      "scenario": "错误验证码被拒绝，正确验证码登录成功且不可二次重放",
+      "expectedStatus": 200,
+      "assertion": "错误验证码返回 400/401；正确验证码返回 200 并签发 HttpOnly Cookie；同一验证码再次提交返回 400/401"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/auth/me",
+      "method": "GET",
+      "scenario": "验证登录态查询及退出登录后会话失效",
+      "expectedStatus": 200,
+      "assertion": "登录后返回 authenticated: true；调用 POST /api/auth/logout 后再查询返回 authenticated: false"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/api/posts",
+      "method": "POST",
+      "scenario": "未登录用户发帖与上传图片被拦截",
+      "expectedStatus": 401,
+      "assertion": "POST /api/posts 与 POST /api/uploads 在无有效会话时均返回 401"
+    },
+    {
+      "id": "TC-07",
+      "endpoint": "/api/uploads",
+      "method": "POST",
+      "scenario": "非图片文件上传被拒绝，合法 PNG 上传成功且输出 nosniff 安全头",
+      "expectedStatus": 201,
+      "assertion": "上传 text/html 返回 400/415；上传合法 PNG 返回 201 与 /api/uploads/:id，GET 读取返回 200 及 X-Content-Type-Options: nosniff"
+    },
+    {
+      "id": "TC-08",
+      "endpoint": "/api/posts",
+      "method": "POST",
+      "scenario": "非法图片 URL（javascript:alert(1)）与空标题被拦截，合法图文发帖成功",
+      "expectedStatus": 201,
+      "assertion": "非法 imageUrl 与空标题返回 400；合法请求返回 201 且持久化至 D1"
+    },
+    {
+      "id": "TC-09",
+      "endpoint": "/api/posts",
+      "method": "GET",
+      "scenario": "公开查询图文列表并支持关键词搜索与标签过滤",
+      "expectedStatus": 200,
+      "assertion": "返回 posts 数组包含目标帖子且 total >= 1，按关键词搜索可精准命中"
+    },
+    {
+      "id": "TC-10",
+      "endpoint": "/api/posts/:id/like",
+      "method": "POST",
+      "scenario": "登录用户点赞与取消点赞原子切换",
+      "expectedStatus": 200,
+      "assertion": "首次返回 liked: true 且 likesCount=1，再次调用返回 liked: false 且 likesCount=0"
+    },
+    {
+      "id": "TC-11",
+      "endpoint": "/api/posts/:id/comments",
+      "method": "POST",
+      "scenario": "登录用户发表评论并校验空白评论拦截",
+      "expectedStatus": 201,
+      "assertion": "空白评论返回 400；合法评论返回 201 且出现在 GET /api/posts/:id 评论列表中"
+    },
+    {
+      "id": "TC-12",
+      "endpoint": "/api/posts/:id",
+      "method": "DELETE",
+      "scenario": "跨用户越权删帖被拒绝，作者本人删帖成功",
+      "expectedStatus": 200,
+      "assertion": "用户 B 删除用户 A 帖子返回 403；作者本人删除返回 200 且后续 GET 返回 404"
+    },
+    {
+      "id": "TC-13",
+      "endpoint": "/api/admin/settings",
+      "method": "GET",
+      "scenario": "未登录管理员访问后台配置及改密接口被拦截",
+      "expectedStatus": 401,
+      "assertion": "无 admin_session 时访问 GET/PUT /api/admin/settings 与 POST /api/admin/password 均返回 401"
+    },
+    {
+      "id": "TC-14",
+      "endpoint": "/api/admin/login",
+      "method": "POST",
+      "scenario": "错误密码登录后台失败，初始密码 admin 登录成功",
+      "expectedStatus": 200,
+      "assertion": "错误密码返回 401；密码 admin 返回 200 并签发 HttpOnly admin_session Cookie"
+    },
+    {
+      "id": "TC-15",
+      "endpoint": "/api/admin/settings",
+      "method": "PUT",
+      "scenario": "保存 Resend API Key 后校验持久化与 GET 严格脱敏防泄露",
+      "expectedStatus": 200,
+      "assertion": "PUT 返回 200；随后 GET /api/admin/settings 返回 hasResendApiKey: true 且响应体绝不包含明文密钥"
+    },
+    {
+      "id": "TC-16",
+      "endpoint": "/api/admin/password",
+      "method": "POST",
+      "scenario": "管理员改密边界校验、新密码生效与旧密码失效验证",
+      "expectedStatus": 200,
+      "assertion": "原密码错误返回 401、新密码过短返回 400；合法改密返回 200 后旧密码登录返回 401、新密码登录返回 200"
+    },
+    {
+      "id": "TC-17",
+      "endpoint": "/api/admin/posts/:id",
+      "method": "DELETE",
+      "scenario": "管理员在后台下架删除任意用户帖子",
+      "expectedStatus": 200,
+      "assertion": "携带有效 admin_session 删除指定帖子返回 200，随后 GET /api/posts/:id 返回 404"
+    }
+  ],
+  "finalE2eTestCode": "import { test, expect, type APIRequestContext } from '@playwright/test';\n\nconst TINY_PNG = Buffer.from(\n  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',\n  'base64'\n);\n\nfunction makeEmail(prefix: string): string {\n  const rand = Math.random().toString(36).slice(2, 7);\n  return `${prefix}-${Date.now()}-${rand}@example.com`;\n}\n\nasync function apiLoginWithOtp(request: APIRequestContext, email: string): Promise<string> {\n  const sendRes = await request.post('/api/auth/send-code', { data: { email } });\n  expect(sendRes.status(), 'send-code 应返回 200').toBe(200);\n  const sendJson = await sendRes.json();\n  expect(sendJson.ok).toBe(true);\n  expect(typeof sendJson.devCode).toBe('string');\n  expect(sendJson.devCode).toMatch(/^\\d{6}$/);\n\n  const verifyRes = await request.post('/api/auth/verify-code', {\n    data: { email, code: sendJson.devCode },\n  });\n  expect(verifyRes.status(), 'verify-code 应返回 200').toBe(200);\n  const verifyJson = await verifyRes.json();\n  expect(verifyJson.ok).toBe(true);\n  return sendJson.devCode;\n}\n\ntest.describe.serial('图文文字社区全链路加固盲测 E2E 套件', () => {\n  test('1. 健康检查、首页渲染与隐藏路由 /admin 入口审计', async ({ page, request }) => {\n    const pageErrors: string[] = [];\n    page.on('pageerror', (err) => pageErrors.push(err.message));\n\n    const healthRes = await request.get('/api/health');\n    expect(healthRes.status()).toBe(200);\n    const healthJson = await healthRes.json();\n    expect(healthJson.ok).toBe(true);\n\n    await page.goto('/');\n    await expect(page.locator('body')).toBeVisible();\n    // 确认公开社区页面不存在指向隐藏路由 /admin 的可见或 DOM 链接\n    await expect(page.locator('a[href=\"/admin\"]')).toHaveCount(0);\n    await expect(page.locator('a[href=\"/admin/\"]')).toHaveCount(0);\n    expect(pageErrors, '首页不应存在未捕获前端运行错误').toEqual([]);\n  });\n\n  test('2. 邮箱验证码登录安全边界（非法邮箱、冷却、错误码、UI 登录与防重放）', async ({ page, request }) => {\n    // 非法邮箱校验\n    const badEmailRes = await request.post('/api/auth/send-code', { data: { email: 'not-an-email' } });\n    expect(badEmailRes.status()).toBe(400);\n\n    const email = makeEmail('e2e-login');\n    await page.goto('/');\n\n    const openLoginBtn = page\n      .getByRole('button', { name: /登录|邮箱登录|立即登录/i })\n      .or(page.getByText(/登录|邮箱登录/i))\n      .first();\n    await expect(openLoginBtn).toBeVisible({ timeout: 10000 });\n    await openLoginBtn.click();\n\n    const emailInput = page\n      .getByPlaceholder(/邮箱|email/i)\n      .or(page.locator('input[type=\"email\"]'))\n      .first();\n    await expect(emailInput).toBeVisible({ timeout: 10000 });\n    await emailInput.fill(email);\n\n    const sendResponsePromise = page.waitForResponse(\n      (res) => res.url().includes('/api/auth/send-code') && res.request().method() === 'POST'\n    );\n    const sendBtn = page.getByRole('button', { name: /获取验证码|发送验证码|发送/i }).first();\n    await expect(sendBtn).toBeVisible();\n    await sendBtn.click();\n\n    const sendRes = await sendResponsePromise;\n    expect(sendRes.status()).toBe(200);\n    const sendJson = await sendRes.json();\n    expect(sendJson.devCode).toMatch(/^\\d{6}$/);\n\n    // 同邮箱立即重发应触发冷却限制 429\n    const cooldownRes = await request.post('/api/auth/send-code', { data: { email } });\n    expect(cooldownRes.status()).toBe(429);\n\n    // 错误验证码应被拒绝\n    const wrongCode = sendJson.devCode === '000000' ? '999999' : '000000';\n    const wrongVerifyRes = await request.post('/api/auth/verify-code', {\n      data: { email, code: wrongCode },\n    });\n    expect([400, 401]).toContain(wrongVerifyRes.status());\n\n    // 在 UI 中输入正确验证码完成登录\n    const codeInput = page\n      .getByPlaceholder(/验证码|code/i)\n      .or(page.locator('input[inputmode=\"numeric\"]'))\n      .first();\n    await expect(codeInput).toBeVisible();\n    await codeInput.fill(sendJson.devCode);\n\n    const verifyResponsePromise = page.waitForResponse(\n      (res) => res.url().includes('/api/auth/verify-code') && res.request().method() === 'POST'\n    );\n    const submitBtn = page\n      .getByRole('button', { name: /验证并登录|确认登录|立即登录|登录/i })\n      .filter({ hasNotText: /获取验证码|发送验证码/i })\n      .first();\n    await submitBtn.click();\n\n    const verifyRes = await verifyResponsePromise;\n    expect(verifyRes.status()).toBe(200);\n\n    // 确认登录态生效且刷新不丢失\n    const meRes = await page.request.get('/api/auth/me');\n    expect(meRes.status()).toBe(200);\n    const meJson = await meRes.json();\n    expect(meJson.authenticated).toBe(true);\n    expect(meJson.user?.email).toBe(email);\n\n    // 同一验证码二次提交必须被拒（一次性防重放）\n    const replayRes = await request.post('/api/auth/verify-code', {\n      data: { email, code: sendJson.devCode },\n    });\n    expect([400, 401]).toContain(replayRes.status());\n  });\n\n  test('3. 图文发布、图片上传、搜索、点赞、评论与持久化闭环', async ({ page }) => {\n    const email = makeEmail('e2e-poster');\n    await apiLoginWithOtp(page.request, email);\n\n    // 校验非图片文件上传被拒\n    const badUploadRes = await page.request.post('/api/uploads', {\n      multipart: {\n        file: {\n          name: 'evil.html',\n          mimeType: 'text/html',\n          buffer: Buffer.from('<script>alert(1)</script>'),\n        },\n      },\n    });\n    expect([400, 415]).toContain(badUploadRes.status());\n\n    // 校验合法 PNG 上传与 nosniff 安全响应头\n    const uploadRes = await page.request.post('/api/uploads', {\n      multipart: {\n        file: {\n          name: 'photo.png',\n          mimeType: 'image/png',\n          buffer: TINY_PNG,\n        },\n      },\n    });\n    expect(uploadRes.status()).toBe(201);\n    const uploadJson = await uploadRes.json();\n    expect(uploadJson.url).toMatch(/^\\/api\\/uploads\\//);\n\n    const imgGetRes = await page.request.get(uploadJson.url);\n    expect(imgGetRes.status()).toBe(200);\n    expect(imgGetRes.headers()['content-type']).toContain('image/png');\n    expect((imgGetRes.headers()['x-content-type-options'] || '').toLowerCase()).toBe('nosniff');\n\n    // 校验恶意 javascript: imageUrl 与空标题被拦截\n    const xssPostRes = await page.request.post('/api/posts', {\n      data: {\n        title: 'XSS测试',\n        content: '测试非法图片协议拦截',\n        imageUrl: 'javascript:alert(1)',\n      },\n    });\n    expect(xssPostRes.status()).toBe(400);\n\n    const emptyTitleRes = await page.request.post('/api/posts', {\n      data: { title: '   ', content: '无标题内容' },\n    });\n    expect(emptyTitleRes.status()).toBe(400);\n\n    // 通过 UI 入口打开图文发布弹窗并提交（兼容上传或填入 URL）\n    const postTitle = `年轻人的周末灵感-${Date.now()}`;\n    const postBody = '记录一杯冰美式和落日余晖，首版图文社区真好用！';\n    const commentText = `太赞了同款机位-${Date.now()}`;\n\n    await page.goto('/');\n    const composeBtn = page\n      .getByRole('button', { name: /发布图文|发布|写图文|发帖/i })\n      .first();\n    await expect(composeBtn).toBeVisible({ timeout: 10000 });\n    await composeBtn.click();\n\n    const titleInput = page\n      .getByPlaceholder(/标题|起个标题/i)\n      .or(page.getByLabel(/标题/i))\n      .first();\n    await expect(titleInput).toBeVisible({ timeout: 10000 });\n    await titleInput.fill(postTitle);\n\n    const contentInput = page\n      .getByPlaceholder(/正文|内容|分享|此刻|想说/i)\n      .or(page.locator('textarea'))\n      .first();\n    await expect(contentInput).toBeVisible();\n    await contentInput.fill(postBody);\n\n    const fileInput = page.locator('input[type=\"file\"]').first();\n    if ((await fileInput.count()) > 0) {\n      await fileInput.setInputFiles({\n        name: 'community-card.png',\n        mimeType: 'image/png',\n        buffer: TINY_PNG,\n      });\n    }\n\n    const createPostPromise = page.waitForResponse(\n      (res) => res.url().endsWith('/api/posts') && res.request().method() === 'POST'\n    );\n    const publishBtn = page\n      .getByRole('button', { name: /立即发布|确认发布|发布帖子|提交|发布/i })\n      .last();\n    await publishBtn.click();\n\n    const createPostRes = await createPostPromise;\n    expect(createPostRes.status()).toBe(201);\n    const createdJson = await createPostRes.json();\n    const postId = createdJson.post?.id;\n    expect(postId).toBeTruthy();\n\n    // 刷新页面验证图文持久化可见\n    await page.reload();\n    await expect(page.getByText(postTitle).first()).toBeVisible({ timeout: 10000 });\n\n    // 验证搜索接口命中\n    const searchRes = await page.request.get(`/api/posts?q=${encodeURIComponent(postTitle)}`);\n    expect(searchRes.status()).toBe(200);\n    const searchJson = await searchRes.json();\n    expect(searchJson.posts.some((p: { id: string }) => p.id === postId)).toBe(true);\n\n    // 点赞切换与评论持久化校验\n    const like1 = await page.request.post(`/api/posts/${postId}/like`);\n    expect(like1.status()).toBe(200);\n    const like1Json = await like1.json();\n    expect(like1Json.liked).toBe(true);\n    expect(like1Json.likesCount).toBe(1);\n\n    const like2 = await page.request.post(`/api/posts/${postId}/like`);\n    expect(like2.status()).toBe(200);\n    const like2Json = await like2.json();\n    expect(like2Json.liked).toBe(false);\n    expect(like2Json.likesCount).toBe(0);\n\n    const emptyComment = await page.request.post(`/api/posts/${postId}/comments`, {\n      data: { content: '   ' },\n    });\n    expect(emptyComment.status()).toBe(400);\n\n    const addComment = await page.request.post(`/api/posts/${postId}/comments`, {\n      data: { content: commentText },\n    });\n    expect(addComment.status()).toBe(201);\n\n    const detailRes = await page.request.get(`/api/posts/${postId}`);\n    expect(detailRes.status()).toBe(200);\n    const detailJson = await detailRes.json();\n    expect(detailJson.comments.some((c: { content: string }) => c.content === commentText)).toBe(true);\n  });\n\n  test('4. 未登录拦截与跨用户越权删帖权限隔离', async ({ browser }) => {\n    // 未登录请求应全部返回 401\n    const anonCtx = await browser.newContext();\n    const anonPost = await anonCtx.request.post('/api/posts', {\n      data: { title: '未登录发帖', content: '应当被拒绝' },\n    });\n    expect(anonPost.status()).toBe(401);\n\n    const anonUpload = await anonCtx.request.post('/api/uploads', {\n      multipart: { file: { name: 'a.png', mimeType: 'image/png', buffer: TINY_PNG } },\n    });\n    expect(anonUpload.status()).toBe(401);\n    await anonCtx.close();\n\n    // 用户 A 发帖，用户 B 尝试越权删除必须返回 403，作者本人删除返回 200\n    const ctxA = await browser.newContext();\n    const ctxB = await browser.newContext();\n    try {\n      await apiLoginWithOtp(ctxA.request, makeEmail('e2e-owner'));\n      await apiLoginWithOtp(ctxB.request, makeEmail('e2e-other'));\n\n      const created = await ctxA.request.post('/api/posts', {\n        data: { title: `权限测试-${Date.now()}`, content: '仅作者可删' },\n      });\n      expect(created.status()).toBe(201);\n      const postId = (await created.json()).post.id;\n\n      const forbiddenDel = await ctxB.request.delete(`/api/posts/${postId}`);\n      expect(forbiddenDel.status()).toBe(403);\n\n      const ownerDel = await ctxA.request.delete(`/api/posts/${postId}`);\n      expect(ownerDel.status()).toBe(200);\n\n      const afterDel = await ctxA.request.get(`/api/posts/${postId}`);\n      expect(afterDel.status()).toBe(404);\n    } finally {\n      await ctxA.close();\n      await ctxB.close();\n    }\n  });\n\n  test('5. 隐藏路由 /admin 全流程：鉴权、Resend 密钥脱敏配置、改密与状态回滚', async ({ page, browser }) => {\n    const tempResendKey = 're_e2e_secret_key_987654321';\n    const newAdminPwd = 'AdminNew#2026';\n    let passwordChanged = false;\n    let resendKeyUpdated = false;\n\n    // 未认证访问后台敏感接口必须返回 401\n    const anonCtx = await browser.newContext();\n    expect((await anonCtx.request.get('/api/admin/settings')).status()).toBe(401);\n    expect(\n      (await anonCtx.request.put('/api/admin/settings', { data: { siteName: 'Hack' } })).status()\n    ).toBe(401);\n    expect(\n      (\n        await anonCtx.request.post('/api/admin/password', {\n          data: { currentPassword: 'admin', newPassword: 'hacked123' },\n        })\n      ).status()\n    ).toBe(401);\n    await anonCtx.close();\n\n    try {\n      await page.goto('/admin');\n      const pwdInput = page.locator('input[type=\"password\"]').first();\n      await expect(pwdInput).toBeVisible({ timeout: 10000 });\n\n      // 错误密码登录失败\n      const wrongLoginPromise = page.waitForResponse(\n        (res) => res.url().includes('/api/admin/login') && res.request().method() === 'POST'\n      );\n      await pwdInput.fill('wrong-admin-pwd');\n      const adminLoginBtn = page.getByRole('button', { name: /登录|进入后台|确认/i }).first();\n      await adminLoginBtn.click();\n      const wrongLoginRes = await wrongLoginPromise;\n      expect(wrongLoginRes.status()).toBe(401);\n\n      // 初始密码 admin 登录成功\n      const okLoginPromise = page.waitForResponse(\n        (res) => res.url().includes('/api/admin/login') && res.request().method() === 'POST'\n      );\n      await pwdInput.fill('admin');\n      await adminLoginBtn.click();\n      const okLoginRes = await okLoginPromise;\n      expect(okLoginRes.status()).toBe(200);\n\n      // 在后台配置 Resend API Key 并验证 GET 接口严格脱敏（绝不返回明文）\n      const resendInput = page\n        .getByPlaceholder(/re_|Resend|API Key|密钥/i)\n        .or(page.getByLabel(/Resend|API Key|密钥/i))\n        .first();\n      await expect(resendInput).toBeVisible({ timeout: 10000 });\n      await resendInput.fill(tempResendKey);\n\n      const saveSettingsPromise = page.waitForResponse(\n        (res) => res.url().includes('/api/admin/settings') && res.request().method() === 'PUT'\n      );\n      const saveBtn = page.getByRole('button', { name: /保存配置|保存设置|保存/i }).first();\n      await saveBtn.click();\n      const saveRes = await saveSettingsPromise;\n      expect(saveRes.status()).toBe(200);\n      resendKeyUpdated = true;\n\n      const settingsGetRes = await page.request.get('/api/admin/settings');\n      expect(settingsGetRes.status()).toBe(200);\n      const settingsRawText = await settingsGetRes.text();\n      expect(settingsRawText, 'GET /api/admin/settings 绝不得明文暴露 Resend API Key').not.toContain(\n        tempResendKey\n      );\n      const settingsJson = JSON.parse(settingsRawText);\n      expect(settingsJson.hasResendApiKey).toBe(true);\n      expect(typeof settingsJson.resendApiKeyMasked).toBe('string');\n      expect(settingsJson.resendApiKeyMasked.length).toBeGreaterThan(0);\n\n      // 改密边界校验：原密码错误返回 401、新密码过短返回 400\n      const badOldPwd = await page.request.post('/api/admin/password', {\n        data: { currentPassword: 'not-admin', newPassword: newAdminPwd },\n      });\n      expect(badOldPwd.status()).toBe(401);\n\n      const shortPwd = await page.request.post('/api/admin/password', {\n        data: { currentPassword: 'admin', newPassword: '123' },\n      });\n      expect(shortPwd.status()).toBe(400);\n\n      // 合法修改管理员密码，并验证旧密码失效、新密码可登录\n      const changePwdRes = await page.request.post('/api/admin/password', {\n        data: { currentPassword: 'admin', newPassword: newAdminPwd },\n      });\n      expect(changePwdRes.status()).toBe(200);\n      passwordChanged = true;\n\n      const verifyCtx = await browser.newContext();\n      try {\n        const oldPwdLogin = await verifyCtx.request.post('/api/admin/login', {\n          data: { password: 'admin' },\n        });\n        expect(oldPwdLogin.status()).toBe(401);\n\n        const newPwdLogin = await verifyCtx.request.post('/api/admin/login', {\n          data: { password: newAdminPwd },\n        });\n        expect(newPwdLogin.status()).toBe(200);\n      } finally {\n        await verifyCtx.close();\n      }\n    } finally {\n      // 严格回滚全局管理员配置，保证测试套件可重复无污染运行\n      const cleanupCtx = await browser.newContext();\n      try {\n        const activePwd = passwordChanged ? newAdminPwd : 'admin';\n        const loginRes = await cleanupCtx.request.post('/api/admin/login', {\n          data: { password: activePwd },\n        });\n        if (loginRes.status() === 200) {\n          if (resendKeyUpdated) {\n            await cleanupCtx.request.put('/api/admin/settings', {\n              data: { resendApiKey: '' },\n            });\n          }\n          if (passwordChanged) {\n            await cleanupCtx.request.post('/api/admin/password', {\n              data: { currentPassword: newAdminPwd, newPassword: 'admin' },\n            });\n          }\n        }\n      } finally {\n        await cleanupCtx.close();\n      }\n    }\n  });\n});\n"
+}
