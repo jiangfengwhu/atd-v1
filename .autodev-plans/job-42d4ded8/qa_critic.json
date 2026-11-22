@@ -1,0 +1,122 @@
+{
+  "reviewSummary": "经 QA Critic 边界与安全审计，初版 QA 规范覆盖了主干功能，但在隐私隔离（他人主页邮箱脱敏、第三方越权窥探私信）、非法输入与 XSS 防护（恶意 avatarUrl 协议、超长 bio/私信、非法 tab/type 参数）、业务边界（禁止关注自己、禁止给自己发私信、跨帖子伪造 commentId 回复、删帖级联清理回复）、并发防重（并发双击关注计数一致性）及 UI 交互校验（左右分栏真实几何坐标、私信中心页面端到端收发、裁剪弹窗缩放/比例控件交互、隐藏路由 /admin 零泄露）方面存在明显缺口。已完成全部缺口加固并生成最终盲测 E2E 套件。",
+  "findings": [
+    {
+      "id": "CRIT-01",
+      "category": "security",
+      "severity": "high",
+      "issue": "初版用例未验证公开主页接口 GET /api/users/:id 对非本人访问时是否泄露用户邮箱，也未验证第三方用户越权读取他人私信会话的隔离性。",
+      "recommendation": "新增三用户上下文测试：确认用户 B 查看用户 A 主页时响应中不包含 A 的 email 字段；确认无关用户 C 调用 /api/messages/conversations 与 /api/messages/with/:userAId 时绝不可看到 A 与 B 之间的私信内容。"
+    },
+    {
+      "id": "CRIT-02",
+      "category": "invalid_input",
+      "severity": "high",
+      "issue": "初版未覆盖个人资料 avatarUrl 的 XSS 协议注入（如 javascript:alert(1) / data:text/html）、超长 bio（>200 字符）、空白或超长私信正文（>2000 字符）以及非法 activity tab / follows type 查询参数。",
+      "recommendation": "在接口与盲测脚本中补充 400 非法输入断言，确保 avatarUrl 严格通过 isValidImageUrl 白名单校验，超长文本与未知枚举值均被安全拦截。"
+    },
+    {
+      "id": "CRIT-03",
+      "category": "boundary",
+      "severity": "high",
+      "issue": "初版未检验「关注自己」「给自己发私信」「向不存在的用户发私信/关注」「跨帖子传入不属于该帖子的 commentId 发表回复」以及「删除帖子后评论与回复同步级联清除」等核心边界条件。",
+      "recommendation": "补充自关注 400、自发私信 400、不存在目标 404、跨帖 commentId 回复 404 校验，并验证删帖后对应回复不再出现在用户回复列表中。"
+    },
+    {
+      "id": "CRIT-04",
+      "category": "concurrency",
+      "severity": "medium",
+      "issue": "快速连续或并发触发 POST /api/users/:id/follow 或连续切换状态时，若缺少主键约束与事务/计数同步，可能导致粉丝数异常或负数。",
+      "recommendation": "在测试中验证关注/取消关注反复切换及并发请求下 followersCount 始终非负且与 /api/users/:id/follows 实际记录数严格一致。"
+    },
+    {
+      "id": "CRIT-05",
+      "category": "ui_interaction",
+      "severity": "medium",
+      "issue": "初版未校验桌面端左右分栏的真实布局位置（左侧栏位于右侧主内容区之左）、未在私信 UI 中实际操作发送回复、未校验裁剪编辑弹窗内的比例/旋转/缩放交互以及公开页面是否误引入 /admin 链接，同时需确保未登录访问私信/主页时的拦截引导。",
+      "recommendation": "在最终 E2E 脚本中增加桌面端左右分栏几何边界断言、导航切换与底部菜单弹窗验证、私信界面端到端 UI 发送与持久化验证、裁剪控件（比例切换/旋转/确认）UI 验证，以及公开页面 a[href='/admin'] 数量为 0 的回归守护。"
+    },
+    {
+      "id": "CRIT-06",
+      "category": "boundary",
+      "severity": "medium",
+      "issue": "依据历史 RSI 故障教训，Cloudflare D1 新增迁移若使用非幂等语句或依赖未就绪的数据库标识极易在 CI/部署阶段中断。",
+      "recommendation": "明确要求新增迁移 migrations/0002_social_profile_dm.sql 仅包含幂等 DDL，且盲测脚本在本地迁移启动后首步验证 /api/health 数据库连通性与全部新表接口可用性。"
+    }
+  ],
+  "finalApiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/api/auth/profile",
+      "method": "PATCH",
+      "scenario": "已登录用户更新昵称、个人简介与站内上传头像 URL，且拒绝未登录(401)、恶意协议 avatarUrl(400) 与超长 bio(400)",
+      "expectedStatus": 200,
+      "assertion": "合法请求返回更新后的 user 并在 /api/auth/me 持久化；非法输入返回 400，未登录返回 401"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/api/users/:id",
+      "method": "GET",
+      "scenario": "获取本人主页(me 或本人 ID)与他人主页信息，校验隐私脱敏与统计口径",
+      "expectedStatus": 200,
+      "assertion": "他人主页响应绝不泄露目标用户 email；准确返回 bio、avatarUrl、postsCount、followingCount、followersCount 与 isFollowing"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/users/:id/follow",
+      "method": "POST",
+      "scenario": "关注/取消关注切换、禁止自关注(400)、不存在用户(404)与未登录拦截(401)",
+      "expectedStatus": 200,
+      "assertion": "合法切换后 following 状态与 followersCount/followingCount 实时准确；自关注返回 400，并发操作下粉丝数与列表长度一致且不为负"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/api/users/:id/follows",
+      "method": "GET",
+      "scenario": "查询关注列表(following)与粉丝列表(followers)，拦截非法 type 参数(400)",
+      "expectedStatus": 200,
+      "assertion": "合法 type 返回用户列表、isFollowing 标记及 total；非法 type 返回 400"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/posts/:id/comments/:commentId/replies",
+      "method": "POST",
+      "scenario": "发表评论二级回复，拦截空内容(400)、未登录(401)、不存在评论或跨帖 commentId(404)",
+      "expectedStatus": 201,
+      "assertion": "返回新建 reply 对象，GET /api/posts/:id 嵌套返回 replies 且 commentsCount 同步增加；删帖时关联回复级联清除"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/api/users/:id/activity",
+      "method": "GET",
+      "scenario": "查询个人主页 posts/likes/comments/replies 四类记录，拦截非法 tab(400) 与不存在用户(404)",
+      "expectedStatus": 200,
+      "assertion": "四类 tab 准确命中对应业务记录，非法 tab 返回 400"
+    },
+    {
+      "id": "TC-07",
+      "endpoint": "/api/messages/with/:peerId",
+      "method": "POST",
+      "scenario": "发送私信，拦截未登录(401)、给自己发私信(400)、空白或超长正文(400)、不存在接收方(404)",
+      "expectedStatus": 201,
+      "assertion": "合法发送返回 201 与 message 实体，边界及非法输入均返回对应 4xx 错误码"
+    },
+    {
+      "id": "TC-08",
+      "endpoint": "/api/messages/conversations",
+      "method": "GET",
+      "scenario": "获取当前用户会话列表、未读总数及跨用户权限隔离",
+      "expectedStatus": 200,
+      "assertion": "未登录返回 401；接收方可见 unreadCount 与 totalUnread；第三方用户不可见他人会话与消息"
+    },
+    {
+      "id": "TC-09",
+      "endpoint": "/api/messages/with/:peerId",
+      "method": "GET",
+      "scenario": "拉取双方聊天记录并自动清零接收方未读数，拒绝未登录(401)与查询自己(400)",
+      "expectedStatus": 200,
+      "assertion": "返回按时间排序的完整消息流，随后再次查询 /api/messages/conversations 时该会话未读数清零"
+    }
+  ],
+  "finalE2eTestCode": "import { test, expect, type APIRequestContext } from '@playwright/test';\n\nconst PNG_32X32 = Buffer.from(\n  'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKklEQVR4nGP4Yh9HU8QwasGoBaMWjFowasGoBaMWjFowasGoBaMWDBULAN4gRFtH0KHXAAAAAElFTkSuQmCC',\n  'base64'\n);\n\nfunction makeEmail(prefix: string): string {\n  const rand = Math.random().toString(36).slice(2, 7);\n  return `${prefix}-${Date.now()}-${rand}@example.com`;\n}\n\nasync function loginUser(\n  request: APIRequestContext,\n  email: string,\n  nickname: string\n): Promise<{ id: string; email: string; nickname: string }> {\n  const sendRes = await request.post('/api/auth/send-code', { data: { email } });\n  expect(sendRes.status(), 'send-code 应返回 200').toBe(200);\n  const sendJson = await sendRes.json();\n  expect(sendJson.devCode).toMatch(/^\\d{6}$/);\n\n  const verifyRes = await request.post('/api/auth/verify-code', {\n    data: { email, code: sendJson.devCode, nickname },\n  });\n  expect(verifyRes.status(), 'verify-code 应返回 200').toBe(200);\n  const verifyJson = await verifyRes.json();\n  expect(verifyJson.ok).toBe(true);\n  return verifyJson.user;\n}\n\ntest.describe.serial('社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件', () => {\n  test('1. 健康检查、左右分栏几何结构、左侧导航项与底部个人资料退出登录', async ({ page }) => {\n    const pageErrors: string[] = [];\n    page.on('pageerror', (err) => pageErrors.push(err.message));\n    await page.setViewportSize({ width: 1280, height: 800 });\n\n    const healthRes = await page.request.get('/api/health');\n    expect(healthRes.status()).toBe(200);\n    expect((await healthRes.json()).ok).toBe(true);\n\n    const nick = `导航用户${Date.now().toString().slice(-4)}`;\n    await loginUser(page.request, makeEmail('nav-user'), nick);\n\n    await page.goto('/');\n    await expect(page.locator('body')).toBeVisible();\n    // 守护隐藏后台路由：公开社区禁止出现 /admin 链接\n    await expect(page.locator('a[href=\"/admin\"]')).toHaveCount(0);\n    await expect(page.locator('a[href=\"/admin/\"]')).toHaveCount(0);\n\n    // 验证左侧导航栏存在「动态」「私信」「主页」以及左右布局几何关系\n    const sidebar = page.locator('aside, nav').first();\n    const mainArea = page.locator('main').first();\n    await expect(sidebar).toBeVisible({ timeout: 10000 });\n    await expect(mainArea).toBeVisible({ timeout: 10000 });\n\n    const sidebarBox = await sidebar.boundingBox();\n    const mainBox = await mainArea.boundingBox();\n    expect(sidebarBox, '左侧导航栏应具备可见宽度').not.toBeNull();\n    expect(mainBox, '右侧主内容区应具备可见宽度').not.toBeNull();\n    if (sidebarBox && mainBox) {\n      expect(sidebarBox.x).toBeLessThan(mainBox.x);\n      expect(mainBox.x).toBeGreaterThanOrEqual(sidebarBox.x + sidebarBox.width - 12);\n    }\n\n    const feedNav = sidebar\n      .getByRole('button', { name: /动态/ })\n      .or(sidebar.getByRole('link', { name: /动态/ }))\n      .first();\n    const dmNav = sidebar\n      .getByRole('button', { name: /私信/ })\n      .or(sidebar.getByRole('link', { name: /私信/ }))\n      .first();\n    const homeNav = sidebar\n      .getByRole('button', { name: /主页/ })\n      .or(sidebar.getByRole('link', { name: /主页/ }))\n      .first();\n\n    await expect(feedNav).toBeVisible();\n    await expect(dmNav).toBeVisible();\n    await expect(homeNav).toBeVisible();\n\n    // 导航切换至「主页」与「私信」再切回「动态」\n    await homeNav.click();\n    await expect(mainArea.getByText(nick).first()).toBeVisible({ timeout: 10000 });\n    await dmNav.click();\n    await expect(mainArea).toBeVisible();\n    await feedNav.click();\n\n    // 点击左侧底部个人资料按钮，弹出包含「退出登录」的选项并完成登出\n    const profileTrigger = sidebar\n      .getByRole('button', { name: new RegExp(`${nick}|个人资料|账号`, 'i') })\n      .last();\n    await expect(profileTrigger).toBeVisible();\n    await profileTrigger.click();\n\n    const logoutOption = page\n      .getByRole('menuitem', { name: /退出登录/i })\n      .or(page.getByRole('button', { name: /退出登录/i }))\n      .first();\n    await expect(logoutOption).toBeVisible({ timeout: 10000 });\n\n    const logoutPromise = page.waitForResponse(\n      (res) => res.url().includes('/api/auth/logout') && res.request().method() === 'POST'\n    );\n    await logoutOption.click();\n    const logoutRes = await logoutPromise;\n    expect(logoutRes.status()).toBe(200);\n\n    const meAfterLogout = await (await page.request.get('/api/auth/me')).json();\n    expect(meAfterLogout.authenticated).toBe(false);\n    expect(pageErrors, '页面切换与登出不应出现未捕获前端异常').toEqual([]);\n  });\n\n  test('2. 个人主页资料修改、安全边界、关注粉丝与评论二级回复闭环', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1280, height: 800 });\n    const ctxB = await browser.newContext();\n    const anonCtx = await browser.newContext();\n    try {\n      const emailA = makeEmail('social-a');\n      const emailB = makeEmail('social-b');\n      const userA = await loginUser(page.request, emailA, '星光作者');\n      const userB = await loginUser(ctxB.request, emailB, '漫游旅人');\n\n      // 未登录修改资料、关注、发回复必须返回 401\n      expect(\n        (await anonCtx.request.patch('/api/auth/profile', { data: { bio: 'unauth' } })).status()\n      ).toBe(401);\n      expect((await anonCtx.request.post(`/api/users/${userB.id}/follow`)).status()).toBe(401);\n\n      // 非法 avatarUrl 协议（XSS 注入）与超长简介应被 400 拦截\n      const xssAvatar = await page.request.patch('/api/auth/profile', {\n        data: { avatarUrl: 'javascript:alert(1)' },\n      });\n      expect(xssAvatar.status()).toBe(400);\n\n      const longBio = await page.request.patch('/api/auth/profile', {\n        data: { bio: '简'.repeat(205) },\n      });\n      expect(longBio.status()).toBe(400);\n\n      // 上传合法头像并更新个人简介与昵称\n      const avatarUpload = await page.request.post('/api/uploads', {\n        multipart: {\n          file: { name: 'avatar.png', mimeType: 'image/png', buffer: PNG_32X32 },\n        },\n      });\n      expect(avatarUpload.status()).toBe(201);\n      const { url: avatarUrl } = await avatarUpload.json();\n\n      const newNick = `星光新名${Date.now().toString().slice(-4)}`;\n      const newBio = '记录城市光影、手冲咖啡与胶片日常。';\n      const updateRes = await page.request.patch('/api/auth/profile', {\n        data: { nickname: newNick, bio: newBio, avatarUrl },\n      });\n      expect(updateRes.status()).toBe(200);\n      const updateJson = await updateRes.json();\n      expect(updateJson.user.bio).toBe(newBio);\n      expect(updateJson.user.avatarUrl).toBe(avatarUrl);\n\n      // 隐私边界：用户 B 访问用户 A 的公开主页时，响应中严禁泄露用户 A 的 email\n      const publicProfileRes = await ctxB.request.get(`/api/users/${userA.id}`);\n      expect(publicProfileRes.status()).toBe(200);\n      const publicProfileText = await publicProfileRes.text();\n      expect(publicProfileText, '他人主页公开接口不得泄露邮箱').not.toContain(emailA);\n      const publicProfileJson = JSON.parse(publicProfileText);\n      expect(publicProfileJson.user.nickname).toBe(newNick);\n      expect(publicProfileJson.user.bio).toBe(newBio);\n      expect(publicProfileJson.user.avatarUrl).toBe(avatarUrl);\n\n      // 禁止关注自己，关注不存在用户返回 404\n      const selfFollow = await page.request.post(`/api/users/${userA.id}/follow`);\n      expect(selfFollow.status()).toBe(400);\n      const ghostFollow = await page.request.post('/api/users/non-existent-user-id/follow');\n      expect(ghostFollow.status()).toBe(404);\n\n      // 关注 -> 粉丝列表核对 -> 取消关注 -> 再次关注，校验计数一致性\n      const f1 = await page.request.post(`/api/users/${userB.id}/follow`);\n      expect(f1.status()).toBe(200);\n      const f1Json = await f1.json();\n      expect(f1Json.following).toBe(true);\n      expect(f1Json.followersCount).toBe(1);\n\n      const badFollowsType = await page.request.get(`/api/users/${userA.id}/follows?type=invalid`);\n      expect(badFollowsType.status()).toBe(400);\n\n      const followingList = await (await page.request.get(`/api/users/${userA.id}/follows?type=following`)).json();\n      expect(followingList.total).toBe(1);\n      expect(followingList.users.some((u: { id: string }) => u.id === userB.id)).toBe(true);\n\n      const followersList = await (await page.request.get(`/api/users/${userB.id}/follows?type=followers`)).json();\n      expect(followersList.total).toBe(1);\n      expect(followersList.users.some((u: { id: string }) => u.id === userA.id)).toBe(true);\n\n      const f2 = await page.request.post(`/api/users/${userB.id}/follow`);\n      expect(f2.status()).toBe(200);\n      expect((await f2.json()).following).toBe(false);\n      const f3 = await page.request.post(`/api/users/${userB.id}/follow`);\n      expect(f3.status()).toBe(200);\n      expect((await f3.json()).followersCount).toBe(1);\n\n      // 发帖、点赞、评论与二级回复全链路及边界校验\n      const postTitle = `主页四维校验帖-${Date.now()}`;\n      const postRes = await page.request.post('/api/posts', {\n        data: { title: postTitle, content: '测试历史发帖、点赞、评论和回复联动' },\n      });\n      expect(postRes.status()).toBe(201);\n      const postId = (await postRes.json()).post.id;\n\n      const otherPostRes = await ctxB.request.post('/api/posts', {\n        data: { title: `另一篇帖子-${Date.now()}`, content: '用于校验跨帖回复隔离' },\n      });\n      const otherPostId = (await otherPostRes.json()).post.id;\n\n      await page.request.post(`/api/posts/${postId}/like`);\n      const commentText = `一级评论-${Date.now()}`;\n      const commentRes = await ctxB.request.post(`/api/posts/${postId}/comments`, {\n        data: { content: commentText },\n      });\n      expect(commentRes.status()).toBe(201);\n      const commentId = (await commentRes.json()).comment.id;\n\n      // 空回复返回 400；跨帖 commentId 返回 404\n      const emptyReply = await page.request.post(`/api/posts/${postId}/comments/${commentId}/replies`, {\n        data: { content: '   ' },\n      });\n      expect(emptyReply.status()).toBe(400);\n\n      const crossPostReply = await page.request.post(\n        `/api/posts/${otherPostId}/comments/${commentId}/replies`,\n        { data: { content: '跨帖非法回复' } }\n      );\n      expect(crossPostReply.status()).toBe(404);\n\n      const replyText = `二级回复-${Date.now()}`;\n      const replyRes = await page.request.post(`/api/posts/${postId}/comments/${commentId}/replies`, {\n        data: { content: replyText },\n      });\n      expect(replyRes.status()).toBe(201);\n\n      // 验证帖子详情嵌套返回回复\n      const detailJson = await (await page.request.get(`/api/posts/${postId}`)).json();\n      const targetComment = detailJson.comments.find((c: { id: string }) => c.id === commentId);\n      expect(targetComment).toBeTruthy();\n      expect(\n        Array.isArray(targetComment.replies) &&\n          targetComment.replies.some((r: { content: string }) => r.content === replyText)\n      ).toBe(true);\n\n      // 验证个人主页四维活动接口与非法 tab 拦截\n      expect((await page.request.get(`/api/users/${userA.id}/activity?tab=badtab`)).status()).toBe(400);\n      const actPosts = await (await page.request.get(`/api/users/${userA.id}/activity?tab=posts`)).json();\n      expect(actPosts.items.some((p: { id: string }) => p.id === postId)).toBe(true);\n      const actLikes = await (await page.request.get(`/api/users/${userA.id}/activity?tab=likes`)).json();\n      expect(actLikes.items.some((p: { id: string }) => p.id === postId)).toBe(true);\n      const actCommentsB = await (await ctxB.request.get(`/api/users/${userB.id}/activity?tab=comments`)).json();\n      expect(actCommentsB.items.some((c: { content: string }) => c.content === commentText)).toBe(true);\n      const actRepliesA = await (await page.request.get(`/api/users/${userA.id}/activity?tab=replies`)).json();\n      expect(actRepliesA.items.some((r: { content: string }) => r.content === replyText)).toBe(true);\n\n      // 在浏览器 UI 中进入个人主页核对头像、简介、发帖及标签页切换\n      await page.goto('/');\n      const sidebar = page.locator('aside, nav').first();\n      await sidebar\n        .getByRole('button', { name: /主页/ })\n        .or(sidebar.getByRole('link', { name: /主页/ }))\n        .first()\n        .click();\n\n      await expect(page.getByText(newNick).first()).toBeVisible({ timeout: 10000 });\n      await expect(page.getByText(newBio).first()).toBeVisible();\n      await expect(page.getByText(postTitle).first()).toBeVisible();\n\n      const repliesTab = page\n        .getByRole('tab', { name: /回复/ })\n        .or(page.getByRole('button', { name: /回复/ }))\n        .first();\n      await expect(repliesTab).toBeVisible();\n      await repliesTab.click();\n      await expect(page.getByText(replyText).first()).toBeVisible({ timeout: 10000 });\n    } finally {\n      await ctxB.close();\n      await anonCtx.close();\n    }\n  });\n\n  test('3. 私信权限隔离、边界校验、未读已读回执与 UI 聊天交互', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1280, height: 800 });\n    const ctxB = await browser.newContext();\n    const ctxC = await browser.newContext();\n    const anonCtx = await browser.newContext();\n    try {\n      const userA = await loginUser(page.request, makeEmail('dm-a'), '私信发送者');\n      const userB = await loginUser(ctxB.request, makeEmail('dm-b'), '私信接收者');\n      await loginUser(ctxC.request, makeEmail('dm-c'), '无关旁观者');\n\n      // 未登录访问私信接口必须返回 401\n      expect((await anonCtx.request.get('/api/messages/conversations')).status()).toBe(401);\n      expect(\n        (await anonCtx.request.post(`/api/messages/with/${userB.id}`, { data: { content: 'hi' } })).status()\n      ).toBe(401);\n\n      // 边界校验：禁止给自己发私信、禁止空内容/超长内容、不存在用户返回 404\n      expect(\n        (await page.request.post(`/api/messages/with/${userA.id}`, { data: { content: 'self' } })).status()\n      ).toBe(400);\n      expect(\n        (await page.request.post(`/api/messages/with/${userB.id}`, { data: { content: '   ' } })).status()\n      ).toBe(400);\n      expect(\n        (\n          await page.request.post(`/api/messages/with/${userB.id}`, {\n            data: { content: '信'.repeat(2005) },\n          })\n        ).status()\n      ).toBe(400);\n      expect(\n        (\n          await page.request.post('/api/messages/with/non-existent-peer', {\n            data: { content: 'hello' },\n          })\n        ).status()\n      ).toBe(404);\n\n      // 用户 A 给用户 B 发送私信\n      const secretMsg = `仅限双方可见的私信-${Date.now()}`;\n      const sendRes = await page.request.post(`/api/messages/with/${userB.id}`, {\n        data: { content: secretMsg },\n      });\n      expect(sendRes.status()).toBe(201);\n\n      // 权限隔离：用户 C 绝不可在会话列表或聊天记录中看到 A 与 B 的私信\n      const convCText = await (await ctxC.request.get('/api/messages/conversations')).text();\n      expect(convCText).not.toContain(secretMsg);\n      const threadCText = await (await ctxC.request.get(`/api/messages/with/${userA.id}`)).text();\n      expect(threadCText).not.toContain(secretMsg);\n\n      // 用户 B 校验未读数并在 UI 私信界面打开会话、验证未读清零与回复发送\n      const convBPre = await (await ctxB.request.get('/api/messages/conversations')).json();\n      expect(convBPre.totalUnread).toBeGreaterThanOrEqual(1);\n\n      const pageB = await ctxB.newPage();\n      await pageB.setViewportSize({ width: 1280, height: 800 });\n      await pageB.goto('/');\n      const sidebarB = pageB.locator('aside, nav').first();\n      await sidebarB\n        .getByRole('button', { name: /私信/ })\n        .or(sidebarB.getByRole('link', { name: /私信/ }))\n        .first()\n        .click();\n\n      const peerItem = pageB.getByText(userA.nickname).first();\n      await expect(peerItem).toBeVisible({ timeout: 10000 });\n      await peerItem.click();\n      await expect(pageB.getByText(secretMsg).first()).toBeVisible({ timeout: 10000 });\n\n      // 点开会话后未读数应自动清零\n      await expect\n        .poll(async () => (await (await ctxB.request.get('/api/messages/conversations')).json()).totalUnread)\n        .toBe(0);\n\n      // 在 UI 中回复一条私信并验证持久化\n      const replyDm = `收到啦回复你-${Date.now()}`;\n      const dmInput = pageB\n        .getByPlaceholder(/私信|消息|说点什么|输入/i)\n        .or(pageB.locator('main textarea, main input[type=\"text\"]'))\n        .first();\n      await expect(dmInput).toBeVisible();\n      await dmInput.fill(replyDm);\n\n      const replyPostPromise = pageB.waitForResponse(\n        (res) => res.url().includes(`/api/messages/with/${userA.id}`) && res.request().method() === 'POST'\n      );\n      const sendDmBtn = pageB.locator('main').getByRole('button', { name: /发送/i }).first();\n      await sendDmBtn.click();\n      const replyPostRes = await replyPostPromise;\n      expect(replyPostRes.status()).toBe(201);\n      await expect(pageB.getByText(replyDm).first()).toBeVisible();\n      await pageB.close();\n    } finally {\n      await ctxB.close();\n      await ctxC.close();\n      await anonCtx.close();\n    }\n  });\n\n  test('4. 发布图文集成图片裁剪编辑（比例/旋转/确认裁剪）与持久化发布', async ({ page }) => {\n    await page.setViewportSize({ width: 1280, height: 800 });\n    await loginUser(page.request, makeEmail('crop-e2e'), '构图达人');\n    await page.goto('/');\n\n    const composeBtn = page.getByRole('button', { name: /发布图文/i }).first();\n    await expect(composeBtn).toBeVisible({ timeout: 10000 });\n    await composeBtn.click();\n\n    const fileInput = page.locator('input[type=\"file\"]').first();\n    await fileInput.setInputFiles({\n      name: 'original-photo.png',\n      mimeType: 'image/png',\n      buffer: PNG_32X32,\n    });\n\n    // 打开裁剪/编辑弹窗，交互切换比例与旋转后确认裁剪\n    const cropBtn = page.getByRole('button', { name: /裁剪|编辑/i }).first();\n    await expect(cropBtn).toBeVisible({ timeout: 10000 });\n    await cropBtn.click();\n\n    const ratioBtn = page.getByRole('button', { name: /1:1|4:3|16:9/ }).first();\n    if (await ratioBtn.isVisible().catch(() => false)) {\n      await ratioBtn.click();\n    }\n    const rotateBtn = page.getByRole('button', { name: /旋转/i }).first();\n    if (await rotateBtn.isVisible().catch(() => false)) {\n      await rotateBtn.click();\n    }\n\n    const confirmCropBtn = page\n      .getByRole('button', { name: /确认裁剪|应用裁剪|保存裁剪|确认|完成/i })\n      .last();\n    await expect(confirmCropBtn).toBeVisible({ timeout: 10000 });\n    await confirmCropBtn.click();\n\n    // 裁剪完成后填写标题与正文并发布，校验上传与帖子创建成功\n    const postTitle = `裁剪构图发布-${Date.now()}`;\n    await page\n      .getByPlaceholder(/标题|起个/i)\n      .or(page.getByLabel(/标题/i))\n      .first()\n      .fill(postTitle);\n    await page\n      .getByPlaceholder(/正文|分享|想法/i)\n      .or(page.locator('textarea'))\n      .first()\n      .fill('体验新版图片裁剪与旋转编辑后发布的第一篇图文');\n\n    const uploadPromise = page.waitForResponse(\n      (res) => res.url().includes('/api/uploads') && res.request().method() === 'POST'\n    );\n    const createPostPromise = page.waitForResponse(\n      (res) => res.url().endsWith('/api/posts') && res.request().method() === 'POST'\n    );\n\n    await page.getByRole('button', { name: /立即发布/i }).last().click();\n    const uploadRes = await uploadPromise;\n    expect(uploadRes.status()).toBe(201);\n    const createRes = await createPostPromise;\n    expect(createRes.status()).toBe(201);\n    const createdPost = (await createRes.json()).post;\n    expect(createdPost.imageUrl).toMatch(/^\\/api\\/uploads\\//);\n\n    await page.reload();\n    await expect(page.getByText(postTitle).first()).toBeVisible({ timeout: 10000 });\n  });\n});\n"
+}
