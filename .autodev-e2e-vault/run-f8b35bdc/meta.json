@@ -1,0 +1,8 @@
+{
+  "branchName": "autodev/feat-20261122-090206",
+  "prNumber": 9,
+  "e2eTestPath": "tests/e2e/run-f8b35bdc.spec.ts",
+  "e2eVaultPath": ".autodev-e2e-vault/run-f8b35bdc/e2e.spec.ts",
+  "prTitle": "[AutoDev Spec] 初始需求",
+  "createdAt": "2026-11-22T09:02:10.617Z"
+}
