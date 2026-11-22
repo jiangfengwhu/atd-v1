@@ -365,10 +365,7 @@ const CommunityApp: React.FC<CommunityAppProps> = ({
         </aside>
 
         {/* Center Main Column */}
-        <main
-          className="x-main-col"
-          data-testid={detailPostId ? 'post-detail-main' : 'feed-list'}
-        >
+        <main className="x-main-col" data-testid="feed-list">
           {detailPostId ? (
             <PostDetail
               postId={detailPostId}
