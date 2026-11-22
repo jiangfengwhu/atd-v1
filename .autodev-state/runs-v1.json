@@ -695,7 +695,7 @@
       "source": "estimated",
       "model": "gemini-4-neon-high"
     },
-    "status": "pr_created",
+    "status": "approved",
     "checkedCriteriaIds": [],
     "draftPr": {
       "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/9",
@@ -726,6 +726,8 @@
       "migrationsApplied": true,
       "commitSha": "b153372",
       "isIsolatedPreview": true
-    }
+    },
+    "approvalNote": "同意",
+    "approvedAt": "2026-11-22T09:35:59.535Z"
   }
 ]
