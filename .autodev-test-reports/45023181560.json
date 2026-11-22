@@ -1,0 +1,109 @@
+{
+  "runId": "run-96e1a2ad",
+  "actionsRunId": 45023181560,
+  "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45023181560",
+  "workflowName": "AutoDev AGY Coding Runner",
+  "branch": "autodev/feat-20261122-123609",
+  "prNumber": 10,
+  "commitSha": "2e0c439",
+  "model": "gemini-4-hydrogen-high",
+  "kind": "e2e",
+  "status": "passed",
+  "total": 11,
+  "passed": 11,
+  "failed": 0,
+  "skipped": 0,
+  "durationMs": 16138,
+  "executedAt": "2026-11-22T12:45:37.848Z",
+  "summary": "自动化 E2E 验收（gemini-4-hydrogen-high / auto）：11 通过 / 0 失败 / 0 跳过",
+  "cases": [
+    {
+      "id": "check-type",
+      "title": "TypeScript / Lint 静态检查 (typecheck)",
+      "status": "passed",
+      "durationMs": 2829
+    },
+    {
+      "id": "check-build",
+      "title": "生产构建检查 (npm run build)",
+      "status": "passed",
+      "durationMs": 2180
+    },
+    {
+      "id": "pw-2",
+      "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 1. 健康检查、左右分栏几何结构、左侧导航项与底部个人资料退出登录",
+      "file": "run-96e1a2ad.spec.ts",
+      "status": "passed",
+      "durationMs": 676
+    },
+    {
+      "id": "pw-3",
+      "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 2. 个人主页资料修改、安全边界、关注粉丝与评论二级回复闭环",
+      "file": "run-96e1a2ad.spec.ts",
+      "status": "passed",
+      "durationMs": 682
+    },
+    {
+      "id": "pw-4",
+      "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 3. 私信权限隔离、边界校验、未读已读回执与 UI 聊天交互",
+      "file": "run-96e1a2ad.spec.ts",
+      "status": "passed",
+      "durationMs": 572
+    },
+    {
+      "id": "pw-5",
+      "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 4. 发布图文集成图片裁剪编辑（比例/旋转/确认裁剪）与持久化发布",
+      "file": "run-96e1a2ad.spec.ts",
+      "status": "passed",
+      "durationMs": 1106
+    },
+    {
+      "id": "pw-6",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 1. 健康检查、首页渲染与隐藏路由 /admin 入口审计",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 218
+    },
+    {
+      "id": "pw-7",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 2. 邮箱验证码登录安全边界（非法邮箱、冷却、错误码、UI 登录与防重放）",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 571
+    },
+    {
+      "id": "pw-8",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 3. 图文发布、图片上传、搜索、点赞、评论与持久化闭环",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 625
+    },
+    {
+      "id": "pw-9",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 4. 未登录拦截与跨用户越权删帖权限隔离",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 122
+    },
+    {
+      "id": "pw-10",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 5. 隐藏路由 /admin 全流程：鉴权、Resend 密钥脱敏配置、改密与状态回滚",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 612
+    }
+  ],
+  "rawLogExcerpt": "es transformed.\nrendering chunks...\ncomputing gzip size...\n\u001b[2m../dist/client/\u001b[22m\u001b[32mindex.html                 \u001b[39m\u001b[1m\u001b[2m  0.80 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   0.49 kB\u001b[22m\n\u001b[2m../dist/client/\u001b[22m\u001b[2massets/\u001b[22m\u001b[35mindex-DV3UA_yw.css  \u001b[39m\u001b[1m\u001b[2m 38.28 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   7.02 kB\u001b[22m\n\u001b[2m../dist/client/\u001b[22m\u001b[2massets/\u001b[22m\u001b[36mindex-C8YlZwph.js   \u001b[39m\u001b[1m\u001b[2m361.06 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip: 109.20 kB\u001b[22m\n\u001b[32m✓ built in 1.93s\u001b[39m\n=== Playwright E2E Verification ===\n        }\n                      ],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"01d4578ad868b07aa3f6-8a3412c5cb2f93344308\",\n              \"file\": \"run-f8b35bdc.spec.ts\",\n              \"line\": 278,\n              \"column\": 3\n            },\n            {\n              \"title\": \"5. 隐藏路由 /admin 全流程：鉴权、Resend 密钥脱敏配置、改密与状态回滚\",\n              \"ok\": true,\n              \"tags\": [],\n              \"tests\": [\n                {\n                  \"timeout\": 45000,\n                  \"annotations\": [\n                    {\n                      \"type\": \"serial\",\n                      \"location\": {\n                        \"file\": \"/data/home/actions-runner/_work/atd-v1/atd-v1/tests/e2e/run-f8b35bdc.spec.ts\",\n                        \"line\": 43,\n                        \"column\": 15\n                      }\n                    }\n                  ],\n                  \"expectedStatus\": \"passed\",\n                  \"projectId\": \"\",\n                  \"projectName\": \"\",\n                  \"results\": [\n                    {\n                      \"workerIndex\": 0,\n                      \"parallelIndex\": 0,\n                      \"status\": \"passed\",\n                      \"duration\": 612,\n                      \"errors\": [],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-22T12:45:37.119Z\",\n                      \"annotations\": [\n                        {\n                          \"type\": \"serial\",\n                          \"location\": {\n                            \"file\": \"/data/home/actions-runner/_work/atd-v1/atd-v1/tests/e2e/run-f8b35bdc.spec.ts\",\n                            \"line\": 43,\n                            \"column\": 15\n                          }\n                        }\n                      ],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"01d4578ad868b07aa3f6-8288628163285f09aee9\",\n              \"file\": \"run-f8b35bdc.spec.ts\",\n              \"line\": 319,\n              \"column\": 3\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"errors\": [],\n  \"stats\": {\n    \"startTime\": \"2026-11-22T12:45:27.208Z\",\n    \"duration\": 10610.364000000001,\n    \"expected\": 9,\n    \"skipped\": 0,\n    \"unexpected\": 0,\n    \"flaky\": 0\n  }\n}\n",
+  "agySessionId": "2a0fa414-9571-4115-a877-951cf00fc2f2",
+  "agySessionReused": false,
+  "agyExitCode": 0,
+  "repairRounds": 0,
+  "codingFinalOutput": "Running the full Playwright E2E test suite (`npx playwright test`) and waiting for results.\nWaiting for the Playwright E2E test suite (`npx playwright test`) to complete.\n已完成 `docs/prd.md` 与 `docs/spec.json` 定义的全部功能模块开发、验证与分支推送。\n\n### 核心实现概览\n\n1. **增量数据库迁移与隐私边界（D1）**\n   - 新增幂等迁移 [0002_social_profile_dm.sql](file:///data/home/actions-runner/_work/atd-v1/atd-v1/migrations/0002_social_profile_dm.sql)（仅使用 `CREATE TABLE IF NOT EXISTS` 与 `CREATE INDEX IF NOT EXISTS`），创建 `user_profiles`、`user_follows`、`comment_replies`、`direct_messages` 表与索引，保留既有 [0001_init.sql](file:///data/home/actions-runner/_work/atd-v1/atd-v1/migrations/0001_init.sql)。\n   - 扩展 [auth.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/src/routes/auth.ts) 与 [types.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/src/types.ts)：`/api/auth/me`、`/api/auth/verify-code` 与 `PATCH /api/auth/profile` 支持 `avatarUrl`（通过 `isValidImageUrl` 防御 XSS 协议注入）及 `bio`（0~200 字符），并保持仅修改 `nickname` 的向后兼容。\n\n2. **个人主页、关注粉丝与评论二级回复后端**\n   - 新增 [users.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/src/routes/users.ts) 并挂载至 `/api/users`（[index.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/src/index.ts)）：\n     - `GET /api/users/:id`（支持 `me`）：聚合资料与计数，非本人请求不返回 `email`。\n     - `POST /api/users/:id/follow`：关注/取消关注幂等切换，拦截自关注（400）与不存在用户（404）。\n     - `GET /api/users/:id/follows`：分页查询 `following` / `followers`。\n     - `GET /api/users/:id/activity`：分页查询 `posts`、`likes`、`comments`、`replies` 四维记录。\n   - 更新 [posts.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/src/routes/posts.ts)：新增 `POST /api/posts/:id/comments/:commentId/replies`（校验评论归属当前帖子），`GET /api/posts` 与 `GET /api/posts/:id` 附带作者 `avatarUrl` 及嵌套 `replies`，删帖时同步清理 `comment_replies`。\n\n3. **站内私信后端服务**\n   - 新增 [messages.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/src/routes/messages.ts) 并挂载至 `/api/messages`：实现 `GET /api/messages/conversations`、`GET /api/messages/with/:peerId`（拉取消息并自动标记已读）和 `POST /api/messages/with/:peerId`，强制登录校验、禁止给自己发私信及跨用户会话隔离。\n\n4. **左右分栏布局、个人主页、私信中心与图片裁剪前端**\n   - 重构 [CommunityPage.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/pages/CommunityPage.tsx) 为桌面端左侧固定导航栏（`动态`、`私信`含未读角标、`主页`、`发布图文`及底部个人资料弹出菜单/退出登录）+ 右侧主内容区，移动端折叠为底部导航栏，公开页面无任何 `/admin` 入口。\n   - 接入 `react-easy-crop`，实现 [image-crop.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/lib/image-crop.ts) 与 [ImageCropDialog.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/components/ImageCropDialog.tsx)，支持自由构图、缩放、90° 左/右旋转、1:1 / 4:3 / 3:4 / 16:9 比例切换、圆形头像裁剪及 2MB 自动压缩，赋能 [ComposeDialog.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/components/ComposeDialog.tsx)、[ProfileDialog.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/components/ProfileDialog.tsx) 与 [ProfileView.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/components/ProfileView.tsx)。\n   - 新增 [MessagesView.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/components/MessagesView.tsx) 与升级 [PostDetailDialog.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/components/PostDetailDialog.tsx)、[PostCard.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/components/PostCard.tsx)、[AvatarBadge.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/components/AvatarBadge.tsx)、[api.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/lib/api.ts)。\n\n### 验证与推送结果\n\n- **测试定位修复**：首轮运行 E2E 时发现 [run-96e1a2ad.spec.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/tests/e2e/run-96e1a2ad.spec.ts#L387) 中 `pageB.locator('main').getByRole('button', { name: /发送/i }).first()` 误匹配了包含“发送”二字的会话列表按钮（用户昵称“私信发送者”），已将其精确收窄为 `pageB.locator('main form').getByRole('button', { name: /^发送$/i }).first()`。\n- **Playwright E2E 全量测试**：`npx playwright test` 运行 [run-96e1a2ad.spec.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/tests/e2e/run-96e1a2ad.spec.ts) 与 [run-f8b35bdc.spec.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/tests/e2e/run-f8b35bdc.spec.ts)，**9/9 全部通过**。\n- **静态检查与构建**：`npx tsc --noEmit` 与 `npm run build` 均以退出码 `0` 通过；本地 D1 迁移 `npx wrangler d1 migrations apply DB --local` 应用成功。\n- **Git 提交与推送**：已提交（commit `2e0c439`）并推送至 `origin/autodev/feat-20261122-123609`，工作区 `git status` 为干净状态。",
+  "tokenUsage": {
+    "inputTokens": 193564,
+    "outputTokens": 73710,
+    "totalTokens": 267274,
+    "source": "reported",
+    "model": "gemini-4-hydrogen-high"
+  }
+}
