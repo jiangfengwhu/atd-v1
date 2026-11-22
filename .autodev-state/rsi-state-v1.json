@@ -391,9 +391,10 @@
         "inc-2dcaf204"
       ],
       "hitCount": 2,
-      "appliedCount": 0,
+      "appliedCount": 1,
       "createdAt": "2026-11-22T09:38:01.968Z",
-      "updatedAt": "2026-11-22T09:38:09.762Z"
+      "updatedAt": "2026-11-22T09:38:09.762Z",
+      "lastAppliedAt": "2026-11-22T10:58:42.274Z"
     }
   ],
   "lastSyncedAt": "2026-11-22T09:38:09.763Z"
