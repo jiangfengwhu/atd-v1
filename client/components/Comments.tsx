@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiRequest, getFingerprint } from '../api';
 
-interface Comment {
+export interface Comment {
   id: string;
   post_id: string;
   user_id: string;
@@ -14,30 +14,42 @@ interface Comment {
 interface CommentsProps {
   postId: string;
   currentUserLabel?: string;
-  onCommentAdded?: () => void;
+  autoFocus?: boolean;
+  focusTrigger?: number;
+  onCommentAdded?: (totalComments?: number) => void;
 }
 
 export const Comments: React.FC<CommentsProps> = ({
   postId,
   currentUserLabel,
+  autoFocus = false,
+  focusTrigger = 0,
   onCommentAdded,
 }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
 
-  const loadComments = async () => {
+  const submittingRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const loadComments = async (): Promise<Comment[] | null> => {
     setLoading(true);
+    setLoadError('');
     try {
       const data = await apiRequest<{ comments: Comment[] }>(
-        `/api/v1/posts/${postId}/comments`
+        `/api/v1/posts/${encodeURIComponent(postId)}/comments`
       );
-      setComments(data.comments || []);
-    } catch {
-      // ignore
+      const list = data.comments || [];
+      setComments(list);
+      return list;
+    } catch (err: any) {
+      setLoadError(err?.message || '评论加载失败，请重试');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -47,17 +59,29 @@ export const Comments: React.FC<CommentsProps> = ({
     loadComments();
   }, [postId]);
 
+  useEffect(() => {
+    if (autoFocus || focusTrigger > 0) {
+      const timer = window.setTimeout(() => {
+        inputRef.current?.focus();
+      }, 40);
+      return () => window.clearTimeout(timer);
+    }
+  }, [autoFocus, focusTrigger, postId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+
     if (!content.trim()) {
       setError('评论内容不能为空 (invalid content)');
       return;
     }
 
+    submittingRef.current = true;
     setSubmitting(true);
     setError('');
     try {
-      await apiRequest(`/api/v1/posts/${postId}/comments`, {
+      await apiRequest(`/api/v1/posts/${encodeURIComponent(postId)}/comments`, {
         method: 'POST',
         body: JSON.stringify({
           content: content.trim(),
@@ -66,11 +90,12 @@ export const Comments: React.FC<CommentsProps> = ({
       });
       setContent('');
       setReplyTo(null);
-      await loadComments();
-      onCommentAdded?.();
+      const refreshed = await loadComments();
+      onCommentAdded?.(refreshed ? refreshed.length : undefined);
     } catch (err: any) {
-      setError(err.message || '评论发送失败');
+      setError(err?.message || '评论发送失败');
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -102,6 +127,7 @@ export const Comments: React.FC<CommentsProps> = ({
           </div>
           <div className="x-thread-input-wrapper">
             <input
+              ref={inputRef}
               type="text"
               className="input-field x-thread-input"
               placeholder={replyTo ? '撰写回复...' : '撰写评论...'}
@@ -130,10 +156,21 @@ export const Comments: React.FC<CommentsProps> = ({
       </form>
 
       {/* Thread list */}
-      {loading ? (
+      {loading && comments.length === 0 ? (
         <div className="x-comments-loading" style={{ padding: '12px 0' }}>
           <div className="x-shimmer x-skeleton-line short" style={{ marginBottom: 8 }} />
           <div className="x-shimmer x-skeleton-line medium" />
+        </div>
+      ) : loadError ? (
+        <div className="error-banner x-comments-error" role="alert">
+          <span>{loadError}</span>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => loadComments()}
+          >
+            重试
+          </button>
         </div>
       ) : comments.length === 0 ? (
         <div className="empty-state-sm">暂无回复，发表第一条观点吧</div>
@@ -174,7 +211,10 @@ export const Comments: React.FC<CommentsProps> = ({
                   <button
                     type="button"
                     className="btn-link x-comment-reply-btn"
-                    onClick={() => setReplyTo(c.id)}
+                    onClick={() => {
+                      setReplyTo(c.id);
+                      inputRef.current?.focus();
+                    }}
                   >
                     回复
                   </button>

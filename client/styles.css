@@ -842,7 +842,7 @@ article.x-tweet-card {
   background-color: var(--x-bg-card);
   transition: background-color 0.2s ease, border-color 0.2s ease;
   position: relative;
-  cursor: default;
+  cursor: pointer;
 }
 
 .post-card:hover,
@@ -2475,4 +2475,203 @@ article.x-tweet-card:hover {
 .x-admin-submit-btn {
   width: 100%;
   padding: 11px 18px;
+}
+
+/* ==========================================================================
+   Post Detail View (/posts/:id)
+   ========================================================================== */
+.x-detail-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.x-detail-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  min-height: 53px;
+}
+
+.x-detail-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.x-detail-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 8px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--x-text-main);
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s var(--ease-spring), transform 0.15s ease;
+}
+
+.x-detail-back-btn:hover {
+  background-color: var(--x-bg-hover);
+}
+
+.x-detail-back-btn:active {
+  transform: scale(0.95);
+}
+
+.x-detail-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--x-text-main);
+  letter-spacing: -0.2px;
+}
+
+.x-detail-error-banner {
+  margin: 12px 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.x-detail-not-found h2 {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--x-text-main);
+  margin-bottom: 8px;
+}
+
+.x-detail-not-found p {
+  font-size: 0.92rem;
+  color: var(--x-text-sub);
+  margin-bottom: 18px;
+}
+
+.x-detail-error-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.post-card.x-post-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--x-border);
+  background-color: var(--x-bg-card);
+  cursor: default;
+}
+
+.post-card.x-post-detail-card:hover {
+  background-color: var(--x-bg-card);
+}
+
+.x-detail-author-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.x-detail-author-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.x-detail-author-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.x-detail-content {
+  font-size: 1.1rem;
+  line-height: 1.55;
+  color: var(--x-text-main);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 2px 0 4px;
+}
+
+.x-detail-timestamp {
+  font-size: 0.88rem;
+  color: var(--x-text-sub);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--x-border);
+}
+
+.x-detail-stats-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 4px 0 12px;
+  border-bottom: 1px solid var(--x-border);
+  font-size: 0.9rem;
+}
+
+.x-detail-stat-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--x-text-sub);
+}
+
+.x-detail-stat-item strong {
+  color: var(--x-text-main);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.x-detail-actions-bar {
+  max-width: 100%;
+  padding: 2px 4px 10px;
+  border-bottom: 1px solid var(--x-border);
+}
+
+.x-post-detail-card .x-comments-thread {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: none;
+}
+
+.x-share-btn.copied {
+  color: var(--x-green);
+}
+
+.x-comments-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+@media (max-width: 767px) {
+  .x-detail-header-inner {
+    padding: 8px 12px;
+  }
+
+  .post-card.x-post-detail-card {
+    padding: 14px 12px;
+  }
+
+  .x-detail-stats-strip {
+    gap: 14px;
+    font-size: 0.85rem;
+  }
+
+  .x-thread-input-wrapper {
+    min-width: 0;
+  }
+
+  .x-thread-input {
+    min-width: 0;
+  }
 }

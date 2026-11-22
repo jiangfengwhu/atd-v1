@@ -1,10 +1,11 @@
 name = "atd-v1"
 main = "src/index.ts"
-compatibility_date = "2024-09-23"
+compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
 
 [assets]
 directory = "./dist"
+binding = "ASSETS"
 not_found_handling = "single-page-application"
 
 [[d1_databases]]

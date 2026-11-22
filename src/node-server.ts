@@ -6,6 +6,7 @@ import { execSync } from 'node:child_process';
 import { app } from './index';
 import { setNodeDb } from './db';
 import { createNodeSqliteAdapter } from './db/node-sqlite';
+import { isStaticAssetFilePath } from './utils/routing';
 
 // Ensure dist directory exists
 const distDir = path.resolve(process.cwd(), 'dist');
@@ -79,6 +80,10 @@ app.use(
 app.get('*', (c) => {
   if (c.req.path.startsWith('/api')) {
     return c.json({ error: '404_NOT_FOUND', message: 'API route not found' }, 404);
+  }
+
+  if (isStaticAssetFilePath(c.req.path)) {
+    return c.text('Not Found', 404);
   }
 
   if (fs.existsSync(indexHtml)) {

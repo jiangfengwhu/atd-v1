@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { getDb } from '../db';
+import { DatabaseAdapter, getDb } from '../db';
 import { requireAuth, optionalAuth } from '../middleware/auth';
 import { Env, AppVariables, CommentRecord, PostRecord } from '../types';
 
@@ -7,6 +7,14 @@ export const commentsRoute = new Hono<{
   Bindings: Env;
   Variables: AppVariables;
 }>();
+
+async function postExists(db: DatabaseAdapter, postId: string): Promise<boolean> {
+  const post = await db
+    .prepare('SELECT id FROM posts WHERE id = ?')
+    .bind(postId)
+    .first<PostRecord>();
+  return Boolean(post);
+}
 
 // POST /api/v1/posts/:postId/comments - Add a reply / comment to a post
 commentsRoute.post('/posts/:postId/comments', requireAuth, async (c) => {
@@ -32,22 +40,47 @@ commentsRoute.post('/posts/:postId/comments', requireAuth, async (c) => {
     );
   }
 
+  if (parent_id !== undefined && parent_id !== null && typeof parent_id !== 'string') {
+    return c.json(
+      {
+        error: '400_INVALID_PARENT_COMMENT',
+        message: 'Parent comment not found in this post',
+      },
+      400
+    );
+  }
+
+  const normalizedParentId =
+    typeof parent_id === 'string' && parent_id.trim() ? parent_id.trim() : null;
   const userId = c.get('userId');
 
   try {
     const db = getDb(c);
 
     // Verify post exists
-    const post = await db
-      .prepare('SELECT id FROM posts WHERE id = ?')
-      .bind(postId)
-      .first<PostRecord>();
-
-    if (!post) {
+    if (!(await postExists(db, postId))) {
       return c.json(
         { error: '404_POST_NOT_FOUND', message: 'Target post not found' },
         404
       );
+    }
+
+    // Verify parent comment exists and belongs to the same post
+    if (normalizedParentId) {
+      const parentComment = await db
+        .prepare('SELECT id, post_id FROM comments WHERE id = ?')
+        .bind(normalizedParentId)
+        .first<{ id: string; post_id: string }>();
+
+      if (!parentComment || parentComment.post_id !== postId) {
+        return c.json(
+          {
+            error: '400_INVALID_PARENT_COMMENT',
+            message: 'Parent comment not found in this post',
+          },
+          400
+        );
+      }
     }
 
     const commentId = crypto.randomUUID();
@@ -57,7 +90,7 @@ commentsRoute.post('/posts/:postId/comments', requireAuth, async (c) => {
       .prepare(
         'INSERT INTO comments (id, post_id, user_id, parent_id, content, created_at) VALUES (?, ?, ?, ?, ?, ?)'
       )
-      .bind(commentId, postId, userId, parent_id || null, content.trim(), createdAt)
+      .bind(commentId, postId, userId, normalizedParentId, content.trim(), createdAt)
       .run();
 
     const userRow = await db
@@ -71,7 +104,7 @@ commentsRoute.post('/posts/:postId/comments', requireAuth, async (c) => {
         post_id: postId,
         user_id: userId,
         author_name: userRow?.username || `User-${userId.slice(0, 6)}`,
-        parent_id: parent_id || null,
+        parent_id: normalizedParentId,
         content: content.trim(),
         created_at: createdAt,
       },
@@ -92,6 +125,14 @@ commentsRoute.get('/posts/:postId/comments', optionalAuth, async (c) => {
 
   try {
     const db = getDb(c);
+
+    if (!(await postExists(db, postId))) {
+      return c.json(
+        { error: '404_POST_NOT_FOUND', message: 'Target post not found' },
+        404
+      );
+    }
+
     const res = await db
       .prepare(
         `SELECT c.id, c.post_id, c.user_id,

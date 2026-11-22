@@ -21,8 +21,9 @@ import {
 } from './api';
 import { AdminPage } from './components/AdminPage';
 import { AuthModal, AuthenticatedUser } from './components/AuthModal';
-import { Feed } from './components/Feed';
+import { Feed, Post } from './components/Feed';
 import { Messages } from './components/Messages';
+import { PostDetail } from './components/PostDetail';
 
 interface OverviewStats {
   site_name: string;
@@ -45,11 +46,36 @@ interface OverviewStats {
   }>;
 }
 
+function getCurrentPathname(): string {
+  if (typeof window === 'undefined') return '/';
+  return window.location.pathname || '/';
+}
+
 export const App: React.FC = () => {
+  const [pathname, setPathname] = useState<string>(getCurrentPathname);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setPathname(getCurrentPathname());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigate = (to: string, replace = false) => {
+    if (typeof window === 'undefined') return;
+    if (window.location.pathname !== to) {
+      if (replace) {
+        window.history.replaceState(null, '', to);
+      } else {
+        window.history.pushState(null, '', to);
+      }
+    }
+    setPathname(to);
+  };
+
   const isAdminPath =
-    typeof window !== 'undefined' &&
-    (window.location.pathname === '/admin' ||
-      window.location.pathname.startsWith('/admin/'));
+    pathname === '/admin' || pathname.startsWith('/admin/');
 
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     if (typeof window !== 'undefined') {
@@ -78,20 +104,39 @@ export const App: React.FC = () => {
     return <AdminPage theme={theme} onToggleTheme={toggleTheme} />;
   }
 
-  return <CommunityApp theme={theme} onToggleTheme={toggleTheme} />;
+  return (
+    <CommunityApp
+      pathname={pathname}
+      onNavigate={navigate}
+      theme={theme}
+      onToggleTheme={toggleTheme}
+    />
+  );
 };
 
 interface CommunityAppProps {
+  pathname: string;
+  onNavigate: (to: string, replace?: boolean) => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
 }
 
-const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => {
+const CommunityApp: React.FC<CommunityAppProps> = ({
+  pathname,
+  onNavigate,
+  theme,
+  onToggleTheme,
+}) => {
   const [activeTab, setActiveTab] = useState<'feed' | 'messages'>('feed');
   const [feedSort, setFeedSort] = useState<'latest' | 'hot'>('latest');
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [dmTargetUser, setDmTargetUser] = useState('');
+
+  const [detailContext, setDetailContext] = useState<{
+    post: Post | null;
+    focusComment: boolean;
+  }>({ post: null, focusComment: false });
 
   const [currentFp, setCurrentFp] = useState('');
   const [emailUser, setEmailUser] = useState<AuthenticatedUser | null>(null);
@@ -100,10 +145,12 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
   const [overview, setOverview] = useState<OverviewStats | null>(null);
   const [feedHasError, setFeedHasError] = useState(false);
 
+  const postDetailMatch = pathname.match(/^\/posts\/([^/]+)\/?$/);
+  const detailPostId = postDetailMatch ? decodeURIComponent(postDetailMatch[1]) : null;
+
   const loadAuthState = async () => {
     const token = getAuthToken();
     if (!token) {
-      // Also check cookie session without failing loudly
       try {
         const res = await fetch('/api/v1/auth/me', { credentials: 'same-origin' });
         if (res.ok) {
@@ -162,6 +209,14 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
     return () => window.clearTimeout(timer);
   }, [searchInput]);
 
+  useEffect(() => {
+    if (!detailPostId) {
+      setDetailContext({ post: null, focusComment: false });
+    } else if (detailContext.post && detailContext.post.id !== detailPostId) {
+      setDetailContext({ post: null, focusComment: false });
+    }
+  }, [detailPostId]);
+
   const handleLogout = async () => {
     try {
       await apiRequest('/api/v1/auth/logout', { method: 'POST' });
@@ -176,6 +231,30 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
   const handleSelectUserForDm = (userId: string) => {
     setDmTargetUser(userId);
     setActiveTab('messages');
+    onNavigate('/');
+  };
+
+  const handleOpenPostDetail = (
+    post: Post,
+    options?: { focusComment?: boolean }
+  ) => {
+    setDetailContext({
+      post,
+      focusComment: Boolean(options?.focusComment),
+    });
+    onNavigate(`/posts/${encodeURIComponent(post.id)}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenPostDetailById = (postId: string) => {
+    setDetailContext({ post: null, focusComment: false });
+    onNavigate(`/posts/${encodeURIComponent(postId)}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToFeed = () => {
+    setActiveTab('feed');
+    onNavigate('/');
   };
 
   const activeUserId = emailUser?.id || currentFp;
@@ -192,7 +271,7 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
               type="button"
               className="x-logo-btn"
               title={siteName}
-              onClick={() => setActiveTab('feed')}
+              onClick={handleBackToFeed}
             >
               <Sparkles size={26} />
             </button>
@@ -200,8 +279,10 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
             <nav className="x-nav-menu" aria-label="主导航">
               <button
                 type="button"
-                className={`x-nav-item nav-btn ${activeTab === 'feed' ? 'active' : ''}`}
-                onClick={() => setActiveTab('feed')}
+                className={`x-nav-item nav-btn ${
+                  !detailPostId && activeTab === 'feed' ? 'active' : ''
+                }`}
+                onClick={handleBackToFeed}
               >
                 <span className="x-nav-icon">
                   <Home size={22} />
@@ -211,8 +292,13 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
 
               <button
                 type="button"
-                className={`x-nav-item nav-btn ${activeTab === 'messages' ? 'active' : ''}`}
-                onClick={() => setActiveTab('messages')}
+                className={`x-nav-item nav-btn ${
+                  !detailPostId && activeTab === 'messages' ? 'active' : ''
+                }`}
+                onClick={() => {
+                  setActiveTab('messages');
+                  onNavigate('/');
+                }}
               >
                 <span className="x-nav-icon">
                   <Mail size={22} />
@@ -225,15 +311,16 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
               type="button"
               className="x-sidebar-tweet-btn"
               onClick={() => {
-                if (activeTab !== 'feed') {
+                if (detailPostId || activeTab !== 'feed') {
                   setActiveTab('feed');
+                  onNavigate('/');
                 }
                 window.setTimeout(() => {
                   const textarea = document.querySelector<HTMLTextAreaElement>(
                     '.x-compose-textarea'
                   );
                   textarea?.focus();
-                }, 50);
+                }, 60);
               }}
             >
               <PenSquare size={18} />
@@ -278,86 +365,108 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
         </aside>
 
         {/* Center Main Column */}
-        <main className="x-main-col" data-testid="feed-list">
-          <header className="x-header">
-            <div className="x-header-top">
-              <h1 className="x-header-title">
-                {activeTab === 'feed' ? siteName : '站内私信'}
-              </h1>
-
-              <div className="x-header-controls">
-                {emailUser ? (
-                  <div className="x-header-user-pill">
-                    <span className="x-header-user-email">
-                      {emailUser.email || emailUser.username}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn-link x-header-logout-link"
-                      onClick={handleLogout}
-                    >
-                      退出
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm x-header-login-btn"
-                    onClick={() => setAuthModalOpen(true)}
-                  >
-                    <LogIn size={14} />
-                    <span>邮箱登录</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  className="x-theme-toggle-btn"
-                  onClick={onToggleTheme}
-                  aria-label={theme === 'dark' ? '切换为亮色模式' : '切换为暗色模式'}
-                  title={theme === 'dark' ? '切换为亮色模式' : '切换为暗色模式'}
-                >
-                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
-              </div>
-            </div>
-
-            {activeTab === 'feed' && (
-              <div className="x-header-tabs">
-                <button
-                  type="button"
-                  className={`x-tab-btn ${feedSort === 'latest' ? 'active' : ''}`}
-                  onClick={() => setFeedSort('latest')}
-                >
-                  最新动态
-                  {feedSort === 'latest' && <div className="x-tab-indicator" />}
-                </button>
-                <button
-                  type="button"
-                  className={`x-tab-btn ${feedSort === 'hot' ? 'active' : ''}`}
-                  onClick={() => setFeedSort('hot')}
-                >
-                  热门精选
-                  {feedSort === 'hot' && <div className="x-tab-indicator" />}
-                </button>
-              </div>
-            )}
-          </header>
-
-          {activeTab === 'feed' ? (
-            <Feed
-              sort={feedSort}
-              searchQuery={searchQuery}
-              onSelectUserForDm={handleSelectUserForDm}
+        <main
+          className="x-main-col"
+          data-testid={detailPostId ? 'post-detail-main' : 'feed-list'}
+        >
+          {detailPostId ? (
+            <PostDetail
+              postId={detailPostId}
+              initialPost={
+                detailContext.post?.id === detailPostId ? detailContext.post : null
+              }
+              focusComment={detailContext.focusComment}
               currentUserLabel={activeUserLabel}
+              theme={theme}
+              onToggleTheme={onToggleTheme}
+              onBack={handleBackToFeed}
+              onSelectUserForDm={handleSelectUserForDm}
               onStatsChange={loadOverview}
-              onFeedErrorChange={setFeedHasError}
             />
           ) : (
-            <Messages
-              initialRecipient={dmTargetUser}
-              currentUserId={activeUserId}
-            />
+            <>
+              <header className="x-header">
+                <div className="x-header-top">
+                  <h1 className="x-header-title">
+                    {activeTab === 'feed' ? siteName : '站内私信'}
+                  </h1>
+
+                  <div className="x-header-controls">
+                    {emailUser ? (
+                      <div className="x-header-user-pill">
+                        <span className="x-header-user-email">
+                          {emailUser.email || emailUser.username}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn-link x-header-logout-link"
+                          onClick={handleLogout}
+                        >
+                          退出
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm x-header-login-btn"
+                        onClick={() => setAuthModalOpen(true)}
+                      >
+                        <LogIn size={14} />
+                        <span>邮箱登录</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className="x-theme-toggle-btn"
+                      onClick={onToggleTheme}
+                      aria-label={theme === 'dark' ? '切换为亮色模式' : '切换为暗色模式'}
+                      title={theme === 'dark' ? '切换为亮色模式' : '切换为暗色模式'}
+                    >
+                      {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                {activeTab === 'feed' && (
+                  <div className="x-header-tabs">
+                    <button
+                      type="button"
+                      className={`x-tab-btn ${feedSort === 'latest' ? 'active' : ''}`}
+                      onClick={() => setFeedSort('latest')}
+                    >
+                      最新动态
+                      {feedSort === 'latest' && <div className="x-tab-indicator" />}
+                    </button>
+                    <button
+                      type="button"
+                      className={`x-tab-btn ${feedSort === 'hot' ? 'active' : ''}`}
+                      onClick={() => setFeedSort('hot')}
+                    >
+                      热门精选
+                      {feedSort === 'hot' && <div className="x-tab-indicator" />}
+                    </button>
+                  </div>
+                )}
+              </header>
+
+              {activeTab === 'feed' ? (
+                <Feed
+                  sort={feedSort}
+                  searchQuery={searchQuery}
+                  onSelectUserForDm={handleSelectUserForDm}
+                  onOpenPostDetail={handleOpenPostDetail}
+                  currentUserLabel={activeUserLabel}
+                  onStatsChange={loadOverview}
+                  onFeedErrorChange={setFeedHasError}
+                />
+              ) : (
+                <Messages
+                  initialRecipient={dmTargetUser}
+                  currentUserId={activeUserId}
+                />
+              )}
+            </>
           )}
         </main>
 
@@ -371,7 +480,13 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
               aria-label="搜索"
               placeholder="搜索社区动态..."
               value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                if (detailPostId) {
+                  setActiveTab('feed');
+                  onNavigate('/');
+                }
+              }}
             />
           </div>
 
@@ -418,13 +533,11 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
               {overview && overview.hot_posts.length > 0 ? (
                 <div className="x-hot-list">
                   {overview.hot_posts.map((item) => (
-                    <div
+                    <button
                       key={item.id}
+                      type="button"
                       className="x-hot-item"
-                      onClick={() => {
-                        setActiveTab('feed');
-                        setFeedSort('hot');
-                      }}
+                      onClick={() => handleOpenPostDetailById(item.id)}
                     >
                       <div className="x-hot-author">{item.author_name}</div>
                       <div className="x-hot-snippet">
@@ -439,7 +552,7 @@ const CommunityApp: React.FC<CommunityAppProps> = ({ theme, onToggleTheme }) => 
                         <span>·</span>
                         <span>{item.clicks_count} 点击</span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               ) : (

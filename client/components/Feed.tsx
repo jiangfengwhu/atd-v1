@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiRequest } from '../api';
-import { Comments } from './Comments';
 import { ImageLightbox, LightboxImage } from './ImageLightbox';
 
 export interface PostImage {
@@ -45,6 +44,7 @@ interface FeedProps {
   sort: 'latest' | 'hot';
   searchQuery?: string;
   onSelectUserForDm?: (userId: string) => void;
+  onOpenPostDetail?: (post: Post, options?: { focusComment?: boolean }) => void;
   currentUserLabel?: string;
   onStatsChange?: () => void;
   onFeedErrorChange?: (hasError: boolean) => void;
@@ -62,6 +62,7 @@ export const Feed: React.FC<FeedProps> = ({
   sort,
   searchQuery = '',
   onSelectUserForDm,
+  onOpenPostDetail,
   currentUserLabel = '',
   onStatsChange,
   onFeedErrorChange,
@@ -81,7 +82,6 @@ export const Feed: React.FC<FeedProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
   const [lightboxState, setLightboxState] = useState<{
     open: boolean;
     images: LightboxImage[];
@@ -310,14 +310,6 @@ export const Feed: React.FC<FeedProps> = ({
     }
   };
 
-  const handleToggleComments = (postId: string) => {
-    const expanding = activeCommentsPostId !== postId;
-    setActiveCommentsPostId(expanding ? postId : null);
-    if (expanding) {
-      recordClick(postId);
-    }
-  };
-
   const handleOpenLightbox = (post: Post, index: number) => {
     const imgs = post.images || [];
     if (imgs.length === 0) return;
@@ -327,6 +319,17 @@ export const Feed: React.FC<FeedProps> = ({
       images: imgs.map((im) => ({ id: im.id, url: im.url })),
       index,
     });
+  };
+
+  const handleNavigateDetail = (
+    post: Post,
+    options?: { focusComment?: boolean }
+  ) => {
+    const selectedText = window.getSelection()?.toString();
+    if (selectedText && selectedText.length > 0 && !options?.focusComment) {
+      return;
+    }
+    onOpenPostDetail?.(post, options);
   };
 
   const formatRelativeTime = (isoString: string) => {
@@ -510,6 +513,7 @@ export const Feed: React.FC<FeedProps> = ({
                   key={post.id}
                   data-testid="post-card"
                   className="post-card x-tweet-card x-fade-in-up"
+                  onClick={() => handleNavigateDetail(post)}
                 >
                   <div className="x-tweet-avatar-col">
                     <div className="avatar">
@@ -528,7 +532,10 @@ export const Feed: React.FC<FeedProps> = ({
                         <time
                           className="post-time"
                           dateTime={post.created_at}
-                          onClick={() => recordClick(post.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNavigateDetail(post);
+                          }}
                         >
                           {formatRelativeTime(post.created_at)}
                         </time>
@@ -538,7 +545,10 @@ export const Feed: React.FC<FeedProps> = ({
                         <button
                           type="button"
                           className="btn-link x-dm-quick-btn"
-                          onClick={() => onSelectUserForDm(post.user_id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectUserForDm(post.user_id);
+                          }}
                           title="联系作者"
                         >
                           联系作者
@@ -550,7 +560,10 @@ export const Feed: React.FC<FeedProps> = ({
                     {post.content && (
                       <div
                         className="post-content x-tweet-text"
-                        onClick={() => recordClick(post.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNavigateDetail(post);
+                        }}
                       >
                         {post.content}
                       </div>
@@ -569,7 +582,10 @@ export const Feed: React.FC<FeedProps> = ({
                             key={img.id}
                             type="button"
                             className="x-media-tile"
-                            onClick={() => handleOpenLightbox(post, idx)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenLightbox(post, idx);
+                            }}
                             aria-label={`查看大图 ${idx + 1}`}
                           >
                             <img
@@ -586,10 +602,11 @@ export const Feed: React.FC<FeedProps> = ({
                     <div className="post-footer x-tweet-actions-bar">
                       <button
                         type="button"
-                        className={`x-tweet-action-btn x-reply-btn ${
-                          activeCommentsPostId === post.id ? 'active' : ''
-                        }`}
-                        onClick={() => handleToggleComments(post.id)}
+                        className="x-tweet-action-btn x-reply-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNavigateDetail(post, { focusComment: true });
+                        }}
                         aria-label="评论"
                       >
                         <MessageCircle size={18} />
@@ -601,7 +618,10 @@ export const Feed: React.FC<FeedProps> = ({
                         className={`x-tweet-action-btn x-repost-btn ${
                           post.user_reposted ? 'reposted' : ''
                         }`}
-                        onClick={() => handleToggleRepost(post.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleRepost(post.id);
+                        }}
                         aria-label="转发"
                       >
                         <Repeat2 size={18} />
@@ -613,7 +633,10 @@ export const Feed: React.FC<FeedProps> = ({
                         className={`x-tweet-action-btn x-like-btn ${
                           post.user_liked ? 'liked' : ''
                         }`}
-                        onClick={() => handleToggleLike(post.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleLike(post.id);
+                        }}
                         aria-label="点赞"
                       >
                         <Heart
@@ -626,7 +649,10 @@ export const Feed: React.FC<FeedProps> = ({
                       <button
                         type="button"
                         className="x-tweet-action-btn x-views-btn"
-                        onClick={() => recordClick(post.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          recordClick(post.id);
+                        }}
                         aria-label="点击数"
                         title="点击 / 浏览量"
                       >
@@ -634,24 +660,6 @@ export const Feed: React.FC<FeedProps> = ({
                         <span>{clicks}</span>
                       </button>
                     </div>
-
-                    {/* Expanded Thread Comments */}
-                    {activeCommentsPostId === post.id && (
-                      <Comments
-                        postId={post.id}
-                        currentUserLabel={currentUserLabel}
-                        onCommentAdded={() => {
-                          setPosts((prev) =>
-                            prev.map((p) =>
-                              p.id === post.id
-                                ? { ...p, comments_count: (p.comments_count ?? 0) + 1 }
-                                : p
-                            )
-                          );
-                          onStatsChange?.();
-                        }}
-                      />
-                    )}
                   </div>
                 </article>
               );

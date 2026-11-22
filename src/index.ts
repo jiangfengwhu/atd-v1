@@ -9,6 +9,7 @@ import { messagesRoute } from './routes/messages';
 import { commentsRoute } from './routes/comments';
 import { usersRoute } from './routes/users';
 import { Env, AppVariables } from './types';
+import { isStaticAssetFilePath } from './utils/routing';
 
 export const app = new Hono<{
   Bindings: Env;
@@ -54,11 +55,31 @@ app.onError((err, c) => {
   );
 });
 
-// Custom 404 Handler for API routes
-app.notFound((c) => {
+// Custom 404 Handler for API routes & Cloudflare Workers Static Assets SPA fallback
+app.notFound(async (c) => {
   if (c.req.path.startsWith('/api')) {
     return c.json({ error: '404_NOT_FOUND', message: 'API endpoint not found' }, 404);
   }
+
+  if (c.env?.ASSETS && (c.req.method === 'GET' || c.req.method === 'HEAD')) {
+    const assetResponse = await c.env.ASSETS.fetch(c.req.raw);
+    if (assetResponse.status !== 404) {
+      return assetResponse;
+    }
+
+    if (isStaticAssetFilePath(c.req.path)) {
+      return c.text('Not Found', 404);
+    }
+
+    const fallbackUrl = new URL('/', c.req.url);
+    return c.env.ASSETS.fetch(
+      new Request(fallbackUrl.toString(), {
+        method: c.req.method,
+        headers: c.req.raw.headers,
+      })
+    );
+  }
+
   return c.text('Not Found', 404);
 });
 
