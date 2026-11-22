@@ -1,1 +1,57 @@
-[]
+[
+  {
+    "id": "job-92ecd4a2",
+    "createdAt": "2026-11-22T08:53:04.495Z",
+    "updatedAt": "2026-11-22T08:53:09.451Z",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "defaultBranch": "main",
+    "prdTitle": "初始需求",
+    "prdContent": "做一款文字社区应用\n1. 使用resend，邮箱验证码登录\n2. 添加隐藏路由/admin，初始密码admin，支持改密码，用来做后台管理，比如resend密钥配置\n3. 首版仅支持图文即可\n4. UI要符合年轻人的审美，具体可以去GitHub看下推荐的组件库以及前端skill等",
+    "executionMode": "vps_agy",
+    "planMode": "unified_single_turn",
+    "agyModel": "gemini-4-neon-high",
+    "agyMode": "auto",
+    "status": "running",
+    "steps": [
+      {
+        "id": "architect",
+        "label": "01. Architect Agent",
+        "roleTitle": "读取仓库真实代码 · 增量架构 · 任务树",
+        "status": "running",
+        "startedAt": "2026-11-22T08:53:04.496Z",
+        "message": "已入队，等待 Instabox AGY Runner 检出最新代码并启动单对话联合规划…"
+      },
+      {
+        "id": "qa_spec",
+        "label": "02. QA Spec Agent",
+        "roleTitle": "结合现有路由与历史测试 · Playwright 初版",
+        "status": "idle"
+      },
+      {
+        "id": "qa_critic",
+        "label": "03. QA Critic Agent",
+        "roleTitle": "边界异常评审 · 锁定独立只读回归测试集",
+        "status": "idle"
+      }
+    ],
+    "repoContext": {
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "branch": "main",
+      "headSha": "0588d7ded2cb749f1cc3ea5ecccb8dc9402c8704",
+      "fetchedAt": "2026-11-22T08:53:04.496Z",
+      "isEmptyRepo": true,
+      "totalFiles": 4,
+      "fileTree": [
+        ".github/workflows/autodev-agy.yml",
+        ".github/workflows/autodev-deploy-cf.yml",
+        ".github/workflows/autodev-plan.yml",
+        "README.md"
+      ],
+      "existingMigrations": [],
+      "existingE2eTests": []
+    },
+    "planChannelBranch": "autodev-plan-channel",
+    "planActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45004883656",
+    "planActionsRunId": 45004883656
+  }
+]
