@@ -533,9 +533,8 @@ const CommunityApp: React.FC<CommunityAppProps> = ({
               {overview && overview.hot_posts.length > 0 ? (
                 <div className="x-hot-list">
                   {overview.hot_posts.map((item) => (
-                    <button
+                    <div
                       key={item.id}
-                      type="button"
                       className="x-hot-item"
                       onClick={() => handleOpenPostDetailById(item.id)}
                     >
@@ -552,7 +551,7 @@ const CommunityApp: React.FC<CommunityAppProps> = ({
                         <span>·</span>
                         <span>{item.clicks_count} 点击</span>
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               ) : (
