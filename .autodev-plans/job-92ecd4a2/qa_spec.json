@@ -1,0 +1,105 @@
+{
+  "apiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/api/health",
+      "method": "GET",
+      "scenario": "健康检查接口正常返回 D1 连通状态",
+      "expectedStatus": 200,
+      "assertion": "返回 JSON 包含 ok: true 且 db 为 connected"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/api/auth/send-code",
+      "method": "POST",
+      "scenario": "合法邮箱请求发送登录验证码（本地未配置 Resend 时走 dev_fallback）",
+      "expectedStatus": 200,
+      "assertion": "返回 ok: true 且包含 6 位数字 devCode（dev_fallback 模式）"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/auth/verify-code",
+      "method": "POST",
+      "scenario": "使用有效验证码登录并建立用户会话",
+      "expectedStatus": 200,
+      "assertion": "返回 ok: true 与 user 对象，响应头下发 HttpOnly session_token Cookie"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/api/auth/me",
+      "method": "GET",
+      "scenario": "携带会话 Cookie 查询当前登录用户信息",
+      "expectedStatus": 200,
+      "assertion": "返回 authenticated: true 且 user.email 与登录邮箱一致"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/uploads",
+      "method": "POST",
+      "scenario": "登录用户上传合法 PNG 图片",
+      "expectedStatus": 201,
+      "assertion": "返回 ok: true 与 /api/uploads/:id 地址，后续 GET 该地址返回 200 且 Content-Type 为 image/png"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/api/posts",
+      "method": "POST",
+      "scenario": "登录用户发布带图片和标签的图文帖子",
+      "expectedStatus": 201,
+      "assertion": "返回创建成功的 post 对象且包含正确的 title、content、imageUrl"
+    },
+    {
+      "id": "TC-07",
+      "endpoint": "/api/posts",
+      "method": "GET",
+      "scenario": "公开访问图文列表并按关键词检索",
+      "expectedStatus": 200,
+      "assertion": "返回 posts 数组包含新发布的帖子且 total >= 1"
+    },
+    {
+      "id": "TC-08",
+      "endpoint": "/api/posts/:id/like",
+      "method": "POST",
+      "scenario": "登录用户点赞与取消点赞帖子",
+      "expectedStatus": 200,
+      "assertion": "首次调用返回 liked: true 且 likesCount 增加 1，再次调用返回 liked: false 且计数还原"
+    },
+    {
+      "id": "TC-09",
+      "endpoint": "/api/posts/:id/comments",
+      "method": "POST",
+      "scenario": "登录用户发表帖子评论",
+      "expectedStatus": 201,
+      "assertion": "返回评论对象，且 GET /api/posts/:id 的 comments 中包含该评论"
+    },
+    {
+      "id": "TC-10",
+      "endpoint": "/api/admin/login",
+      "method": "POST",
+      "scenario": "使用初始密码 admin 登录隐藏后台",
+      "expectedStatus": 200,
+      "assertion": "返回 ok: true 且下发 admin_session Cookie"
+    },
+    {
+      "id": "TC-11",
+      "endpoint": "/api/admin/settings",
+      "method": "PUT",
+      "scenario": "管理员保存 Resend API Key 与发件邮箱配置",
+      "expectedStatus": 200,
+      "assertion": "返回 ok: true、hasResendApiKey: true 且 resendFromEmail 更新成功"
+    },
+    {
+      "id": "TC-12",
+      "endpoint": "/api/admin/password",
+      "method": "POST",
+      "scenario": "管理员修改后台密码后使用新密码重新登录",
+      "expectedStatus": 200,
+      "assertion": "改密返回 200，随后旧密码登录返回 401，新密码登录返回 200"
+    }
+  ],
+  "e2eTestCode": "import { test, expect } from '@playwright/test';\n\nconst TINY_PNG = Buffer.from(\n  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',\n  'base64'\n);\n\ntest.describe('图文文字社区核心流程（初版）', () => {\n  test('健康检查与首页加载', async ({ page, request }) => {\n    const health = await request.get('/api/health');\n    expect(health.status()).toBe(200);\n    const healthJson = await health.json();\n    expect(healthJson.ok).toBe(true);\n\n    await page.goto('/');\n    await expect(page.locator('body')).toBeVisible();\n  });\n\n  test('邮箱验证码登录与图文发布闭环', async ({ page, request }) => {\n    const uniqueEmail = `user-${Date.now()}@example.com`;\n    const postTitle = `今日图文分享-${Date.now()}`;\n\n    await page.goto('/');\n    const loginBtn = page.getByRole('button', { name: /登录|邮箱登录|立即登录/i }).first();\n    await expect(loginBtn).toBeVisible({ timeout: 10000 });\n    await loginBtn.click();\n\n    const emailInput = page.getByPlaceholder(/邮箱|email/i).or(page.locator('input[type=\"email\"]')).first();\n    await expect(emailInput).toBeVisible();\n    await emailInput.fill(uniqueEmail);\n\n    const sendCodePromise = page.waitForResponse((res) => res.url().includes('/api/auth/send-code') && res.request().method() === 'POST');\n    const sendCodeBtn = page.getByRole('button', { name: /发送验证码|获取验证码/i }).first();\n    await sendCodeBtn.click();\n    const sendRes = await sendCodePromise;\n    expect(sendRes.status()).toBe(200);\n    const sendJson = await sendRes.json();\n    expect(sendJson.devCode).toMatch(/^\\d{6}$/);\n\n    const codeInput = page.getByPlaceholder(/验证码|code/i).first();\n    await codeInput.fill(sendJson.devCode);\n    const submitLoginBtn = page.getByRole('button', { name: /验证并登录|确认登录|登录/i }).last();\n    await submitLoginBtn.click();\n\n    await expect(page.getByRole('button', { name: /发布图文|发布|写图文/i }).first()).toBeVisible({ timeout: 10000 });\n\n    const uploadRes = await page.request.post('/api/uploads', {\n      multipart: {\n        file: { name: 'cover.png', mimeType: 'image/png', buffer: TINY_PNG },\n      },\n    });\n    expect(uploadRes.status()).toBe(201);\n    const uploadJson = await uploadRes.json();\n    expect(uploadJson.url).toContain('/api/uploads/');\n\n    const createRes = await page.request.post('/api/posts', {\n      data: {\n        title: postTitle,\n        content: '这是一篇首版图文社区测试帖子内容。',\n        imageUrl: uploadJson.url,\n        tags: ['日常'],\n      },\n    });\n    expect(createRes.status()).toBe(201);\n\n    await page.reload();\n    await expect(page.getByText(postTitle).first()).toBeVisible({ timeout: 10000 });\n  });\n\n  test('隐藏路由 /admin 登录与 Resend 配置保存', async ({ page }) => {\n    await page.goto('/admin');\n    const pwdInput = page.locator('input[type=\"password\"]').first();\n    await expect(pwdInput).toBeVisible({ timeout: 10000 });\n    await pwdInput.fill('admin');\n    await page.getByRole('button', { name: /登录|进入后台/i }).first().click();\n\n    const keyInput = page.getByPlaceholder(/re_|Resend|API Key/i).first();\n    await expect(keyInput).toBeVisible({ timeout: 10000 });\n    await keyInput.fill('re_draft_test_key_12345');\n    await page.getByRole('button', { name: /保存配置|保存/i }).first().click();\n  });\n});\n",
+  "coverageNotes": [
+    "覆盖了健康检查、邮箱验证码发送与登录、图片上传、图文发帖与刷新持久化、以及隐藏路由 /admin 登录与 Resend 配置基础流程。",
+    "初版测试尚未覆盖越权校验、Resend 密钥脱敏校验、恶意 URL/非法文件拦截、OTP 重放防护以及全局 admin 密码/配置回滚隔离。"
+  ]
+}
