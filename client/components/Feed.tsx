@@ -325,7 +325,7 @@ export const Feed: React.FC<FeedProps> = ({
     post: Post,
     options?: { focusComment?: boolean }
   ) => {
-    const selectedText = window.getSelection()?.toString();
+    const selectedText = window.getSelection()?.toString().trim();
     if (selectedText && selectedText.length > 0 && !options?.focusComment) {
       return;
     }

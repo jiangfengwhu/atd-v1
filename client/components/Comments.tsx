@@ -130,7 +130,7 @@ export const Comments: React.FC<CommentsProps> = ({
               ref={inputRef}
               type="text"
               className="input-field x-thread-input"
-              placeholder={replyTo ? '撰写回复...' : '撰写评论...'}
+              placeholder={replyTo ? '撰写评论... (回复中)' : '撰写评论...'}
               aria-label="回复"
               value={content}
               onChange={(e) => {
