@@ -539,6 +539,17 @@
       "archivedSpecPath": "docs/iterations/run-96e1a2ad-spec.json",
       "createdAt": "2026-11-22T12:36:14.512Z",
       "initializedEmptyRepo": false
+    },
+    "previewDeployment": {
+      "url": "https://atd-v1-community-preview.809740942.workers.dev",
+      "workerName": "atd-v1-community-preview",
+      "branchName": "autodev/feat-20261122-123609",
+      "deployedAt": "2026-11-22T13:04:22.419Z",
+      "d1DatabaseName": "atd-v1-community-db-preview",
+      "d1DatabaseId": "353bdd40-e991-490c-9028-d62039ac5884",
+      "migrationsApplied": true,
+      "commitSha": "333724b",
+      "isIsolatedPreview": true
     }
   },
   {
