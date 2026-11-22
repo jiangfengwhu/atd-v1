@@ -1,0 +1,81 @@
+{
+  "runId": "run-f8b35bdc",
+  "actionsRunId": 45006603710,
+  "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45006603710",
+  "workflowName": "AutoDev AGY Coding Runner",
+  "branch": "autodev/feat-20261122-090206",
+  "prNumber": 9,
+  "commitSha": "4757ca5",
+  "model": "gemini-4-hydrogen-high",
+  "kind": "e2e",
+  "status": "passed",
+  "total": 7,
+  "passed": 7,
+  "failed": 0,
+  "skipped": 0,
+  "durationMs": 12942,
+  "executedAt": "2026-11-22T09:25:05.591Z",
+  "summary": "自动化 E2E 验收（gemini-4-hydrogen-high / auto）：7 通过 / 0 失败 / 0 跳过",
+  "cases": [
+    {
+      "id": "check-type",
+      "title": "TypeScript / Lint 静态检查 (typecheck)",
+      "status": "passed",
+      "durationMs": 2713
+    },
+    {
+      "id": "check-build",
+      "title": "生产构建检查 (npm run build)",
+      "status": "passed",
+      "durationMs": 2081
+    },
+    {
+      "id": "pw-2",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 1. 健康检查、首页渲染与隐藏路由 /admin 入口审计",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 239
+    },
+    {
+      "id": "pw-3",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 2. 邮箱验证码登录安全边界（非法邮箱、冷却、错误码、UI 登录与防重放）",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 624
+    },
+    {
+      "id": "pw-4",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 3. 图文发布、图片上传、搜索、点赞、评论与持久化闭环",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 578
+    },
+    {
+      "id": "pw-5",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 4. 未登录拦截与跨用户越权删帖权限隔离",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 97
+    },
+    {
+      "id": "pw-6",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 5. 隐藏路由 /admin 全流程：鉴权、Resend 密钥脱敏配置、改密与状态回滚",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 662
+    }
+  ],
+  "rawLogExcerpt": "dules transformed.\nrendering chunks...\ncomputing gzip size...\n\u001b[2m../dist/client/\u001b[22m\u001b[32mindex.html                 \u001b[39m\u001b[1m\u001b[2m  0.80 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:  0.49 kB\u001b[22m\n\u001b[2m../dist/client/\u001b[22m\u001b[2massets/\u001b[22m\u001b[35mindex-Dee5ify8.css  \u001b[39m\u001b[1m\u001b[2m 32.23 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:  6.16 kB\u001b[22m\n\u001b[2m../dist/client/\u001b[22m\u001b[2massets/\u001b[22m\u001b[36mindex-CMH3Xtka.js   \u001b[39m\u001b[1m\u001b[2m272.43 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip: 85.13 kB\u001b[22m\n\u001b[32m✓ built in 1.81s\u001b[39m\n=== Playwright E2E Verification ===\n                  }\n                      ],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"01d4578ad868b07aa3f6-8a3412c5cb2f93344308\",\n              \"file\": \"run-f8b35bdc.spec.ts\",\n              \"line\": 278,\n              \"column\": 3\n            },\n            {\n              \"title\": \"5. 隐藏路由 /admin 全流程：鉴权、Resend 密钥脱敏配置、改密与状态回滚\",\n              \"ok\": true,\n              \"tags\": [],\n              \"tests\": [\n                {\n                  \"timeout\": 45000,\n                  \"annotations\": [\n                    {\n                      \"type\": \"serial\",\n                      \"location\": {\n                        \"file\": \"/data/home/actions-runner/_work/atd-v1/atd-v1/tests/e2e/run-f8b35bdc.spec.ts\",\n                        \"line\": 43,\n                        \"column\": 15\n                      }\n                    }\n                  ],\n                  \"expectedStatus\": \"passed\",\n                  \"projectId\": \"\",\n                  \"projectName\": \"\",\n                  \"results\": [\n                    {\n                      \"workerIndex\": 0,\n                      \"parallelIndex\": 0,\n                      \"status\": \"passed\",\n                      \"duration\": 662,\n                      \"errors\": [],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-22T09:25:04.817Z\",\n                      \"annotations\": [\n                        {\n                          \"type\": \"serial\",\n                          \"location\": {\n                            \"file\": \"/data/home/actions-runner/_work/atd-v1/atd-v1/tests/e2e/run-f8b35bdc.spec.ts\",\n                            \"line\": 43,\n                            \"column\": 15\n                          }\n                        }\n                      ],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"01d4578ad868b07aa3f6-8288628163285f09aee9\",\n              \"file\": \"run-f8b35bdc.spec.ts\",\n              \"line\": 319,\n              \"column\": 3\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"errors\": [],\n  \"stats\": {\n    \"startTime\": \"2026-11-22T09:24:57.974Z\",\n    \"duration\": 7586.144,\n    \"expected\": 5,\n    \"skipped\": 0,\n    \"unexpected\": 0,\n    \"flaky\": 0\n  }\n}\n",
+  "agySessionId": "7e14bbf8-4825-418f-865d-c4442d131042",
+  "agySessionReused": false,
+  "agyExitCode": 0,
+  "repairRounds": 0,
+  "codingFinalOutput": "正在等待 Playwright E2E 测试套件（`task-73`）执行完成。\n正在等待 `task-100`（类型检查、构建及 Playwright E2E 测试）执行完成。\n正在等待 `task-107`（清理本地 D1 状态、类型检查、构建及连续两次完整 E2E 回归测试）完成。\n已完成 `docs/prd.md` 与 `docs/spec.json` 全部工程任务及前后端功能实现，并已提交推送至分支 `autodev/feat-20261122-090206`（commit `4757ca5`）。\n\n### 已完成模块与文件\n\n1. **Cloudflare Workers + D1 工程脚手架（T-01）**\n   - [wrangler.toml](file:///data/home/actions-runner/_work/atd-v1/atd-v1/wrangler.toml)：配置 D1 绑定 `DB`（占位 `database_id` 兼容 `.github/workflows/autodev-deploy-cf.yml` 自动建库）、`[assets]` SPA 托管及 `run_worker_first = [\"/api/*\"]`。\n   - [migrations/0001_init.sql](file:///data/home/actions-runner/_work/atd-v1/atd-v1/migrations/0001_init.sql)：幂等建表与索引（`users`、`email_otps`、`sessions`、`admin_config`、`admin_sessions`、`posts`、`post_likes`、`comments`、`media_assets`）。\n   - [src/index.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/src/index.ts)：Hono API 入口，挂载 `GET /api/health`、认证/管理/帖子/上传路由及统一错误处理。\n   - [playwright.config.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/playwright.config.ts)：配置构建前端、执行本地 D1 迁移并启动 `wrangler dev` 的 E2E 测试环境。\n\n2. **Resend 邮箱验证码登录与用户会话（T-02）**\n   - [src/routes/auth.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/src/routes/auth.ts)、[src/lib/crypto.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/src/lib/crypto.ts)、[src/lib/cookies.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/src/lib/cookies.ts)：实现 `POST /api/auth/send-code`（60 秒发送冷却、优先读取后台配置的 Resend API Key 调用 Resend REST API，本地无密钥自动降级 `dev_fallback`）、`POST /api/auth/verify-code`（SHA-256 校验、失败次数上限 5 次、原子标记 `consumed` 防重放并签发 `HttpOnly` `session_token` Cookie）、`GET /api/auth/me`、`POST /api/auth/logout` 与 `PATCH /api/auth/profile`。\n\n3. **隐藏路由 `/admin` 后端管理与安全认证（T-03）**\n   - [src/routes/admin.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/src/routes/admin.ts)、[src/lib/admin-config.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/src/lib/admin-config.ts)：首次访问初始化默认密码 `admin` 的 PBKDF2-SHA256 随机盐哈希；实现 `POST /api/admin/login`（防爆破限流、返回 `mustChangeDefaultPassword`）、`GET /api/admin/me`、`POST /api/admin/logout`、`POST /api/admin/password`（改密并轮换销毁旧会话）、`GET/PUT /api/admin/settings`（Resend Key 强制脱敏返回）、`GET /api/admin/posts` 与 `DELETE /api/admin/posts/:id`。\n\n4. **图文社区帖子、点赞、评论与安全图片上传（T-04）**\n   - [src/routes/posts.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/src/routes/posts.ts)：实现 `GET /api/posts`（关键词 `q`、标签 `tag`、`latest`/`hot` 排序与分页）、`POST /api/posts`（校验标题/正文长度及 `imageUrl` 协议白名单拦截 `javascript:` 等 XSS 协议）、`GET /api/posts/:id`、`DELETE /api/posts/:id`（仅作者本人可删）、`POST /api/posts/:id/like` 与 `POST /api/posts/:id/comments`。\n   - [src/routes/uploads.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/src/routes/uploads.ts)：实现 `POST /api/uploads`（支持 `multipart/form-data` 与 JSON Base64，MIME 白名单 + 文件魔数校验且限制 ≤ 2MB）与 `GET /api/uploads/:id`（输出二进制图片流与 `X-Content-Type-Options: nosniff`）。\n\n5. **年轻化图文社区前端与隐藏 `/admin` 界面（T-05）**\n   - 社区前端：[CommunityPage.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/pages/CommunityPage.tsx)、[PostCard.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/components/PostCard.tsx)、[AuthDialog.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/components/AuthDialog.tsx)、[ComposeDialog.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/components/ComposeDialog.tsx)、[PostDetailDialog.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/components/PostDetailDialog.tsx)、[ProfileDialog.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/components/ProfileDialog.tsx)，基于 Tailwind CSS + Radix UI Dialog + Lucide React 实现暖白画布、磨砂玻璃导航栏（无任何 `/admin` 入口链接）、瀑布流卡片、骨架屏与空态/错态处理。\n   - 隐藏后台：[AdminPage.tsx](file:///data/home/actions-runner/_work/atd-v1/atd-v1/client/src/pages/AdminPage.tsx)，提供独立登录卡片、初始密码安全提醒、统计概览、Resend 密钥配置（脱敏回显）、改密表单及内容管理删帖列表。\n\n### 验证结果\n\n- `npx tsc --noEmit`：通过（0 错误）。\n- `npm run build`：通过，前端构建产物输出至 `dist/client`。\n- `npx wrangler d1 migrations apply DB --local`：连续两次执行均成功，确认迁移脚本幂等。\n- `CI=true PLAYWRIGHT_HTML_OPEN=never npx playwright test`（[tests/e2e/run-f8b35bdc.spec.ts](file:///data/home/actions-runner/_work/atd-v1/atd-v1/tests/e2e/run-f8b35bdc.spec.ts)）：清理本地 `.wrangler` 后连续两次运行全套 5 个 E2E 用例均全部通过（`5 passed`，耗时 ~7.4s），且回滚清理正常。\n- `git status`：工作区干净，已推送至 `origin/autodev/feat-20261122-090206`。",
+  "tokenUsage": {
+    "inputTokens": 198223,
+    "outputTokens": 73252,
+    "totalTokens": 271475,
+    "source": "reported",
+    "model": "gemini-4-hydrogen-high"
+  }
+}
