@@ -1,0 +1,16 @@
+{
+  "jobId": "job-7ada34bf",
+  "repoFullName": "jiangfengwhu/atd-v1",
+  "baseBranch": "main",
+  "prdTitle": "日常迭代-个人主页",
+  "prdContent": "添加社区的常规功能：\n1. 个人主页，包括头像变更功能，个人简介，关注和粉丝，历史发帖，点赞，回复，评论以及私信功能\n2. 发布功能优化：图片支持简单的编辑，比如裁剪等，看下github上有没有推荐的库可以使用\n3. UI结构优化下吧，左右布局吧，左边导航栏包括：动态，私信，主页，然后底下是个人资料的按钮，点击弹出选项退出登录",
+  "effectiveTechStack": "React + Vite + TypeScript (Cloudflare Workers Static Assets) + Hono API on Cloudflare Workers + Cloudflare D1 (SQLite) + Cloudflare KV",
+  "isDefaultCloudflare": true,
+  "agyModel": "gemini-4-neon-high",
+  "createdAt": "2026-11-22T10:58:41.758Z",
+  "rsiSystemPrompts": {
+    "architect": "",
+    "qa_spec": "",
+    "qa_critic": "=== RSI 系统自进化强约束规则 (QA Critic 边界评审 · 已自动注入 1 条历史经验) ===\n以下规则均由系统经 Decision 门控筛选并从历史真实故障中提炼，本轮必须严格遵守以避免重复踩坑：\n1. [CRITICAL] (环境与网络异常 · 触发 2 次) Cloudflare D1 迁移规范：在执行 Cloudflare Workers D1 迁移前，必须先验证：1. wrangler.toml 中 database_id 已正确配置；2. 迁移脚本应保持原子性且具备幂等性；3. CI 环境环境变量已包含有效的 CLOUDFLARE_API_TOKEN 及对应的账户…"
+  }
+}
