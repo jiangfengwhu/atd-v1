@@ -1,5 +1,16 @@
 [
   {
+    "id": "aud-42f4e335",
+    "timestamp": "2026-11-22T08:14:39.381Z",
+    "category": "quality",
+    "action": "rsi_sync_triggered",
+    "label": "同步测试报告与归因",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "status": "success",
+    "detail": "同步 5 份测试报告，新增 2 条异常，完成 2 次 AI 归因"
+  },
+  {
     "id": "aud-aa1ef040",
     "timestamp": "2026-11-22T02:17:11.287Z",
     "category": "execution",

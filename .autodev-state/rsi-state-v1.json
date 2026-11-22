@@ -1101,7 +1101,34 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/44741327372",
       "branch": "main",
       "occurredAt": "2026-11-20T13:06:12Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "env_infra",
+        "rootCauseSummary": "Cloudflare D1 远程迁移失败，通常由命名冲突、缺少迁移执行权限或前置绑定的 D1 数据库资源未就绪引起。",
+        "shouldCodifyAsRule": true,
+        "decisionRationale": "Decision 门控收入「待观察候选池」（通用性 97% · 泛化评分 1.72/3.0）：暂不占用注入预算，同类问题复发 ≥ 2 次或人工转正后自动生效。 Cloudflare Workers 部署中的 D1 数据库状态通常具有持久性和环境依赖性，若在流水线中未确保资源幂等性或未处理好并发迁移请求，会导致部署反复失败。需建立幂等性检查机制。",
+        "confidence": 0.97,
+        "suggestedRule": {
+          "title": "Cloudflare D1 部署幂等性保证",
+          "targetStage": "coding",
+          "severity": "critical",
+          "promptDirective": "在进行 Cloudflare D1 迁移或资源部署时，必须先通过查询命令检查数据库实例状态。若检测到迁移冲突或资源锁定，应实施基于等待（wait/retry）的确认机制。严禁在生产环境直接进行无状态的 force 部署，确保数据库 schema 变更具有幂等性。",
+          "dedupeKey": "cloudflare-d1-idempotent-migrations"
+        },
+        "decisionGate": {
+          "model": "gemini-decision-1",
+          "generalizableProb": 0.974,
+          "duplicateProb": 0.0429,
+          "generalityScore": 1.722,
+          "chosenAction": "create_critical_active",
+          "actionConfidence": 0.7387,
+          "evaluatedAt": "2026-11-22T08:14:39.375Z"
+        },
+        "appliedOutcome": "candidate_created",
+        "analyzedAt": "2026-11-22T08:14:39.375Z",
+        "model": "gemini-3.1-flash-lite + gemini-decision-1",
+        "generatedRuleId": "rsi-0229e1f5"
+      }
     },
     {
       "id": "inc-c64c848a",
@@ -1292,6 +1319,23 @@
   ],
   "rules": [
     {
+      "id": "rsi-0229e1f5",
+      "dedupeKey": "cloudflare-d1-idempotent-migrations",
+      "title": "Cloudflare D1 部署幂等性保证",
+      "targetStage": "coding",
+      "severity": "critical",
+      "status": "candidate",
+      "promptDirective": "在进行 Cloudflare D1 迁移或资源部署时，必须先通过查询命令检查数据库实例状态。若检测到迁移冲突或资源锁定，应实施基于等待（wait/retry）的确认机制。严禁在生产环境直接进行无状态的 force 部署，确保数据库 schema 变更具有幂等性。",
+      "rootCauseCategory": "env_infra",
+      "sourceIncidentIds": [
+        "inc-fb0d5bfb"
+      ],
+      "hitCount": 1,
+      "appliedCount": 0,
+      "createdAt": "2026-11-22T08:14:39.375Z",
+      "updatedAt": "2026-11-22T08:14:39.375Z"
+    },
+    {
       "id": "rsi-bfc5e3c9",
       "dedupeKey": "e2e-test-atomicity-timeout-prevention",
       "title": "避免单测逻辑过长导致超时",
@@ -1361,5 +1405,5 @@
       "lastAppliedAt": "2026-11-22T02:17:09.805Z"
     }
   ],
-  "lastSyncedAt": "2026-11-20T12:30:41.857Z"
+  "lastSyncedAt": "2026-11-22T08:14:39.378Z"
 }
