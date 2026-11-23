@@ -1,6 +1,16 @@
 import { Hono } from 'hono';
+import type { D1Database } from '@cloudflare/workers-types';
 import type { AppEnv } from '../types';
 import { getSessionUser } from './auth';
+import { pushUserEvent } from '../lib/realtime';
+
+async function getMessagesUnreadCount(db: D1Database, userId: string): Promise<number> {
+  const row = await db
+    .prepare('SELECT COUNT(*) AS cnt FROM direct_messages WHERE receiver_id = ? AND is_read = 0')
+    .bind(userId)
+    .first<{ cnt: number }>();
+  return Number(row?.cnt ?? 0);
+}
 
 interface PeerRow {
   id: string;
@@ -163,11 +173,20 @@ messageRoutes.get('/with/:peerId', async (c) => {
   const convKey = buildConversationKey(user.id, peerId);
 
   // Mark incoming messages from peer as read
-  await c.env.DB.prepare(
+  const readRes = await c.env.DB.prepare(
     'UPDATE direct_messages SET is_read = 1 WHERE conversation_key = ? AND receiver_id = ? AND is_read = 0'
   )
     .bind(convKey, user.id)
     .run();
+
+  if (readRes.meta.changes && readRes.meta.changes > 0) {
+    const totalUnread = await getMessagesUnreadCount(c.env.DB, user.id);
+    await pushUserEvent(c.env, user.id, {
+      type: 'dm:read',
+      peerId,
+      totalUnread,
+    });
+  }
 
   const rows = await c.env.DB.prepare(
     `SELECT id, conversation_key, sender_id, receiver_id, content, is_read, created_at
@@ -196,6 +215,41 @@ messageRoutes.get('/with/:peerId', async (c) => {
       createdAt: m.created_at,
     })),
   });
+});
+
+messageRoutes.post('/with/:peerId/read', async (c) => {
+  const user = await getSessionUser(c.env.DB, c.req.header('cookie'));
+  if (!user) {
+    return c.json({ error: '请先登录' }, 401);
+  }
+
+  const peerId = c.req.param('peerId');
+  if (peerId === user.id) {
+    return c.json({ error: '不能与自己建立私信会话' }, 400);
+  }
+
+  const peer = await c.env.DB.prepare('SELECT id FROM users WHERE id = ? LIMIT 1')
+    .bind(peerId)
+    .first<{ id: string }>();
+  if (!peer) {
+    return c.json({ error: '用户不存在' }, 404);
+  }
+
+  const convKey = buildConversationKey(user.id, peerId);
+  await c.env.DB.prepare(
+    'UPDATE direct_messages SET is_read = 1 WHERE conversation_key = ? AND receiver_id = ? AND is_read = 0'
+  )
+    .bind(convKey, user.id)
+    .run();
+
+  const totalUnread = await getMessagesUnreadCount(c.env.DB, user.id);
+  await pushUserEvent(c.env, user.id, {
+    type: 'dm:read',
+    peerId,
+    totalUnread,
+  });
+
+  return c.json({ ok: true, totalUnread });
 });
 
 messageRoutes.post('/with/:peerId', async (c) => {
@@ -233,18 +287,50 @@ messageRoutes.post('/with/:peerId', async (c) => {
     .bind(msgId, convKey, user.id, peerId, content, nowIso)
     .run();
 
+  const messagePayload = {
+    id: msgId,
+    conversationKey: convKey,
+    senderId: user.id,
+    receiverId: peerId,
+    content,
+    isRead: false,
+    createdAt: nowIso,
+  };
+
+  const senderPayload = {
+    id: user.id,
+    nickname: user.nickname,
+    avatarSeed: user.avatarSeed,
+    avatarUrl: user.avatarUrl,
+    bio: user.bio,
+  };
+
+  const [receiverUnread, senderUnread] = await Promise.all([
+    getMessagesUnreadCount(c.env.DB, peerId),
+    getMessagesUnreadCount(c.env.DB, user.id),
+  ]);
+
+  await Promise.all([
+    pushUserEvent(c.env, peerId, {
+      type: 'dm:new',
+      message: messagePayload,
+      sender: senderPayload,
+      receiverId: peerId,
+      totalUnread: receiverUnread,
+    }),
+    pushUserEvent(c.env, user.id, {
+      type: 'dm:new',
+      message: messagePayload,
+      sender: senderPayload,
+      receiverId: peerId,
+      totalUnread: senderUnread,
+    }),
+  ]);
+
   return c.json(
     {
       ok: true,
-      message: {
-        id: msgId,
-        conversationKey: convKey,
-        senderId: user.id,
-        receiverId: peerId,
-        content,
-        isRead: false,
-        createdAt: nowIso,
-      },
+      message: messagePayload,
     },
     201
   );

@@ -16,6 +16,10 @@ import {
   verifyPasswordPBKDF2,
 } from '../lib/crypto';
 import { isValidFromEmail, maskApiKey } from '../lib/validation';
+import {
+  getUnreadNotificationRecipientsForPost,
+  pushNotificationReadSyncForUsers,
+} from '../lib/notifications';
 
 const ADMIN_SESSION_TTL_SECONDS = 24 * 60 * 60;
 const MAX_FAILED_LOGIN_ATTEMPTS = 8;
@@ -325,11 +329,19 @@ adminRoutes.delete('/posts/:id', async (c) => {
     return c.json({ error: '帖子不存在' }, 404);
   }
 
+  const affectedRecipients = await getUnreadNotificationRecipientsForPost(c.env.DB, postId);
+
   await c.env.DB.batch([
+    c.env.DB.prepare('DELETE FROM notifications WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_likes WHERE post_id = ?').bind(postId),
+    c.env.DB.prepare('DELETE FROM comment_replies WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM comments WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM posts WHERE id = ?').bind(postId),
   ]);
+
+  if (affectedRecipients.length > 0) {
+    await pushNotificationReadSyncForUsers(c.env, affectedRecipients);
+  }
 
   return c.json({ ok: true });
 });

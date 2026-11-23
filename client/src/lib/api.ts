@@ -122,6 +122,23 @@ export interface DirectMessageItem {
   createdAt: string;
 }
 
+export type NotificationType = 'comment' | 'like' | 'follow';
+
+export interface NotificationItem {
+  id: string;
+  type: NotificationType;
+  isRead: boolean;
+  contentPreview: string;
+  createdAt: string;
+  actor: PostAuthor;
+  post: {
+    id: string;
+    title: string;
+    imageUrl: string;
+  } | null;
+  commentId: string | null;
+}
+
 export interface AdminSettings {
   hasResendApiKey: boolean;
   resendApiKeyMasked: string;
@@ -360,6 +377,43 @@ export const api = {
     }>(`/api/messages/with/${encodeURIComponent(peerId)}`, {
       method: 'POST',
       body: JSON.stringify({ content }),
+    }),
+
+  markConversationRead: (peerId: string) =>
+    requestJson<{ ok: true; totalUnread: number }>(
+      `/api/messages/with/${encodeURIComponent(peerId)}/read`,
+      { method: 'POST' }
+    ),
+
+  // Notifications
+  listNotifications: (params?: {
+    type?: 'all' | NotificationType;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const sp = new URLSearchParams();
+    if (params?.type) sp.set('type', params.type);
+    if (params?.limit !== undefined) sp.set('limit', String(params.limit));
+    if (params?.offset !== undefined) sp.set('offset', String(params.offset));
+    const qs = sp.toString();
+    return requestJson<{
+      notifications: NotificationItem[];
+      total: number;
+      unreadCount: number;
+    }>(`/api/notifications${qs ? `?${qs}` : ''}`);
+  },
+
+  getUnreadCount: () =>
+    requestJson<{
+      notificationsUnread: number;
+      messagesUnread: number;
+      totalUnread: number;
+    }>('/api/notifications/unread-count'),
+
+  markNotificationsRead: (payload: { all: true } | { ids: string[] }) =>
+    requestJson<{ ok: true; unreadCount: number }>('/api/notifications/read', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     }),
 
   // Admin

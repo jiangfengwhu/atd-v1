@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   Hash,
   Compass,
+  Bell,
   MessageSquare,
   User as UserIcon,
   ChevronUp,
@@ -17,6 +18,7 @@ import {
   LogIn,
 } from 'lucide-react';
 import { api, ApiError, type PostItem, type UserProfile } from '@/lib/api';
+import { realtimeClient } from '@/lib/realtime';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AvatarBadge } from '@/components/AvatarBadge';
@@ -27,11 +29,12 @@ import { PostDetailDialog } from '@/components/PostDetailDialog';
 import { ProfileDialog } from '@/components/ProfileDialog';
 import { ProfileView } from '@/components/ProfileView';
 import { MessagesView } from '@/components/MessagesView';
+import { NotificationsView } from '@/components/NotificationsView';
 import { cn } from '@/lib/utils';
 
 const FEATURED_TAGS = ['日常碎碎念', '摄影美学', '好物分享', '咖啡时光', '数码桌搭', '城市漫步'];
 
-type ActiveNav = 'feed' | 'messages' | 'profile';
+type ActiveNav = 'feed' | 'notifications' | 'messages' | 'profile';
 
 interface RouteState {
   view: ActiveNav;
@@ -39,6 +42,9 @@ interface RouteState {
 }
 
 function parsePathname(pathname: string): RouteState {
+  if (pathname === '/notifications') {
+    return { view: 'notifications', profileUserId: null };
+  }
   if (pathname === '/messages') {
     return { view: 'messages', profileUserId: null };
   }
@@ -70,7 +76,8 @@ export function CommunityPage() {
     initialRoute.profileUserId
   );
   const [messagePeerId, setMessagePeerId] = React.useState<string | null>(null);
-  const [totalUnread, setTotalUnread] = React.useState(0);
+  const [messagesUnread, setMessagesUnread] = React.useState(0);
+  const [notificationsUnread, setNotificationsUnread] = React.useState(0);
   const [profileRefreshKey, setProfileRefreshKey] = React.useState(0);
 
   const [searchInput, setSearchInput] = React.useState('');
@@ -112,16 +119,18 @@ export function CommunityPage() {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  const loadUnreadCount = React.useCallback(async (loggedInUser: UserProfile | null) => {
+  const loadUnreadSummary = React.useCallback(async (loggedInUser: UserProfile | null) => {
     if (!loggedInUser) {
-      setTotalUnread(0);
+      setMessagesUnread(0);
+      setNotificationsUnread(0);
       return;
     }
     try {
-      const res = await api.listConversations();
-      setTotalUnread(res.totalUnread);
+      const res = await api.getUnreadCount();
+      setNotificationsUnread(res.notificationsUnread);
+      setMessagesUnread(res.messagesUnread);
     } catch {
-      // Ignore transient polling failures
+      // Ignore transient initialization failures
     }
   }, []);
 
@@ -130,14 +139,15 @@ export function CommunityPage() {
       const me = await api.me();
       const loadedUser = me.authenticated ? me.user : null;
       setUser(loadedUser);
-      loadUnreadCount(loadedUser);
+      loadUnreadSummary(loadedUser);
     } catch {
       setUser(null);
-      setTotalUnread(0);
+      setMessagesUnread(0);
+      setNotificationsUnread(0);
     } finally {
       setAuthLoaded(true);
     }
-  }, [loadUnreadCount]);
+  }, [loadUnreadSummary]);
 
   const loadPosts = React.useCallback(async () => {
     setLoading(true);
@@ -172,10 +182,28 @@ export function CommunityPage() {
   }, [loadPosts]);
 
   React.useEffect(() => {
-    if (!user) return;
-    const timer = window.setInterval(() => loadUnreadCount(user), 15000);
-    return () => window.clearInterval(timer);
-  }, [user, loadUnreadCount]);
+    if (!user) {
+      realtimeClient.disconnect();
+      return;
+    }
+    realtimeClient.connect();
+    const unsubscribe = realtimeClient.subscribe((event) => {
+      if (event.type === 'notification:new' || event.type === 'notification:read') {
+        setNotificationsUnread(event.unreadCount);
+      } else if (event.type === 'dm:new' || event.type === 'dm:read') {
+        setMessagesUnread(event.totalUnread);
+      }
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [user]);
+
+  React.useEffect(() => {
+    return () => {
+      realtimeClient.disconnect();
+    };
+  }, []);
 
   const requireAuthThen = (action?: () => void) => {
     if (action) {
@@ -189,6 +217,19 @@ export function CommunityPage() {
     setViewingUserId(null);
     setAccountMenuOpen(false);
     syncUrl('/');
+  };
+
+  const goNotifications = () => {
+    setAccountMenuOpen(false);
+    if (!user) {
+      requireAuthThen(() => {
+        setActiveNav('notifications');
+        syncUrl('/notifications');
+      });
+      return;
+    }
+    setActiveNav('notifications');
+    syncUrl('/notifications');
   };
 
   const goMessages = (peerId?: string) => {
@@ -267,11 +308,17 @@ export function CommunityPage() {
 
   const handleLogout = async () => {
     setAccountMenuOpen(false);
+    realtimeClient.disconnect();
     await api.logout().catch(() => {});
     setUser(null);
-    setTotalUnread(0);
+    setMessagesUnread(0);
+    setNotificationsUnread(0);
     setMessagePeerId(null);
-    if (activeNav === 'messages' || (activeNav === 'profile' && viewingUserId === 'me')) {
+    if (
+      activeNav === 'messages' ||
+      activeNav === 'notifications' ||
+      (activeNav === 'profile' && viewingUserId === 'me')
+    ) {
       goFeed();
     }
     loadPosts();
@@ -281,221 +328,248 @@ export function CommunityPage() {
     viewingUserId === 'me' ? user?.id ?? null : viewingUserId;
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] relative overflow-x-hidden md:flex">
+    <div className="min-h-screen bg-[#FAF8F5] relative overflow-x-hidden">
       {/* Subtle decorative pastel gradient backdrop */}
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-x-0 top-0 -z-0 h-[420px] bg-[radial-gradient(ellipse_at_top_left,_rgba(244,63,94,0.10),_transparent_50%),radial-gradient(ellipse_at_top_right,_rgba(99,102,241,0.10),_transparent_50%)]"
       />
 
-      {/* Desktop Left Sidebar — Zero /admin links */}
-      <aside className="hidden md:flex md:w-60 md:shrink-0 md:flex-col md:justify-between sticky top-0 z-30 h-screen border-r border-zinc-200/80 bg-white/85 px-4 py-5 backdrop-blur-xl">
-        <div className="space-y-6">
-          {/* Brand */}
-          <button
-            type="button"
-            onClick={() => {
-              setSearchInput('');
-              setActiveQuery('');
-              setActiveTag('');
-              goFeed();
-            }}
-            className="flex w-full items-center gap-2.5 px-2 text-left"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-fuchsia-500 to-indigo-500 text-white shadow-sm">
-              <Sparkles className="h-4 w-4" />
-            </span>
-            <span className="truncate text-base font-extrabold tracking-tight text-zinc-900">
-              {siteName}
-            </span>
-          </button>
-
-          {/* Primary Navigation */}
-          <nav aria-label="主导航" className="space-y-1.5">
+      {/* Centered Compact Shell (Xiaohongshu / X style) */}
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1320px] flex-col md:flex-row md:gap-6 md:px-6 lg:gap-8 lg:px-8">
+        {/* Desktop Left Sidebar — Zero /admin links */}
+        <aside className="hidden md:flex md:w-[232px] md:shrink-0 md:flex-col md:justify-between sticky top-0 z-30 h-screen py-6">
+          <div className="space-y-6">
+            {/* Brand */}
             <button
               type="button"
-              onClick={goFeed}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm font-semibold transition',
-                activeNav === 'feed'
-                  ? 'bg-zinc-900 text-white shadow-sm'
-                  : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
-              )}
+              onClick={() => {
+                setSearchInput('');
+                setActiveQuery('');
+                setActiveTag('');
+                goFeed();
+              }}
+              className="flex w-full items-center gap-2.5 px-3 py-1 text-left transition-opacity hover:opacity-90"
             >
-              <Compass className="h-4 w-4" />
-              <span>动态</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => goMessages()}
-              className={cn(
-                'flex w-full items-center justify-between rounded-2xl px-3.5 py-2.5 text-sm font-semibold transition',
-                activeNav === 'messages'
-                  ? 'bg-zinc-900 text-white shadow-sm'
-                  : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
-              )}
-            >
-              <span className="flex items-center gap-3">
-                <MessageSquare className="h-4 w-4" />
-                <span>私信</span>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-fuchsia-500 to-indigo-500 text-white shadow-sm">
+                <Sparkles className="h-4 w-4" />
               </span>
-              {totalUnread > 0 && (
-                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-white">
-                  {totalUnread > 99 ? '99+' : totalUnread}
-                </span>
-              )}
+              <span className="truncate text-base font-extrabold tracking-tight text-zinc-900">
+                {siteName}
+              </span>
             </button>
 
-            <button
-              type="button"
-              onClick={goMyProfile}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm font-semibold transition',
-                activeNav === 'profile'
-                  ? 'bg-zinc-900 text-white shadow-sm'
-                  : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
-              )}
-            >
-              <UserIcon className="h-4 w-4" />
-              <span>主页</span>
-            </button>
-          </nav>
-
-          {/* Compose CTA */}
-          <Button
-            type="button"
-            variant="gradient"
-            onClick={handleOpenCompose}
-            className="w-full h-10 justify-center shadow-md shadow-rose-500/20"
-          >
-            <Plus className="h-4 w-4" />
-            <span>发布图文</span>
-          </Button>
-        </div>
-
-        {/* Bottom Profile Trigger & Popover Menu */}
-        <div ref={accountMenuRef} className="relative pt-4 border-t border-zinc-100">
-          {user ? (
-            <>
-              {accountMenuOpen && (
-                <div
-                  role="menu"
-                  aria-label="个人资料选项"
-                  className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-2xl border border-zinc-200/90 bg-white p-1.5 shadow-xl"
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={goMyProfile}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
-                  >
-                    <UserIcon className="h-3.5 w-3.5 text-zinc-500" />
-                    查看主页
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setAccountMenuOpen(false);
-                      setProfileOpen(true);
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
-                  >
-                    <Settings className="h-3.5 w-3.5 text-zinc-500" />
-                    编辑资料
-                  </button>
-                  <div className="my-1 border-t border-zinc-100" />
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={handleLogout}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-red-600 transition hover:bg-red-50"
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                    退出登录
-                  </button>
-                </div>
-              )}
+            {/* Primary Navigation */}
+            <nav aria-label="主导航" className="space-y-1.5">
+              <button
+                type="button"
+                onClick={goFeed}
+                className={cn(
+                  'flex w-full items-center gap-3.5 rounded-full px-4 py-3 text-[15px] font-semibold transition',
+                  activeNav === 'feed'
+                    ? 'bg-white text-zinc-950 shadow-sm ring-1 ring-zinc-200/80 font-bold'
+                    : 'text-zinc-600 hover:bg-white/75 hover:text-zinc-900'
+                )}
+              >
+                <Compass className={cn('h-5 w-5', activeNav === 'feed' && 'text-rose-500')} />
+                <span>动态</span>
+              </button>
 
               <button
                 type="button"
-                aria-haspopup="menu"
-                aria-expanded={accountMenuOpen}
-                aria-label={`个人资料 ${user.nickname}`}
-                onClick={() => setAccountMenuOpen((prev) => !prev)}
-                className="flex w-full items-center justify-between gap-2 rounded-2xl border border-zinc-200/80 bg-zinc-50/70 p-2.5 text-left transition hover:bg-zinc-100"
+                onClick={goNotifications}
+                className={cn(
+                  'flex w-full items-center justify-between rounded-full px-4 py-3 text-[15px] font-semibold transition',
+                  activeNav === 'notifications'
+                    ? 'bg-white text-zinc-950 shadow-sm ring-1 ring-zinc-200/80 font-bold'
+                    : 'text-zinc-600 hover:bg-white/75 hover:text-zinc-900'
+                )}
               >
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <AvatarBadge
-                    nickname={user.nickname}
-                    seed={user.avatarSeed}
-                    avatarUrl={user.avatarUrl}
-                    size="md"
+                <span className="flex items-center gap-3.5">
+                  <Bell
+                    className={cn('h-5 w-5', activeNav === 'notifications' && 'text-rose-500')}
                   />
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-bold text-zinc-900">{user.nickname}</p>
-                    <p className="text-[11px] text-zinc-400">个人资料</p>
-                  </div>
-                </div>
-                <ChevronUp
-                  className={cn(
-                    'h-4 w-4 shrink-0 text-zinc-400 transition-transform',
-                    accountMenuOpen && 'rotate-180'
-                  )}
-                />
+                  <span>通知</span>
+                </span>
+                {notificationsUnread > 0 && (
+                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-white">
+                    {notificationsUnread > 99 ? '99+' : notificationsUnread}
+                  </span>
+                )}
               </button>
-            </>
-          ) : (
+
+              <button
+                type="button"
+                onClick={() => goMessages()}
+                className={cn(
+                  'flex w-full items-center justify-between rounded-full px-4 py-3 text-[15px] font-semibold transition',
+                  activeNav === 'messages'
+                    ? 'bg-white text-zinc-950 shadow-sm ring-1 ring-zinc-200/80 font-bold'
+                    : 'text-zinc-600 hover:bg-white/75 hover:text-zinc-900'
+                )}
+              >
+                <span className="flex items-center gap-3.5">
+                  <MessageSquare
+                    className={cn('h-5 w-5', activeNav === 'messages' && 'text-rose-500')}
+                  />
+                  <span>私信</span>
+                </span>
+                {messagesUnread > 0 && (
+                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-white">
+                    {messagesUnread > 99 ? '99+' : messagesUnread}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={goMyProfile}
+                className={cn(
+                  'flex w-full items-center gap-3.5 rounded-full px-4 py-3 text-[15px] font-semibold transition',
+                  activeNav === 'profile'
+                    ? 'bg-white text-zinc-950 shadow-sm ring-1 ring-zinc-200/80 font-bold'
+                    : 'text-zinc-600 hover:bg-white/75 hover:text-zinc-900'
+                )}
+              >
+                <UserIcon className={cn('h-5 w-5', activeNav === 'profile' && 'text-rose-500')} />
+                <span>主页</span>
+              </button>
+            </nav>
+
+            {/* Compose CTA */}
             <Button
               type="button"
-              variant="outline"
-              onClick={() => setAuthOpen(true)}
-              className="w-full h-10 justify-center"
+              variant="gradient"
+              onClick={handleOpenCompose}
+              className="w-full h-11 rounded-full justify-center text-sm font-bold shadow-md shadow-rose-500/20"
             >
-              <LogIn className="h-4 w-4" />
-              登录 / 注册
+              <Plus className="h-4 w-4" />
+              <span>发布图文</span>
             </Button>
-          )}
-        </div>
-      </aside>
+          </div>
 
-      {/* Right Content Column */}
-      <div className="relative z-10 flex min-w-0 flex-1 flex-col pb-20 md:pb-0">
-        {/* Mobile Top Bar */}
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-zinc-200/70 bg-white/85 px-4 py-3 backdrop-blur-xl md:hidden">
-          <button type="button" onClick={goFeed} className="flex items-center gap-2 text-left">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 via-fuchsia-500 to-indigo-500 text-white">
-              <Sparkles className="h-4 w-4" />
-            </span>
-            <span className="text-sm font-extrabold text-zinc-900 truncate max-w-[140px]">
-              {siteName}
-            </span>
-          </button>
-
-          <div className="flex items-center gap-2">
-            <Button variant="gradient" size="sm" onClick={handleOpenCompose} className="h-8 px-3">
-              <Plus className="h-3.5 w-3.5" />
-              发布图文
-            </Button>
+          {/* Bottom Profile Trigger & Popover Menu */}
+          <div ref={accountMenuRef} className="relative pt-4">
             {user ? (
-              <button
-                type="button"
-                onClick={handleLogout}
-                aria-label="退出登录"
-                className="rounded-full border border-zinc-200 bg-white p-1.5 text-zinc-600"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
+              <>
+                {accountMenuOpen && (
+                  <div
+                    role="menu"
+                    aria-label="个人资料选项"
+                    className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-2xl border border-zinc-200/90 bg-white p-1.5 shadow-xl"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={goMyProfile}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                    >
+                      <UserIcon className="h-3.5 w-3.5 text-zinc-500" />
+                      查看主页
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setAccountMenuOpen(false);
+                        setProfileOpen(true);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                    >
+                      <Settings className="h-3.5 w-3.5 text-zinc-500" />
+                      编辑资料
+                    </button>
+                    <div className="my-1 border-t border-zinc-100" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      退出登录
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={accountMenuOpen}
+                  aria-label={`个人资料 ${user.nickname}`}
+                  onClick={() => setAccountMenuOpen((prev) => !prev)}
+                  className="flex w-full items-center justify-between gap-2 rounded-full border border-zinc-200/80 bg-white/85 px-3 py-2 text-left shadow-sm backdrop-blur-md transition hover:bg-white"
+                >
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <AvatarBadge
+                      nickname={user.nickname}
+                      seed={user.avatarSeed}
+                      avatarUrl={user.avatarUrl}
+                      size="md"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-bold text-zinc-900">{user.nickname}</p>
+                      <p className="text-[11px] text-zinc-400">个人资料</p>
+                    </div>
+                  </div>
+                  <ChevronUp
+                    className={cn(
+                      'h-4 w-4 shrink-0 text-zinc-400 transition-transform',
+                      accountMenuOpen && 'rotate-180'
+                    )}
+                  />
+                </button>
+              </>
             ) : (
-              <Button variant="outline" size="sm" onClick={() => setAuthOpen(true)} className="h-8">
-                登录
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAuthOpen(true)}
+                className="w-full h-11 rounded-full justify-center bg-white/85 shadow-sm"
+              >
+                <LogIn className="h-4 w-4" />
+                登录 / 注册
               </Button>
             )}
           </div>
-        </header>
+        </aside>
 
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-8 sm:py-8">
+        {/* Right Content Column */}
+        <div className="relative z-10 flex min-w-0 flex-1 flex-col pb-20 md:pb-0">
+          {/* Mobile Top Bar */}
+          <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-zinc-200/70 bg-white/85 px-4 py-3 backdrop-blur-xl md:hidden">
+            <button type="button" onClick={goFeed} className="flex items-center gap-2 text-left">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 via-fuchsia-500 to-indigo-500 text-white">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-extrabold text-zinc-900 truncate max-w-[140px]">
+                {siteName}
+              </span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <Button variant="gradient" size="sm" onClick={handleOpenCompose} className="h-8 px-3">
+                <Plus className="h-3.5 w-3.5" />
+                发布图文
+              </Button>
+              {user ? (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  aria-label="退出登录"
+                  className="rounded-full border border-zinc-200 bg-white p-1.5 text-zinc-600"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => setAuthOpen(true)} className="h-8">
+                  登录
+                </Button>
+              )}
+            </div>
+          </header>
+
+          <main className="w-full max-w-5xl flex-1 px-4 py-6 md:px-0 md:py-7">
           {activeNav === 'feed' && (
             <>
               {/* Search + Hero + Filter bar */}
@@ -662,6 +736,29 @@ export function CommunityPage() {
             </>
           )}
 
+          {activeNav === 'notifications' && (
+            <>
+              {user ? (
+                <NotificationsView
+                  onUnreadUpdated={setNotificationsUnread}
+                  onOpenPost={(id) => setDetailPostId(id)}
+                  onOpenUserProfile={goUserProfile}
+                />
+              ) : authLoaded ? (
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 bg-white/80 py-20 px-6 text-center">
+                  <Bell className="h-10 w-10 text-zinc-300" />
+                  <h2 className="mt-4 text-lg font-bold text-zinc-900">登录后查看通知中心</h2>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    实时接收好友的点赞、评论与新增关注提醒
+                  </p>
+                  <Button variant="gradient" className="mt-5" onClick={goNotifications}>
+                    立即登录
+                  </Button>
+                </div>
+              ) : null}
+            </>
+          )}
+
           {activeNav === 'messages' && (
             <>
               {user ? (
@@ -669,7 +766,7 @@ export function CommunityPage() {
                   currentUser={user}
                   initialPeerId={messagePeerId}
                   onOpenUserProfile={goUserProfile}
-                  onUnreadUpdated={setTotalUnread}
+                  onUnreadUpdated={setMessagesUnread}
                 />
               ) : authLoaded ? (
                 <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 bg-white/80 py-20 px-6 text-center">
@@ -720,6 +817,7 @@ export function CommunityPage() {
           )}
         </main>
       </div>
+      </div>
 
       {/* Mobile Bottom Navigation */}
       <nav
@@ -739,6 +837,20 @@ export function CommunityPage() {
         </button>
         <button
           type="button"
+          onClick={goNotifications}
+          className={cn(
+            'relative flex flex-col items-center gap-0.5 px-3 py-1 text-[11px] font-semibold',
+            activeNav === 'notifications' ? 'text-rose-600' : 'text-zinc-500'
+          )}
+        >
+          <Bell className="h-4 w-4" />
+          <span>通知</span>
+          {notificationsUnread > 0 && (
+            <span className="absolute right-1.5 top-0.5 h-2 w-2 rounded-full bg-rose-500" />
+          )}
+        </button>
+        <button
+          type="button"
           onClick={() => goMessages()}
           className={cn(
             'relative flex flex-col items-center gap-0.5 px-3 py-1 text-[11px] font-semibold',
@@ -747,7 +859,7 @@ export function CommunityPage() {
         >
           <MessageSquare className="h-4 w-4" />
           <span>私信</span>
-          {totalUnread > 0 && (
+          {messagesUnread > 0 && (
             <span className="absolute right-1.5 top-0.5 h-2 w-2 rounded-full bg-rose-500" />
           )}
         </button>
@@ -772,7 +884,7 @@ export function CommunityPage() {
         }}
         onSuccess={(loggedUser) => {
           setUser(loggedUser);
-          loadUnreadCount(loggedUser);
+          loadUnreadSummary(loggedUser);
           loadPosts();
           if (pendingAction) {
             const act = pendingAction;
