@@ -1,5 +1,475 @@
 [
   {
+    "id": "run-7026568c",
+    "createdAt": "2026-11-23T02:49:36.437Z",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "defaultBranch": "main",
+    "prdTitle": "接入通知",
+    "prdContent": "1. 左侧导航栏太呆板了，而且和中心的动态相隔很远，有点突兀，你看看主流社交平台怎么做的，抄一下\n2. 添加通知模块：\n  - 评论通知\n  - 点赞通知\n  - 新增关注通知\n3. 动态详情页改版：做成左右结构的，具体可以参考instagram那种\n4. 通知和私信使用websocket，减小worker请求次数，避免轮询",
+    "repoContext": {
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "branch": "main",
+      "headSha": "5e8fc05637ab9c81ead57581604c529ab856b16e",
+      "fetchedAt": "2026-11-23T02:43:19.359Z",
+      "isEmptyRepo": false,
+      "totalFiles": 56,
+      "fileTree": [
+        ".github/workflows/autodev-agy.yml",
+        ".github/workflows/autodev-deploy-cf.yml",
+        ".github/workflows/autodev-plan.yml",
+        ".gitignore",
+        "README.md",
+        "client/index.html",
+        "client/src/App.tsx",
+        "client/src/components/AuthDialog.tsx",
+        "client/src/components/AvatarBadge.tsx",
+        "client/src/components/ComposeDialog.tsx",
+        "client/src/components/ImageCropDialog.tsx",
+        "client/src/components/MessagesView.tsx",
+        "client/src/components/PostCard.tsx",
+        "client/src/components/PostDetailDialog.tsx",
+        "client/src/components/ProfileDialog.tsx",
+        "client/src/components/ProfileView.tsx",
+        "client/src/components/ui/button.tsx",
+        "client/src/components/ui/dialog.tsx",
+        "client/src/components/ui/input.tsx",
+        "client/src/index.css",
+        "client/src/lib/api.ts",
+        "client/src/lib/image-crop.ts",
+        "client/src/lib/utils.ts",
+        "client/src/main.tsx",
+        "client/src/pages/AdminPage.tsx",
+        "client/src/pages/CommunityPage.tsx",
+        "docs/iterations/run-96e1a2ad-prd.md",
+        "docs/iterations/run-96e1a2ad-spec.json",
+        "docs/iterations/run-f8b35bdc-prd.md",
+        "docs/iterations/run-f8b35bdc-spec.json",
+        "docs/prd.md",
+        "docs/spec.json",
+        "migrations/0001_init.sql",
+        "migrations/0002_social_profile_dm.sql",
+        "package.json",
+        "playwright.config.ts",
+        "postcss.config.js",
+        "src/index.ts",
+        "src/lib/admin-config.ts",
+        "src/lib/cookies.ts",
+        "src/lib/crypto.ts",
+        "src/lib/validation.ts",
+        "src/routes/admin.ts",
+        "src/routes/auth.ts",
+        "src/routes/messages.ts",
+        "src/routes/posts.ts",
+        "src/routes/uploads.ts",
+        "src/routes/users.ts",
+        "src/types.ts",
+        "tailwind.config.js",
+        "tests/e2e/run-96e1a2ad.spec.ts",
+        "tests/e2e/run-f8b35bdc.spec.ts",
+        "tsconfig.json",
+        "vite.config.ts",
+        "wrangler.toml"
+      ],
+      "packageJsonSnippet": "{\n  \"name\": \"atd-v1-community\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"dev\": \"npm run build:client && wrangler dev --port 8787 --ip 127.0.0.1\",\n    \"dev:client\": \"vite\",\n    \"build:client\": \"vite build\",\n    \"build\": \"vite build\",\n    \"typecheck\": \"tsc --noEmit\",\n    \"db:migrate:local\": \"wrangler d1 migrations apply DB --local\",\n    \"test:e2e\": \"playwright test\"\n  },\n  \"dependencies\": {\n    \"@radix-ui/react-dialog\": \"^1.1.6\",\n    \"@radix-ui/react-slot\": \"^1.1.2\",\n    \"@radix-ui/react-tabs\": \"^1.1.3\",\n    \"class-variance-authority\": \"^0.7.1\",\n    \"clsx\": \"^2.1.1\",\n    \"hono\": \"^4.7.4\",\n    \"lucide-react\": \"^0.475.0\",\n    \"react\": \"^18.3.1\",\n    \"react-dom\": \"^18.3.1\",\n    \"react-easy-crop\": \"^6.2.5\",\n    \"tailwind-merge\": \"^3.0.2\"\n  },\n  \"devDependencies\": {\n    \"@cloudflare/workers-types\": \"^5.20261119.1\",\n    \"@playwright/test\": \"^1.50.1\",\n    \"@types/react\": \"^18.3.18\",\n    \"@types/react-dom\": \"^18.3.5\",\n    \"@vitejs/plugin-react\": \"^4.3.4\",\n    \"autoprefixer\": \"^10.4.20\",\n    \"postcss\": \"^8.5.1\",\n    \"tailwindcss\": \"^3.4.17\",\n    \"typescript\": \"^5.7.3\",\n    \"vite\": \"^6.1.0\",\n    \"wrangler\": \"^4.16.0\"\n  }\n}\n",
+      "wranglerConfigSnippet": "name = \"atd-v1-community\"\nmain = \"src/index.ts\"\ncompatibility_date = \"2025-02-04\"\n\n[assets]\ndirectory = \"dist/client\"\nbinding = \"ASSETS\"\nnot_found_handling = \"single-page-application\"\nrun_worker_first = [\"/api/*\"]\n\n[[d1_databases]]\nbinding = \"DB\"\ndatabase_name = \"atd-v1-community-db\"\ndatabase_id = \"00000000-0000-0000-0000-000000000000\"\nmigrations_dir = \"migrations\"\n",
+      "existingMigrations": [
+        {
+          "path": "migrations/0001_init.sql",
+          "snippet": "-- Idempotent initial schema for atd-v1 community\n\nCREATE TABLE IF NOT EXISTS users (\n  id TEXT PRIMARY KEY,\n  email TEXT NOT NULL UNIQUE,\n  nickname TEXT NOT NULL,\n  avatar_seed TEXT NOT NULL,\n  created_at TEXT NOT NULL,\n  updated_at TEXT NOT NULL\n);\n\nCREATE TABLE IF NOT EXISTS email_otps (\n  id TEXT PRIMARY KEY,\n  email TEXT NOT NULL,\n  code_hash TEXT NOT NULL,\n  attempts INTEGER NOT NULL DEFAULT 0,\n  consumed INTEGER NOT NULL DEFAULT 0,\n  expires_at TEXT NOT NULL,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_email_otps_lookup\n  ON email_otps (email, consumed, created_at DESC);\n\nCREATE TABLE IF NOT EXISTS sessions (\n  id TEXT PRIMARY KEY,\n  user_id TEXT NOT NULL,\n  token_hash TEXT NOT NULL UNIQUE,\n  expires_at TEXT NOT NULL,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_sessions_token_hash\n  ON sessions (token_hash);\n\nCREATE INDEX IF NOT EXISTS idx_sessions_user_id\n  ON sessions (user_id);\n\nCREATE TABLE IF NOT EXISTS admin_config (\n  id INTEGER PRIMARY KEY CHECK (id = 1),\n  password_hash TEXT NOT NULL,\n  is_default_password INTEGER NOT NULL DEFAULT 1,\n  resend_api_key TEXT NOT NULL DEFAULT '',\n  resend_from_email TEXT NOT NULL DEFAULT 'onboarding@resend.dev',\n  site_name TEXT NOT NULL DEFAULT '拾光集 · 轻图文社区',\n  failed_attempts INTEGER NOT NULL DEFAULT 0,\n  locked_until TEXT,\n  updated_at TEXT NOT NULL\n);\n\nCREATE TABLE IF NOT EXISTS admin_sessions (\n  id TEXT PRIMARY KEY,\n  token_hash TEXT NOT NULL UNIQUE,\n  expires_at TEXT NOT NULL,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_admin_sessions_token_hash\n  ON admin_sessions (token_hash);\n\nCREATE TABLE IF NOT EXISTS posts (\n  id TEXT PRIMARY KEY,\n  author_id TEXT NOT NULL,\n  title TEXT NOT NULL,\n  content TEXT NOT NULL,\n  image_url TEXT NOT NULL DEFAULT '',\n  tags_json TEXT\n... (已截断)"
+        },
+        {
+          "path": "migrations/0002_social_profile_dm.sql",
+          "snippet": "-- Incremental idempotent schema for social profile, follows, comment replies, and direct messages\n\nCREATE TABLE IF NOT EXISTS user_profiles (\n  user_id TEXT PRIMARY KEY,\n  avatar_url TEXT NOT NULL DEFAULT '',\n  bio TEXT NOT NULL DEFAULT '',\n  updated_at TEXT NOT NULL\n);\n\nCREATE TABLE IF NOT EXISTS user_follows (\n  follower_id TEXT NOT NULL,\n  following_id TEXT NOT NULL,\n  created_at TEXT NOT NULL,\n  PRIMARY KEY (follower_id, following_id)\n);\n\nCREATE INDEX IF NOT EXISTS idx_user_follows_follower\n  ON user_follows (follower_id, created_at DESC);\n\nCREATE INDEX IF NOT EXISTS idx_user_follows_following\n  ON user_follows (following_id, created_at DESC);\n\nCREATE TABLE IF NOT EXISTS comment_replies (\n  id TEXT PRIMARY KEY,\n  comment_id TEXT NOT NULL,\n  post_id TEXT NOT NULL,\n  author_id TEXT NOT NULL,\n  reply_to_user_id TEXT,\n  content TEXT NOT NULL,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_comment_replies_comment\n  ON comment_replies (comment_id, created_at ASC);\n\nCREATE INDEX IF NOT EXISTS idx_comment_replies_post\n  ON comment_replies (post_id, created_at ASC);\n\nCREATE INDEX IF NOT EXISTS idx_comment_replies_author\n  ON comment_replies (author_id, created_at DESC);\n\nCREATE TABLE IF NOT EXISTS direct_messages (\n  id TEXT PRIMARY KEY,\n  conversation_key TEXT NOT NULL,\n  sender_id TEXT NOT NULL,\n  receiver_id TEXT NOT NULL,\n  content TEXT NOT NULL,\n  is_read INTEGER NOT NULL DEFAULT 0,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_dm_conv_created\n  ON direct_messages (conversation_key, created_at ASC);\n\nCREATE INDEX IF NOT EXISTS idx_dm_receiver_read\n  ON direct_messages (receiver_id, is_read, sender_id, created_at DESC);\n\nCREATE INDEX IF NOT EXISTS idx_dm_sender_created\n  ON direct_messages (sender_id, created_at DESC);\n"
+        }
+      ],
+      "existingE2eTests": [
+        "tests/e2e/run-96e1a2ad.spec.ts",
+        "tests/e2e/run-f8b35bdc.spec.ts"
+      ],
+      "previousSpecSummary": "{\n  \"schemaVersion\": \"1.1\",\n  \"generatedBy\": \"AutoDev Studio\",\n  \"runId\": \"run-96e1a2ad\",\n  \"createdAt\": \"2026-11-22T12:35:02.093Z\",\n  \"repository\": \"jiangfengwhu/atd-v1\",\n  \"baseBranch\": \"main\",\n  \"baseCommitSha\": \"2a03951ec121e44e47b75618f0abafd3a3a6ee85\",\n  \"e2eTestPath\": \"tests/e2e/run-96e1a2ad.spec.ts\",\n  \"e2eVaultPath\": \".autodev-e2e-vault/run-96e1a2ad/e2e.spec.ts\",\n  \"blindE2eVerification\": false,\n  \"archivedSpecPath\": \"docs/iterations/run-96e1a2ad-spec.json\",\n  \"prdTitle\": \"初期迭代-个人主页等\",\n  \"architecture\": {\n    \"summary\": \"基于现有 Cloudflare Workers + Hono + D1 + React 18/Vite/Tailwind CSS 架构执行增量演进，保留全部既有认证、帖子、图片上传及 /admin 隐藏后台模块与已生效迁移 migrations/0001_init.sql。数据层新增严格幂等且原子化的迁移文件 migrations/0002_social_profile_dm.sql（仅使用 CREATE TABLE IF NOT EXISTS 与 CREATE INDEX IF NOT EXISTS，零 ALTER TABLE 风险，部署前依据 D1 迁移规范核验 wrangler.toml 的 database_id 与 CI 环境变量 CLOUDFLARE_API_TOKEN），扩展 user_profiles、user_follows、comment_replies、direct_messages 四张表与查询索引。后端新增 src/routes/users.ts（个人主页聚合统计、关注/取消关注、关注与粉"
+    },
+    "architect": {
+      "ambiguities": [
+        {
+          "id": "AMB-1",
+          "severity": "high",
+          "title": "Cloudflare Workers Durable Objects 绑定与 D1 远程迁移前置校验",
+          "detail": "当前 wrangler.toml 仅配置了 D1 绑定且 database_id 为占位符（由 CI 部署流水线自动绑定），而本次需求引入 WebSocket 实时推送需在 Cloudflare Workers 上启用 Durable Objects（WebSocket Hibernation API）。此外，结合历史故障经验，执行 D1 增量迁移前必须确认 database_id 有效、迁移脚本具备幂等性及 CI 环境变量 CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID 完整。",
+          "clarificationSuggestion": "在 wrangler.toml 中采用 new_sqlite_classes = [\"UserRealtimeHub\"] 声明 SQLite 形态的 Durable Object（兼容 Workers Free 与 Paid 套餐），并在 migrations/0003_notifications.sql 中全部使用 IF NOT EXISTS 保证幂等与原子执行；部署前校验 CI 凭据及账号 Durable Objects 权限。"
+        },
+        {
+          "id": "AMB-2",
+          "severity": "medium",
+          "title": "纯文字无图动态在左右双栏详情弹窗中的左侧展示方式",
+          "detail": "现有社区支持发布不含图片的纯文字动态（imageUrl 为空）。在参考 Instagram 将动态详情弹窗改版为桌面端左右双栏结构时，需明确纯文字动态是否仍保留左侧视觉区，还是自动退化为单栏布局。",
+          "clarificationSuggestion": "桌面端对含图动态左侧采用深色居中画幅完整展示图片；对无图纯文字动态左侧展示轻质感渐变图文卡片（呈现标题、话题标签与正文导语），右侧统一保持作者栏、滚动正文与评论区及底部固定互动栏，确保视觉一致性；移动端（<768px）统一折叠为上下结构。"
+        },
+        {
+          "id": "AMB-3",
+          "severity": "medium",
+          "title": "评论二级回复归类及反复点赞/关注的防刷屏去重策略",
+          "detail": "PRD 指定了评论、点赞、新增关注三类通知，但未明确二级回复通知归属、本人操作自发提醒过滤，以及用户反复点赞/取消点赞或反复关注时的通知去重规则。",
+          "clarificationSuggestion": "将一级评论与二级回复统一归入「评论通知」（回复时同时通知被回复者与原评论作者并去重，均排除操作者本人）；本人点赞或评论自己帖子不生成通知；同一用户对同一对象的未读点赞或未读关注通知执行去重更新，取消点赞或取消关注时清理对应的未读提醒，删除帖子时同步清理该帖关联通知。"
+        },
+        {
+          "id": "AMB-4",
+          "severity": "low",
+          "title": "左侧导航栏主流社交平台风格定位与宽屏间距基准",
+          "detail": "PRD 指出当前左侧导航栏过于呆板且在宽屏下与中心动态区相隔过远，但未指定具体参考哪一家社交平台（X/小红书/Instagram）及窄屏折叠策略。",
+          "clarificationSuggestion": "参考小红书与 X 的桌面端布局，将外层改为居中最大宽度容器（max-w-[1320px] mx-auto），让轻量化左侧导航栏紧贴中心内容流（间距约 24-32px），去除生硬全高白底边框并采用胶囊悬浮高亮与醒目圆角发布按钮；同时保留现有 aside/main 语义及底部个人资料菜单，确保兼容既有回归测试。"
+        }
+      ],
+      "architectureSummary": "在现有 Cloudflare Workers + Hono + D1 + React/Vite 架构上执行纯增量演进：1）新增幂等 D1 迁移 migrations/0003_notifications.sql 建立 notifications 表与查询索引，新增 /api/notifications 路由并在点赞、评论、二级回复、关注及删帖链路接入通知生成（含自发排除与未读去重）与清理；2）引入基于 Cloudflare Durable Objects WebSocket Hibernation API 的 UserRealtimeHub（按用户 ID 分片、支持 ping/pong 自动休眠响应与多端广播），通过 /api/ws 提供经 HttpOnly 会话 Cookie 鉴权与 Origin 校验的实时通道，写入仍走现有可靠 REST 接口并即时推送 notification:new、notification:read、dm:new、dm:read 事件，彻底移除前端所有 setInterval 轮询定时器；3）重构 CommunityPage 桌面布局为居中紧凑容器并焕新左侧导航栏与新增「通知」入口及通知中心视图；4）将 PostDetailDialog 桌面端改版为 Instagram 风格左图右文双栏结构（左侧媒体展示、右侧固定头部+独立滚动正文评论区+底部固定点赞与评论输入栏），移动端平滑折叠为上下结构。",
+      "techDecisions": [
+        "Durable Objects WebSocket Hibernation 实时中枢：使用 new_sqlite_classes = [\"UserRealtimeHub\"] 声明每用户专属 Durable Object，利用 ctx.acceptWebSocket 与 setWebSocketAutoResponse('ping', 'pong') 实现空闲休眠零计费唤醒，彻底替代 CommunityPage（15s）与 MessagesView（5s/15s）中的全部 HTTP 轮询。",
+        "写路径保持 REST + 推路径使用 WebSocket（兼容既有回归契约）：点赞、评论、关注、发私信维持现有 POST 接口落库 D1（100% 兼容既有 E2E 回归测试对 POST 201 的监听），落库成功后通过内部 pushUserEvent 向接收者与发送者多标签页的 UserRealtimeHub 即时推送事件；同时新增 POST /api/messages/with/:peerId/read 供当前打开聊天窗收到新消息时轻量回执已读。",
+        "WebSocket 安全握手顺序：GET /api/ws 严格按「会话 Cookie 鉴权（未登录 401）-> Origin 同源校验（跨站 403 防 CSWSH）-> Upgrade: websocket 协议头校验（缺失 426）」顺序拦截，绝不升级未认证连接。",
+        "D1 增量迁移合规与幂等：严禁修改已应用的 0001_init.sql 与 0002_social_profile_dm.sql，仅新增 migrations/0003_notifications.sql，全部建表与建索引语句强制使用 IF NOT EXISTS；结合 RSI 规范在部署前核验 wrangler.toml database_id 绑定与 CI CLOUDFLARE_API_TOKEN 凭据。",
+        "居中紧凑桌面布局与主流社交视觉语言：外层容器采用 max-w-[1320px] mx-auto，使左侧轻量胶囊导航栏（220-240px）与主内容流保持 24-32px 紧凑间距，解决 1440px+ 宽屏下割裂感，同时保留 aside/main 语义、底部账号菜单及零 /admin 公开链接约束。",
+        "Instagram 风格双栏图文详情弹窗：PostDetailDialog 在 md 及以上视口切换为 max-w-5xl md:flex-row md:h-[min(86vh,760px)]，左侧 58% 独立画幅展示图片（或纯文字渐变封面卡），右侧 42% 采用 flex-col 固定顶部作者栏、中部独立滚动正文与评论树、底部固定点赞与评论输入框。"
+      ],
+      "apiContracts": [
+        {
+          "id": "API-1",
+          "method": "GET",
+          "path": "/api/notifications",
+          "summary": "分页获取当前登录用户的通知列表（支持按全部/评论/点赞/关注筛选）及未读总数",
+          "requestSchema": "Query: { type?: 'all' | 'comment' | 'like' | 'follow' (default 'all'), limit?: integer 1..50 (default 30), offset?: integer >= 0 (default 0) }; Cookie: user session",
+          "responseSchema": "200 OK: { notifications: Array<{ id: string, type: 'comment' | 'like' | 'follow', isRead: boolean, contentPreview: string, createdAt: string, actor: { id: string, nickname: string, avatarSeed: string, avatarUrl: string }, post: { id: string, title: string, imageUrl: string } | null, commentId: string | null }>, total: number, unreadCount: number }",
+          "errorCodes": [
+            "400",
+            "401"
+          ]
+        },
+        {
+          "id": "API-2",
+          "method": "GET",
+          "path": "/api/notifications/unread-count",
+          "summary": "获取当前登录用户的通知未读数、私信未读数及合计未读数（页面首屏一次性初始化，避免轮询）",
+          "requestSchema": "Cookie: user session",
+          "responseSchema": "200 OK: { notificationsUnread: number, messagesUnread: number, totalUnread: number }",
+          "errorCodes": [
+            "401"
+          ]
+        },
+        {
+          "id": "API-3",
+          "method": "POST",
+          "path": "/api/notifications/read",
+          "summary": "将当前用户指定通知 ID 列表或全部通知标记为已读，并向当前用户的 WebSocket 多端推送最新未读数",
+          "requestSchema": "JSON: { all?: boolean, ids?: string[] (1..100 items, required when all !== true) }; Cookie: user session",
+          "responseSchema": "200 OK: { ok: true, unreadCount: number }",
+          "errorCodes": [
+            "400",
+            "401"
+          ]
+        },
+        {
+          "id": "API-4",
+          "method": "GET",
+          "path": "/api/ws",
+          "summary": "建立登录用户专属 WebSocket 实时长连接（路由至 UserRealtimeHub Durable Object），接收通知与私信实时推送",
+          "requestSchema": "Headers: Upgrade: websocket, Connection: Upgrade, Origin (same-host), Cookie: user session",
+          "responseSchema": "101 Switching Protocols; JSON Push Events: { type: 'connected', userId, timestamp } | { type: 'notification:new', notification, unreadCount } | { type: 'notification:read', unreadCount, ids?, all? } | { type: 'dm:new', message, sender, receiverId, totalUnread } | { type: 'dm:read', peerId, totalUnread } | { type: 'pong', timestamp }",
+          "errorCodes": [
+            "401",
+            "403",
+            "426"
+          ]
+        },
+        {
+          "id": "API-5",
+          "method": "POST",
+          "path": "/api/messages/with/:peerId/read",
+          "summary": "将与指定好友会话中的未读私信标记为已读，并通过 WebSocket 同步更新未读计数",
+          "requestSchema": "Path: peerId (string, != self); Cookie: user session",
+          "responseSchema": "200 OK: { ok: true, totalUnread: number }",
+          "errorCodes": [
+            "400",
+            "401",
+            "404"
+          ]
+        }
+      ],
+      "tasks": [
+        {
+          "id": "T-01",
+          "title": "新增通知数据表增量迁移与评论/点赞/关注通知全链路后端接口",
+          "module": "backend/notifications",
+          "description": "创建幂等增量迁移文件 migrations/0003_notifications.sql（notifications 表与 recipient/unread/post 索引，不改动历史迁移）；实现 src/routes/notifications.ts（GET /api/notifications、GET /api/notifications/unread-count、POST /api/notifications/read，严格限制 recipient_id = user.id）；在 src/routes/posts.ts（点赞、评论、二级回复、删帖清理）、src/routes/users.ts（关注/取关）与 src/routes/admin.ts（管理员删帖清理）接入通知写入、自发过滤、未读去重与级联清理，并在 src/index.ts 挂载 /api/notifications。",
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "其他用户对当前用户的图文发表评论、回复评论、点赞或新增关注后，当前用户可以在通知列表中查看到对应的提醒内容、触发人信息与发生时间。",
+            "用户可以根据全部、评论、点赞、关注四个维度筛选通知记录，并且能够单条点击标为已读或一键将全部通知标为已读，刷新页面后已读状态保持不变。",
+            "用户给自己发布的图文点赞或发表评论时，不会产生自己提醒自己的无效通知；用户反复点赞又取消点赞或取消关注时，不会堆积重复的未读提醒。",
+            "未登录访客无法查看或操作通知列表，已登录用户也无法查看或修改其他用户的通知状态；原图文被删除后，相关通知记录不会导致通知页面出错。"
+          ],
+          "estimatedComplexity": "M"
+        },
+        {
+          "id": "T-02",
+          "title": "搭建基于 Durable Objects Hibernation 的 WebSocket 实时推送中枢",
+          "module": "backend/realtime",
+          "description": "在 wrangler.toml 新增 USER_REALTIME Durable Object 绑定与 new_sqlite_classes 迁移声明，更新 src/types.ts 与 vite.config.ts（开启 ws 代理）；实现 src/realtime/user-hub.ts（UserRealtimeHub，使用 acceptWebSocket、setWebSocketAutoResponse('ping','pong') 与 /push 广播）与 src/lib/realtime.ts（安全容错 pushUserEvent）；在 src/index.ts 导出 UserRealtimeHub 并实现 GET /api/ws（严格校验登录态 401、Origin 同源 403、Upgrade 头 426）；在通知写入/已读与 src/routes/messages.ts（发私信、读私信及新增 POST /api/messages/with/:peerId/read）接入实时推送。",
+          "dependsOn": [
+            "T-01"
+          ],
+          "acceptanceCriteria": [
+            "已登录用户进入社区后自动建立后台实时消息通道，未登录访客或非法跨站来源尝试连接时会被系统拒绝。",
+            "当其他用户发送私信或触发点赞、评论、新增关注时，接收方无需手动刷新页面，系统会立即将新消息与最新未读数量推送到对方当前打开的页面。",
+            "同一账号在多个浏览器标签页同时在线时，在一个标签页中阅读通知或私信后，其他标签页的未读红点数量也会同步更新。",
+            "页面长时间静置时保持静默待机，不再周期性地频繁向服务端发起重复拉取请求。"
+          ],
+          "estimatedComplexity": "L"
+        },
+        {
+          "id": "T-03",
+          "title": "主流社交平台风格左侧导航栏改版与宽屏居中紧凑布局重构",
+          "module": "frontend/layout",
+          "description": "重构 client/src/pages/CommunityPage.tsx 的整体桌面端容器为居中最大宽度布局（max-w-[1320px] mx-auto），拉近左侧导航栏与中心动态流的间距，消除宽屏割裂感；借鉴小红书与 X 升级左侧导航栏视觉（轻透明无硬框侧栏、圆润胶囊高亮态、醒目圆角发布按钮、精致底部个人资料触发胶囊）；在桌面侧栏与移动端底部导航栏新增「通知」入口与实时未读角标，同步支持 /notifications 路径切换，并保持零 /admin 公开链接及既有账号退出菜单交互。",
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "用户在宽屏桌面浏览器打开社区首页时，左侧导航栏与中间动态流整体居中且间距自然紧凑，不再出现大片空白割裂感。",
+            "左侧导航栏视觉风格清爽现代，清晰展示动态、通知、私信、主页四个主导航入口以及醒目的发布图文按钮，当前所在板块有明确的选中高亮反馈。",
+            "用户点击左侧导航栏中的通知入口或底部个人资料菜单后，可顺畅切换到通知中心、私信、个人主页或完成退出登录，且公开页面不出现任何后台管理入口。",
+            "用户在手机等小屏设备上访问社区时，底部导航栏同步提供动态、通知、私信、主页四个入口并在有新消息时展示未读提醒标识。"
+          ],
+          "estimatedComplexity": "M"
+        },
+        {
+          "id": "T-04",
+          "title": "开发通知中心视图与前端 WebSocket 实时订阅（彻底移除轮询）",
+          "module": "frontend/realtime-notifications",
+          "description": "扩展 client/src/lib/api.ts 增加通知相关类型与方法及私信单会话已读方法；新增 client/src/lib/realtime.ts 封装单实例 WebSocket 管理器（自动指数退避重连、可见态心跳保活、登出即断开、类型化事件订阅）；新增 client/src/components/NotificationsView.tsx 实现全部/评论/点赞/关注标签筛选、未读高亮、全部标为已读及点击直达对应图文详情或用户主页；在 CommunityPage.tsx 与 MessagesView.tsx 中接入实时事件流并彻底删除全部 setInterval 定时轮询代码。",
+          "dependsOn": [
+            "T-01",
+            "T-02",
+            "T-03"
+          ],
+          "acceptanceCriteria": [
+            "用户进入通知页面后，可直观浏览评论、点赞与新增关注三类通知，支持按分类切换查看以及一键清空全部未读状态。",
+            "用户点击评论通知或点赞通知后，自动标记该条为已读并直接弹出对应图文的详情窗口；点击新增关注通知后，自动标记已读并跳转到对方的个人主页。",
+            "用户停留在社区首页、通知页或私信聊天页时，他人发来的新通知和新私信会实时出现在对应列表与未读红点中，无需刷新页面即可立即看到。",
+            "用户在私信界面与好友聊天过程中，新消息即时上屏且未读数实时清零，整个社区在静置期间不会持续产生重复刷新闪烁或后台频繁拉取。"
+          ],
+          "estimatedComplexity": "M"
+        },
+        {
+          "id": "T-05",
+          "title": "动态详情弹窗改版为 Instagram 风格左右双栏结构",
+          "module": "frontend/post-detail",
+          "description": "重构 client/src/components/PostDetailDialog.tsx：桌面端（>=768px）采用宽幅左右分栏弹窗，左侧约 58% 为沉浸式媒体展示区（含图动态居中完整展示原图、无图纯文字动态展示优雅渐变文字封面卡），右侧约 42% 为垂直三段式信息互动区（顶部固定作者头像昵称与删除/操作栏、中部独立滚动展示标题正文标签与嵌套评论回复列表、底部固定点赞按钮与评论输入框）；移动端（<768px）自动折叠为上下流式布局，完整保留点赞、删帖、一级评论、二级回复与点击作者进主页全部能力。",
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "用户在桌面端点击任意图文动态卡片后，详情弹窗以左图右文的左右双栏结构打开，左侧清晰完整地呈现图片内容，右侧有序呈现作者信息、正文与评论互动区。",
+            "当图文包含较多评论时，用户在右侧区域上下滚动浏览评论和回复期间，右侧顶部的作者信息与底部的点赞和评论输入栏保持固定便于随时操作，左侧图片区域保持稳定不动。",
+            "用户在右侧互动区点赞、发表评论、回复他人评论或点击作者头像访问主页后，页面状态实时更新并正确保存；作者本人仍可正常删除自己的图文。",
+            "用户查看纯文字无图动态或在手机小屏打开图文详情弹窗时，页面依然排版美观协调、内容完整可见且无横向裁切或按钮遮挡。"
+          ],
+          "estimatedComplexity": "M"
+        }
+      ]
+    },
+    "qaSpec": {
+      "apiTestChecklist": [
+        {
+          "id": "TC-01",
+          "endpoint": "/api/notifications",
+          "method": "GET",
+          "scenario": "未登录访问通知列表应被拦截",
+          "expectedStatus": 401,
+          "assertion": "返回 401 与中文错误提示"
+        },
+        {
+          "id": "TC-02",
+          "endpoint": "/api/notifications/unread-count",
+          "method": "GET",
+          "scenario": "登录用户获取通知与私信汇总未读数",
+          "expectedStatus": 200,
+          "assertion": "返回包含 notificationsUnread、messagesUnread、totalUnread 数值字段"
+        },
+        {
+          "id": "TC-03",
+          "endpoint": "/api/notifications",
+          "method": "GET",
+          "scenario": "他人关注、点赞、评论后查询通知列表及按类型筛选",
+          "expectedStatus": 200,
+          "assertion": "返回对应 follow、like、comment 通知且按 type 筛选结果准确，unreadCount 正确递增"
+        },
+        {
+          "id": "TC-04",
+          "endpoint": "/api/notifications/read",
+          "method": "POST",
+          "scenario": "单条与全部标记通知为已读",
+          "expectedStatus": 200,
+          "assertion": "返回 ok: true，unreadCount 正确递减并最终清零"
+        },
+        {
+          "id": "TC-05",
+          "endpoint": "/api/ws",
+          "method": "GET",
+          "scenario": "已登录用户发起 WebSocket 升级连接",
+          "expectedStatus": 101,
+          "assertion": "成功升级为 WebSocket 并可接收实时推送事件"
+        },
+        {
+          "id": "TC-06",
+          "endpoint": "/api/messages/with/:peerId/read",
+          "method": "POST",
+          "scenario": "已登录用户标记与指定好友的会话私信已读",
+          "expectedStatus": 200,
+          "assertion": "返回 ok: true 且 totalUnread 更新"
+        }
+      ],
+      "e2eTestCode": "import { test, expect, type APIRequestContext } from '@playwright/test';\n\nconst PNG_32X32 = Buffer.from(\n  'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKklEQVR4nGP4Yh9HU8QwasGoBaMWjFowasGoBaMWjFowasGoBaMWDBULAN4gRFtH0KHXAAAAAElFTkSuQmCC',\n  'base64'\n);\n\nfunction makeEmail(prefix: string): string {\n  const rand = Math.random().toString(36).slice(2, 7);\n  return `${prefix}-${Date.now()}-${rand}@example.com`;\n}\n\nasync function loginUser(\n  request: APIRequestContext,\n  email: string,\n  nickname: string\n): Promise<{ id: string; email: string; nickname: string }> {\n  const sendRes = await request.post('/api/auth/send-code', { data: { email } });\n  expect(sendRes.status()).toBe(200);\n  const sendJson = await sendRes.json();\n  const verifyRes = await request.post('/api/auth/verify-code', {\n    data: { email, code: sendJson.devCode, nickname },\n  });\n  expect(verifyRes.status()).toBe(200);\n  return (await verifyRes.json()).user;\n}\n\ntest.describe.serial('通知、导航栏改版、左右详情与 WebSocket 草案测试', () => {\n  test('1. 通知基础流程与左侧导航展示', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1280, height: 800 });\n    const ctxB = await browser.newContext();\n    try {\n      const userA = await loginUser(page.request, makeEmail('draft-a'), '作者甲');\n      await loginUser(ctxB.request, makeEmail('draft-b'), '访客乙');\n\n      const postRes = await page.request.post('/api/posts', {\n        data: { title: `草案帖-${Date.now()}`, content: '正文测试' },\n      });\n      const postId = (await postRes.json()).post.id;\n\n      await ctxB.request.post(`/api/users/${userA.id}/follow`);\n      await ctxB.request.post(`/api/posts/${postId}/like`);\n      await ctxB.request.post(`/api/posts/${postId}/comments`, { data: { content: '很棒的分享' } });\n\n      await page.goto('/');\n      const sidebar = page.locator('aside, nav').first();\n      const notifNav = sidebar\n        .getByRole('button', { name: /通知/ })\n        .or(sidebar.getByRole('link', { name: /通知/ }))\n        .first();\n      await expect(notifNav).toBeVisible();\n      await notifNav.click();\n      await expect(page.getByText('很棒的分享').first()).toBeVisible();\n    } finally {\n      await ctxB.close();\n    }\n  });\n\n  test('2. 动态详情左右结构与图片评论展示', async ({ page }) => {\n    await page.setViewportSize({ width: 1280, height: 800 });\n    await loginUser(page.request, makeEmail('draft-detail'), '摄影师');\n    const upload = await page.request.post('/api/uploads', {\n      multipart: { file: { name: 'p.png', mimeType: 'image/png', buffer: PNG_32X32 } },\n    });\n    const { url } = await upload.json();\n    const title = `双栏测试-${Date.now()}`;\n    await page.request.post('/api/posts', {\n      data: { title, content: '图文测试内容', imageUrl: url },\n    });\n    await page.goto('/');\n    await page.getByText(title).first().click();\n    const dialog = page.getByRole('dialog').first();\n    await expect(dialog).toBeVisible();\n    await expect(dialog.getByText(title).first()).toBeVisible();\n  });\n});\n",
+      "coverageNotes": [
+        "覆盖左侧导航栏新增「通知」入口及通知中心基础展示",
+        "覆盖评论、点赞、新增关注三类通知触发与查询接口",
+        "覆盖含图动态打开详情弹窗与基础展示",
+        "覆盖 WebSocket 实时连接与私信单会话已读接口契约"
+      ]
+    },
+    "qaCritic": {
+      "reviewSummary": "初版 QA Spec 仅覆盖了通知和详情页的基础正向路径，在以下关键维度存在明显盲区：1）缺少 WebSocket 未认证拦截（401）、非升级请求拦截（426）与跨站 Origin 劫持防护（403）校验；2）缺少通知跨用户越权已读隔离（IDOR）与自发操作免打扰边界校验；3）缺少通知筛选非法参数、分页越界、空已读体与删帖后通知清理校验；4）缺少量化验证宽屏下左侧导航栏与中心内容区紧凑间距、Instagram 左右双栏详情几何坐标、以及静置期间零 HTTP 轮询网络审计。现已在最终清单与盲测 E2E 套件中全面加固，并严格确保全部组合定位器追加 .first() 与 D1 迁移幂等合规。",
+      "findings": [
+        {
+          "id": "CRIT-01",
+          "category": "security",
+          "severity": "high",
+          "issue": "WebSocket 端点 /api/ws 缺少未登录拒绝、非升级请求拦截及跨站 WebSocket 劫持（CSWSH）安全测试",
+          "recommendation": "补充未登录请求 /api/ws 返回 401、携带伪造跨站 Origin 返回 403、已登录但不带 Upgrade: websocket 头返回 426 的自动化校验，确保实时通道零未授权暴露。"
+        },
+        {
+          "id": "CRIT-02",
+          "category": "security",
+          "severity": "high",
+          "issue": "通知已读接口与列表接口未验证跨用户权限隔离（IDOR）",
+          "recommendation": "引入第三用户上下文 C，校验 C 既无法在通知列表中看到 A 的通知，也无法通过 POST /api/notifications/read 传入 A 的通知 ID 篡改 A 的未读状态。"
+        },
+        {
+          "id": "CRIT-03",
+          "category": "boundary",
+          "severity": "medium",
+          "issue": "缺少本人点赞/评论免自发通知、取消点赞/关注去重清理以及删帖后关联通知清理的边界覆盖",
+          "recommendation": "增加作者本人点赞与评论自身帖子后未读数保持为 0 的断言，增加删帖后查询通知接口仍返回 200 且不残留失效关联记录的验证。"
+        },
+        {
+          "id": "CRIT-04",
+          "category": "invalid_input",
+          "severity": "medium",
+          "issue": "通知查询与已读接口缺少非法枚举值、越界分页及空请求体校验",
+          "recommendation": "补充 GET /api/notifications?type=invalid、limit=0/100、offset=-1 以及 POST /api/notifications/read 传空对象 {} 或空数组 { ids: [] } 均返回 400 的测试项。"
+        },
+        {
+          "id": "CRIT-05",
+          "category": "ui_interaction",
+          "severity": "high",
+          "issue": "初版 E2E 未量化校验宽屏导航栏与中心流紧凑间距、Instagram 左右详情几何结构以及“零轮询”核心验收目标",
+          "recommendation": "在 1440x900 视口下验证 aside 与 main 水平间距紧凑（<= 140px）；在 1280x800 视口下验证详情弹窗内左侧图片坐标严格位于右侧评论输入区左侧；挂载网络请求监听器在静置 7 秒窗口内断言对 /api/messages/ 与 /api/notifications 的轮询请求数为 0，并校验 390x844 移动端适配。"
+        },
+        {
+          "id": "CRIT-06",
+          "category": "concurrency",
+          "severity": "medium",
+          "issue": "双端实时推送存在 WebSocket 握手未完成即触发事件的竞态风险，且需确保增量 D1 迁移幂等与全量定位器防严格模式冲突",
+          "recommendation": "在触发跨用户点赞/评论/关注/私信前通过 waitForEvent('websocket') 确保 /api/ws 握手完成，随后在不刷新页面前提下验证前端实时更新；严格检查所有 .or() 链尾部追加 .first()；在部署前按 RSI D1 规范核验 database_id、幂等脚本与 CI 凭据。"
+        }
+      ],
+      "finalApiTestChecklist": [
+        {
+          "id": "TC-01",
+          "endpoint": "/api/notifications",
+          "method": "GET",
+          "scenario": "未登录访问通知列表、未读数汇总与标记已读接口",
+          "expectedStatus": 401,
+          "assertion": "三个通知端点在无有效会话 Cookie 时均返回 401"
+        },
+        {
+          "id": "TC-02",
+          "endpoint": "/api/notifications",
+          "method": "GET",
+          "scenario": "传入非法 type=invalid、limit=0、limit=100、offset=-1 参数",
+          "expectedStatus": 400,
+          "assertion": "全部非法筛选或分页参数均被 400 拒绝"
+        },
+        {
+          "id": "TC-03",
+          "endpoint": "/api/notifications/read",
+          "method": "POST",
+          "scenario": "传入空对象 {} 或空数组 { ids: [] } 标记已读",
+          "expectedStatus": 400,
+          "assertion": "返回 400 参数错误提示"
+        },
+        {
+          "id": "TC-04",
+          "endpoint": "/api/notifications",
+          "method": "GET",
+          "scenario": "作者本人点赞并评论自己的帖子后查询通知",
+          "expectedStatus": 200,
+          "assertion": "不产生自发通知，notifications 不含本人操作且 unreadCount 为 0"
+        },
+        {
+          "id": "TC-05",
+          "endpoint": "/api/notifications",
+          "method": "GET",
+          "scenario": "用户 B 关注用户 A、点赞并评论用户 A 帖子后，用户 A 分别按 all/comment/like/follow 查询",
+          "expectedStatus": 200,
+          "assertion": "三类通知均准确落库并返回完整 actor/post/contentPreview 信息，分类筛选结果严格匹配对应类型"
+        },
+        {
+          "id": "TC-06",
+          "endpoint": "/api/notifications/read",
+          "method": "POST",
+          "scenario": "跨用户越权隔离：用户 C 尝试标记用户 A 的通知 ID 为已读",
+          "expectedStatus": 200,
+          "assertion": "仅允许更新本人名下通知，用户 A 的对应通知仍保持未读状态且 unreadCount 不受影响"
+        },
+        {
+          "id": "TC-07",
+          "endpoint": "/api/notifications/read",
+          "method": "POST",
+          "scenario": "用户 A 先单条标记已读，再调用 { all: true } 全部标为已读",
+          "expectedStatus": 200,
+          "assertion": "单条已读后 unreadCount 减 1，全部已读后 unreadCount 归零且 /api/notifications/unread-count 一致"
+        },
+        {
+          "id": "TC-08",
+          "endpoint": "/api/posts/:id",
+          "method": "DELETE",
+          "scenario": "作者删除已产生点赞和评论通知的帖子后重新查询通知",
+          "expectedStatus": 200,
+          "assertion": "删帖成功且关联失效通知被清理，GET /api/notifications 正常返回 200 无脏引用"
+        },
+        {
+          "id": "TC-09",
+          "endpoint": "/api/ws",
+          "method": "GET",
+          "scenario": "WebSocket 握手安全边界：未登录 401、跨站 Origin 403、已登录缺少 Upgrade 头 426",
+          "expectedStatus": 401,
+          "assertion": "严格按 401 -> 403 -> 426 顺序拦截非法握手请求，合法浏览器升级返回 101"
+        },
+        {
+          "id": "TC-10",
+          "endpoint": "/api/messages/with/:peerId/read",
+          "method": "POST",
+          "scenario": "标记指定好友会话私信已读（含未登录 401、自己 400、不存在用户 404、正常 200）",
+          "expectedStatus": 200,
+          "assertion": "权限与边界校验完备，正常调用后 totalUnread 立即清零"
+        }
+      ],
+      "finalE2eTestCode": "import { test, expect, type APIRequestContext } from '@playwright/test';\n\nconst PNG_32X32 = Buffer.from(\n  'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKklEQVR4nGP4Yh9HU8QwasGoBaMWjFowasGoBaMWjFowasGoBaMWDBULAN4gRFtH0KHXAAAAAElFTkSuQmCC',\n  'base64'\n);\n\nfunction makeEmail(prefix: string): string {\n  const rand = Math.random().toString(36).slice(2, 7);\n  return `${prefix}-${Date.now()}-${rand}@example.com`;\n}\n\nasync function loginUser(\n  request: APIRequestContext,\n  email: string,\n  nickname: string\n): Promise<{ id: string; email: string; nickname: string }> {\n  const sendRes = await request.post('/api/auth/send-code', { data: { email } });\n  expect(sendRes.status(), 'send-code 应返回 200').toBe(200);\n  const sendJson = await sendRes.json();\n  expect(sendJson.devCode).toMatch(/^\\d{6}$/);\n\n  const verifyRes = await request.post('/api/auth/verify-code', {\n    data: { email, code: sendJson.devCode, nickname },\n  });\n  expect(verifyRes.status(), 'verify-code 应返回 200').toBe(200);\n  const verifyJson = await verifyRes.json();\n  expect(verifyJson.ok).toBe(true);\n  return verifyJson.user;\n}\n\ntest.describe.serial('通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件', () => {\n  test('1. 宽屏左侧导航栏改版、居中紧凑间距几何审计与通知入口验证', async ({ page }) => {\n    const pageErrors: string[] = [];\n    page.on('pageerror', (err) => pageErrors.push(err.message));\n    await page.setViewportSize({ width: 1440, height: 900 });\n\n    const healthRes = await page.request.get('/api/health');\n    expect(healthRes.status()).toBe(200);\n    expect((await healthRes.json()).ok).toBe(true);\n\n    const nick = `宽屏体验官${Date.now().toString().slice(-4)}`;\n    await loginUser(page.request, makeEmail('layout-nav'), nick);\n\n    await page.goto('/');\n    await expect(page.locator('body')).toBeVisible();\n    // 守护隐藏管理路由：公开社区禁止任何 /admin 链接\n    await expect(page.locator('a[href=\"/admin\"]')).toHaveCount(0);\n    await expect(page.locator('a[href=\"/admin/\"]')).toHaveCount(0);\n\n    const sidebar = page.locator('aside').first();\n    const mainArea = page.locator('main').first();\n    await expect(sidebar).toBeVisible({ timeout: 10000 });\n    await expect(mainArea).toBeVisible({ timeout: 10000 });\n\n    const sidebarBox = await sidebar.boundingBox();\n    const mainBox = await mainArea.boundingBox();\n    expect(sidebarBox, '左侧导航栏应具备可见几何尺寸').not.toBeNull();\n    expect(mainBox, '主内容区应具备可见几何尺寸').not.toBeNull();\n    if (sidebarBox && mainBox) {\n      expect(sidebarBox.x).toBeLessThan(mainBox.x);\n      const horizontalGap = mainBox.x - (sidebarBox.x + sidebarBox.width);\n      expect(horizontalGap, '左侧导航栏与中心动态区应紧邻不重叠').toBeGreaterThanOrEqual(-12);\n      expect(horizontalGap, '1440px宽屏下左侧导航栏与主内容区间距应紧凑自然(<=140px)').toBeLessThanOrEqual(140);\n    }\n\n    // 验证主导航包含 动态、通知、私信、主页 四项入口\n    const feedNav = sidebar\n      .getByRole('button', { name: /动态/ })\n      .or(sidebar.getByRole('link', { name: /动态/ }))\n      .first();\n    const notifNav = sidebar\n      .getByRole('button', { name: /通知/ })\n      .or(sidebar.getByRole('link', { name: /通知/ }))\n      .first();\n    const dmNav = sidebar\n      .getByRole('button', { name: /私信/ })\n      .or(sidebar.getByRole('link', { name: /私信/ }))\n      .first();\n    const homeNav = sidebar\n      .getByRole('button', { name: /主页/ })\n      .or(sidebar.getByRole('link', { name: /主页/ }))\n      .first();\n\n    await expect(feedNav).toBeVisible();\n    await expect(notifNav).toBeVisible();\n    await expect(dmNav).toBeVisible();\n    await expect(homeNav).toBeVisible();\n\n    await notifNav.click();\n    await expect(mainArea).toBeVisible();\n    await feedNav.click();\n    expect(pageErrors, '导航改版与切换过程不应存在前端未捕获异常').toEqual([]);\n  });\n\n  test('2. 通知模块全链路 API 契约、防自发、参数边界、跨用户隔离与删帖清理', async ({ page, browser }) => {\n    const ctxB = await browser.newContext();\n    const ctxC = await browser.newContext();\n    const anonCtx = await browser.newContext();\n    try {\n      // 未登录访问通知与汇总未读接口必须返回 401\n      expect((await anonCtx.request.get('/api/notifications')).status()).toBe(401);\n      expect((await anonCtx.request.get('/api/notifications/unread-count')).status()).toBe(401);\n      expect((await anonCtx.request.post('/api/notifications/read', { data: { all: true } })).status()).toBe(401);\n\n      const userA = await loginUser(page.request, makeEmail('notif-a'), '创作者小光');\n      const userB = await loginUser(ctxB.request, makeEmail('notif-b'), '互动好友小雨');\n      await loginUser(ctxC.request, makeEmail('notif-c'), '无关旁观者小风');\n\n      // 非法参数与空请求体边界校验\n      expect((await page.request.get('/api/notifications?type=invalid')).status()).toBe(400);\n      expect((await page.request.get('/api/notifications?limit=0')).status()).toBe(400);\n      expect((await page.request.get('/api/notifications?limit=100')).status()).toBe(400);\n      expect((await page.request.get('/api/notifications?offset=-1')).status()).toBe(400);\n      expect((await page.request.post('/api/notifications/read', { data: {} })).status()).toBe(400);\n      expect((await page.request.post('/api/notifications/read', { data: { ids: [] } })).status()).toBe(400);\n\n      // 用户 A 发布一篇帖子，并对自己帖子点赞和评论 -> 不应产生任何自发通知\n      const postTitle = `通知校验图文-${Date.now()}`;\n      const postRes = await page.request.post('/api/posts', {\n        data: { title: postTitle, content: '测试评论、点赞与关注通知闭环' },\n      });\n      expect(postRes.status()).toBe(201);\n      const postId = (await postRes.json()).post.id;\n\n      expect((await page.request.post(`/api/posts/${postId}/like`)).status()).toBe(200);\n      expect(\n        (await page.request.post(`/api/posts/${postId}/comments`, { data: { content: '作者自评' } })).status()\n      ).toBe(201);\n\n      const selfNotifJson = await (await page.request.get('/api/notifications')).json();\n      expect(selfNotifJson.unreadCount, '本人点赞与评论自身帖子不得生成自发通知').toBe(0);\n      expect(selfNotifJson.notifications.length).toBe(0);\n\n      // 用户 B 对用户 A 执行：关注、点赞、评论\n      expect((await ctxB.request.post(`/api/users/${userA.id}/follow`)).status()).toBe(200);\n      expect((await ctxB.request.post(`/api/posts/${postId}/like`)).status()).toBe(200);\n      const bComment = `来自好友的精彩评论-${Date.now()}`;\n      const bCommentRes = await ctxB.request.post(`/api/posts/${postId}/comments`, {\n        data: { content: bComment },\n      });\n      expect(bCommentRes.status()).toBe(201);\n\n      // 验证全部通知列表包含 comment、like、follow 三类且未读数 >= 3\n      const allNotifRes = await page.request.get('/api/notifications?type=all');\n      expect(allNotifRes.status()).toBe(200);\n      const allNotif = await allNotifRes.json();\n      expect(allNotif.unreadCount).toBeGreaterThanOrEqual(3);\n      const types = new Set(allNotif.notifications.map((n: { type: string }) => n.type));\n      expect(types.has('comment')).toBe(true);\n      expect(types.has('like')).toBe(true);\n      expect(types.has('follow')).toBe(true);\n\n      // 验证按分类筛选准确返回对应类型\n      for (const filterType of ['comment', 'like', 'follow'] as const) {\n        const filteredRes = await page.request.get(`/api/notifications?type=${filterType}`);\n        expect(filteredRes.status()).toBe(200);\n        const filtered = await filteredRes.json();\n        expect(filtered.notifications.length).toBeGreaterThanOrEqual(1);\n        expect(\n          filtered.notifications.every((n: { type: string }) => n.type === filterType),\n          `type=${filterType} 筛选结果不得混入其他类型`\n        ).toBe(true);\n      }\n\n      // 汇总未读计数校验\n      const unreadSummary = await (await page.request.get('/api/notifications/unread-count')).json();\n      expect(unreadSummary.notificationsUnread).toBe(allNotif.unreadCount);\n\n      // 跨用户安全隔离（IDOR 防护）：用户 C 不可读取且不可标记用户 A 的通知为已读\n      const notifC = await (await ctxC.request.get('/api/notifications')).json();\n      expect(JSON.stringify(notifC)).not.toContain(bComment);\n      const firstNotifIdA = allNotif.notifications[0].id as string;\n      await ctxC.request.post('/api/notifications/read', { data: { ids: [firstNotifIdA] } });\n      const afterIdorAttempt = await (await page.request.get('/api/notifications')).json();\n      const targetStillUnread = afterIdorAttempt.notifications.find(\n        (n: { id: string; isRead: boolean }) => n.id === firstNotifIdA\n      );\n      expect(targetStillUnread?.isRead, '他人越权标记已读不得影响目标用户通知状态').toBe(false);\n\n      // 用户 A 单条标为已读 -> 再一键全部标为已读\n      const readOneRes = await page.request.post('/api/notifications/read', {\n        data: { ids: [firstNotifIdA] },\n      });\n      expect(readOneRes.status()).toBe(200);\n      const readOneJson = await readOneRes.json();\n      expect(readOneJson.unreadCount).toBe(allNotif.unreadCount - 1);\n\n      const readAllRes = await page.request.post('/api/notifications/read', { data: { all: true } });\n      expect(readAllRes.status()).toBe(200);\n      expect((await readAllRes.json()).unreadCount).toBe(0);\n\n      // 删帖后关联通知应被清理且列表查询正常\n      expect((await page.request.delete(`/api/posts/${postId}`)).status()).toBe(200);\n      const afterDeleteNotifRes = await page.request.get('/api/notifications');\n      expect(afterDeleteNotifRes.status()).toBe(200);\n      const afterDeleteNotif = await afterDeleteNotifRes.json();\n      expect(\n        afterDeleteNotif.notifications.some((n: { post?: { id: string } | null }) => n.post?.id === postId),\n        '删除帖子后不应残留指向已删除帖子的通知'\n      ).toBe(false);\n    } finally {\n      await ctxB.close();\n      await ctxC.close();\n      await anonCtx.close();\n    }\n  });\n\n  test('3. WebSocket 握手安全边界、通知实时推送与零 HTTP 轮询网络审计', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1280, height: 800 });\n    const ctxB = await browser.newContext();\n    const anonCtx = await browser.newContext();\n    try {\n      // 未登录请求 /api/ws 必须返回 401\n      const anonWsRes = await anonCtx.request.get('/api/ws');\n      expect(anonWsRes.status(), '未登录访问 /api/ws 必须返回 401').toBe(401);\n\n      const userA = await loginUser(page.request, makeEmail('ws-notif-a'), '实时接收者A');\n      await loginUser(ctxB.request, makeEmail('ws-notif-b'), '实时触发者B');\n\n      // 已登录但未携带 Upgrade: websocket 头应返回 426（或 400）\n      const nonUpgradeRes = await page.request.get('/api/ws');\n      expect([400, 426]).toContain(nonUpgradeRes.status());\n\n      // 伪造跨站 Origin 尝试握手应被 403（或 426）拒绝\n      const crossOriginRes = await page.request.get('/api/ws', {\n        headers: { Origin: 'https://evil-attacker.example' },\n      });\n      expect([403, 426]).toContain(crossOriginRes.status());\n\n      const postRes = await page.request.post('/api/posts', {\n        data: { title: `WS推送测试帖-${Date.now()}`, content: '验证无需轮询实时推送' },\n      });\n      const postId = (await postRes.json()).post.id;\n\n      // 在加载页面前监听浏览器建立的 /api/ws 连接\n      const wsPromise = page.waitForEvent('websocket', (ws) => ws.url().includes('/api/ws'));\n      await page.goto('/');\n      const ws = await wsPromise;\n      expect(ws.url()).toContain('/api/ws');\n\n      // 首屏初始化稳定后，开启 7 秒静置期网络审计（超过旧版 5 秒轮询周期），断言零轮询\n      await page.waitForTimeout(1500);\n      const polledUrls: string[] = [];\n      const onRequest = (req: { url: () => string; method: () => string }) => {\n        const u = req.url();\n        if (\n          req.method() === 'GET' &&\n          (u.includes('/api/messages/') || u.includes('/api/notifications'))\n        ) {\n          polledUrls.push(u);\n        }\n      };\n      page.on('request', onRequest);\n      await page.waitForTimeout(7000);\n      page.off('request', onRequest);\n      expect(polledUrls, '静置期间严禁对通知或私信接口发起 HTTP 轮询').toEqual([]);\n\n      // 进入通知页，在不刷新页面的前提下由用户 B 触发新评论与新关注，断言页面实时渲染\n      const sidebar = page.locator('aside').first();\n      const notifNav = sidebar\n        .getByRole('button', { name: /通知/ })\n        .or(sidebar.getByRole('link', { name: /通知/ }))\n        .first();\n      await notifNav.click();\n\n      const liveComment = `WS实时评论推送-${Date.now()}`;\n      expect((await ctxB.request.post(`/api/users/${userA.id}/follow`)).status()).toBe(200);\n      expect(\n        (await ctxB.request.post(`/api/posts/${postId}/comments`, { data: { content: liveComment } })).status()\n      ).toBe(201);\n\n      // 严禁 reload：直接断言新通知通过 WebSocket 实时呈现在页面上\n      await expect(page.getByText(liveComment).first()).toBeVisible({ timeout: 10000 });\n      await expect(page.getByText('实时触发者B').first()).toBeVisible({ timeout: 10000 });\n\n      // 点击一键全部标为已读并验证生效\n      const markAllBtn = page.getByRole('button', { name: /全部标为已读|全部已读|清空未读/i }).first();\n      if (await markAllBtn.isVisible().catch(() => false)) {\n        await markAllBtn.click();\n        await expect\n          .poll(async () => (await (await page.request.get('/api/notifications/unread-count')).json()).notificationsUnread)\n          .toBe(0);\n      }\n    } finally {\n      await ctxB.close();\n      await anonCtx.close();\n    }\n  });\n\n  test('4. 私信 WebSocket 实时收发、已读接口校验与聊天窗零轮询审计', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1280, height: 800 });\n    const ctxB = await browser.newContext();\n    const anonCtx = await browser.newContext();\n    try {\n      const userA = await loginUser(page.request, makeEmail('ws-dm-a'), '私信接收方A');\n      const userB = await loginUser(ctxB.request, makeEmail('ws-dm-b'), '私信发送方B');\n\n      // 校验新增单会话已读接口边界\n      expect((await anonCtx.request.post(`/api/messages/with/${userB.id}/read`)).status()).toBe(401);\n      expect((await page.request.post(`/api/messages/with/${userA.id}/read`)).status()).toBe(400);\n      expect((await page.request.post('/api/messages/with/non-existent-peer/read')).status()).toBe(404);\n\n      // 先建立一条初始私信，使会话出现在列表中\n      const firstMsg = `开场问候-${Date.now()}`;\n      expect(\n        (await ctxB.request.post(`/api/messages/with/${userA.id}`, { data: { content: firstMsg } })).status()\n      ).toBe(201);\n\n      const wsPromise = page.waitForEvent('websocket', (ws) => ws.url().includes('/api/ws'));\n      await page.goto('/');\n      await wsPromise;\n\n      const sidebar = page.locator('aside').first();\n      const dmNav = sidebar\n        .getByRole('button', { name: /私信/ })\n        .or(sidebar.getByRole('link', { name: /私信/ }))\n        .first();\n      await dmNav.click();\n\n      const peerItem = page.getByText(userB.nickname).first();\n      await expect(peerItem).toBeVisible({ timeout: 10000 });\n      await peerItem.click();\n      await expect(page.getByText(firstMsg).first()).toBeVisible({ timeout: 10000 });\n\n      // 聊天窗打开稳定后审计 7 秒内零 HTTP 轮询请求\n      await page.waitForTimeout(1500);\n      const dmPolled: string[] = [];\n      const onDmReq = (req: { url: () => string; method: () => string }) => {\n        if (req.method() === 'GET' && req.url().includes('/api/messages/')) {\n          dmPolled.push(req.url());\n        }\n      };\n      page.on('request', onDmReq);\n      await page.waitForTimeout(7000);\n      page.off('request', onDmReq);\n      expect(dmPolled, '私信聊天窗口静置期间严禁发生 HTTP 轮询').toEqual([]);\n\n      // 用户 B 再次发送一条新私信，用户 A 页面不刷新直接通过 WebSocket 实时收到并渲染\n      const liveDm = `WebSocket秒达私信-${Date.now()}`;\n      expect(\n        (await ctxB.request.post(`/api/messages/with/${userA.id}`, { data: { content: liveDm } })).status()\n      ).toBe(201);\n      await expect(page.getByText(liveDm).first()).toBeVisible({ timeout: 10000 });\n    } finally {\n      await ctxB.close();\n      await anonCtx.close();\n    }\n  });\n\n  test('5. 动态详情页 Instagram 风格左右双栏几何结构、互动闭环与移动端适配', async ({ page }) => {\n    await page.setViewportSize({ width: 1280, height: 800 });\n    await loginUser(page.request, makeEmail('ig-detail'), '视觉摄影师');\n\n    const uploadRes = await page.request.post('/api/uploads', {\n      multipart: {\n        file: { name: 'ig-photo.png', mimeType: 'image/png', buffer: PNG_32X32 },\n      },\n    });\n    expect(uploadRes.status()).toBe(201);\n    const { url: imageUrl } = await uploadRes.json();\n\n    const postTitle = `Instagram双栏美学-${Date.now()}`;\n    const postContent = '桌面端左侧沉浸式展示图片，右侧独立滚动正文与评论，底部固定互动输入栏。';\n    const createRes = await page.request.post('/api/posts', {\n      data: { title: postTitle, content: postContent, imageUrl, tags: ['摄影美学'] },\n    });\n    expect(createRes.status()).toBe(201);\n\n    await page.goto('/');\n    await expect(page.getByText(postTitle).first()).toBeVisible({ timeout: 10000 });\n    await page.getByText(postTitle).first().click();\n\n    const dialog = page.getByRole('dialog').first();\n    await expect(dialog).toBeVisible({ timeout: 10000 });\n    await expect(dialog.getByText(postTitle).first()).toBeVisible();\n    await expect(dialog.getByText(postContent).first()).toBeVisible();\n\n    // 几何验证：桌面端详情弹窗为宽幅左右双栏结构（图片在左，评论输入互动区在右）\n    const dialogImg = dialog\n      .locator(`img[src=\"${imageUrl}\"]`)\n      .or(dialog.getByRole('img', { name: postTitle }))\n      .first();\n    const commentInput = dialog\n      .getByPlaceholder(/评论|说点什么|共鸣|留言/i)\n      .or(dialog.locator('input[type=\"text\"], input:not([type]), textarea'))\n      .first();\n\n    await expect(dialogImg).toBeVisible({ timeout: 10000 });\n    await expect(commentInput).toBeVisible({ timeout: 10000 });\n\n    const dialogBox = await dialog.boundingBox();\n    const imgBox = await dialogImg.boundingBox();\n    const inputBox = await commentInput.boundingBox();\n    expect(dialogBox).not.toBeNull();\n    expect(imgBox).not.toBeNull();\n    expect(inputBox).not.toBeNull();\n    if (dialogBox && imgBox && inputBox) {\n      expect(dialogBox.width, '桌面端双栏详情弹窗应具备充足宽度(>=700px)').toBeGreaterThanOrEqual(700);\n      expect(imgBox.x + imgBox.width, '左侧图片区应严格位于右侧评论互动区左侧').toBeLessThanOrEqual(\n        inputBox.x + 24\n      );\n    }\n\n    // 在右侧互动区发表评论并验证实时上屏\n    const detailComment = `双栏弹窗评论体验真棒-${Date.now()}`;\n    await commentInput.fill(detailComment);\n    const commentPostPromise = page.waitForResponse(\n      (res) => res.url().includes('/comments') && res.request().method() === 'POST'\n    );\n    const sendBtn = dialog.getByRole('button', { name: /发送|发布/i }).first();\n    await sendBtn.click();\n    expect((await commentPostPromise).status()).toBe(201);\n    await expect(dialog.getByText(detailComment).first()).toBeVisible({ timeout: 10000 });\n\n    // 关闭弹窗后切换移动端视口，验证通知底部导航与详情弹窗无溢出适配\n    await page.keyboard.press('Escape');\n    await expect(dialog).toBeHidden({ timeout: 5000 });\n\n    await page.setViewportSize({ width: 390, height: 844 });\n    const mobileNav = page.getByRole('navigation', { name: /移动端导航/i }).or(page.locator('nav').last()).first();\n    await expect(mobileNav.getByText(/通知/).first()).toBeVisible({ timeout: 10000 });\n\n    await page.getByText(postTitle).first().click();\n    const mobileDialog = page.getByRole('dialog').first();\n    await expect(mobileDialog).toBeVisible({ timeout: 10000 });\n    const mobileDialogBox = await mobileDialog.boundingBox();\n    expect(mobileDialogBox).not.toBeNull();\n    if (mobileDialogBox) {\n      expect(mobileDialogBox.width, '移动端详情弹窗不得超出屏幕宽度').toBeLessThanOrEqual(390);\n    }\n  });\n});\n"
+    },
+    "planTokenUsage": {
+      "inputTokens": 58452,
+      "outputTokens": 22732,
+      "totalTokens": 81184,
+      "source": "estimated",
+      "model": "gemini-4-neon-high"
+    },
+    "status": "analyzed",
+    "checkedCriteriaIds": []
+  },
+  {
     "id": "run-96e1a2ad",
     "createdAt": "2026-11-22T12:35:02.093Z",
     "repoFullName": "jiangfengwhu/atd-v1",
