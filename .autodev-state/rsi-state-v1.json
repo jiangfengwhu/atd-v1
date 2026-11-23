@@ -278,7 +278,36 @@
       "relatedRunId": "run-7026568c",
       "branch": "main",
       "occurredAt": "2026-11-23T04:11:02.070Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "build_typecheck",
+        "rootCauseSummary": "执行 npm run build:client 时，vite.config.ts 引用的 vite 与 @vitejs/plugin-react 无法被解析，导致构建失败，通常是 package.json 缺失对应构建依赖声明或未在构建环境中正确安装。",
+        "shouldCodifyAsRule": true,
+        "decisionRationale": "Decision 门控判定与现有规则语义重叠（重复度 98%），执行合并强化而非新增条目。 该问题直接印证了前端构建配置文件与 package.json 依赖声明强一致性的通用工程规范，需通过既有规则持续强化，避免构建与部署阶段因依赖缺失中断。",
+        "confidence": 0.98,
+        "suggestedRule": {
+          "title": "前端构建依赖显式声明与校验",
+          "targetStage": "coding",
+          "severity": "critical",
+          "promptDirective": "在配置或修改前端构建文件（如 vite.config.ts）时，必须确保所引用的构建工具与插件（如 vite、@vitejs/plugin-react）已显式声明在当前项目的 package.json 中，并在交付前执行完整构建命令验证依赖可正常解析。",
+          "dedupeKey": "frontend-build-dependency-declaration"
+        },
+        "decisionGate": {
+          "model": "gemini-decision-1",
+          "generalizableProb": 0.9475,
+          "duplicateProb": 0.9837,
+          "generalityScore": 2.433,
+          "chosenAction": "merge_existing",
+          "actionConfidence": 0.9763,
+          "matchedRuleId": "rsi-ee034fd2",
+          "matchedRuleConfidence": 0.9909,
+          "evaluatedAt": "2026-11-23T04:11:11.148Z"
+        },
+        "appliedOutcome": "merged",
+        "mergedIntoRuleId": "rsi-ee034fd2",
+        "analyzedAt": "2026-11-23T04:11:11.148Z",
+        "model": "gemini-4-hydrogen + gemini-decision-1"
+      }
     },
     {
       "id": "inc-24c19fc8",
@@ -565,12 +594,13 @@
       "rootCauseCategory": "env_infra",
       "sourceIncidentIds": [
         "inc-ff64add6",
-        "inc-24c19fc8"
+        "inc-24c19fc8",
+        "inc-0db76386"
       ],
-      "hitCount": 2,
+      "hitCount": 3,
       "appliedCount": 0,
       "createdAt": "2026-11-23T04:05:44.249Z",
-      "updatedAt": "2026-11-23T04:09:13.048Z"
+      "updatedAt": "2026-11-23T04:11:11.149Z"
     },
     {
       "id": "rsi-192e5828",
