@@ -278,7 +278,34 @@
       "relatedRunId": "run-7026568c",
       "branch": "main",
       "occurredAt": "2026-11-23T04:05:30.109Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "env_infra",
+        "rootCauseSummary": "执行 npm run build:client 时，vite.config.ts 无法解析 vite 与 @vitejs/plugin-react 模块（ERR_MODULE_NOT_FOUND），导致 Cloudflare 部署前的前端构建失败，通常是项目依赖未在当前目录完整安装或 package.json 缺失对应构建依赖所致。",
+        "shouldCodifyAsRule": true,
+        "decisionRationale": "Decision 门控放行立即生效（通用性 95% · 泛化评分 2.35/3.0）：高危系统性工程防线，直接注入下游 Prompt。 该故障暴露了前端构建配置文件所引用的核心依赖未在当前项目上下文中正确声明或安装验证的共性工程问题。将其固化为规则可确保后续在编写或校验构建配置时，显式检查 package.json 依赖完整性并执行构建验证，避免部署阶段因缺包失败。",
+        "confidence": 0.95,
+        "suggestedRule": {
+          "title": "前端构建依赖显式声明与校验",
+          "targetStage": "coding",
+          "severity": "critical",
+          "promptDirective": "在配置或修改前端构建文件（如 vite.config.ts）时，必须确保所引用的构建工具与插件（如 vite、@vitejs/plugin-react）已显式声明在当前项目的 package.json 中，并在交付前执行完整构建命令验证依赖可正常解析。",
+          "dedupeKey": "frontend-build-dependency-declaration"
+        },
+        "decisionGate": {
+          "model": "gemini-decision-1",
+          "generalizableProb": 0.9485,
+          "duplicateProb": 0.0918,
+          "generalityScore": 2.346,
+          "chosenAction": "create_critical_active",
+          "actionConfidence": 0.8102,
+          "evaluatedAt": "2026-11-23T04:05:44.249Z"
+        },
+        "appliedOutcome": "active_created",
+        "analyzedAt": "2026-11-23T04:05:44.249Z",
+        "model": "gemini-4-hydrogen + gemini-decision-1",
+        "generatedRuleId": "rsi-ee034fd2"
+      }
     },
     {
       "id": "inc-d243c87f",
@@ -472,6 +499,23 @@
     }
   ],
   "rules": [
+    {
+      "id": "rsi-ee034fd2",
+      "dedupeKey": "frontend-build-dependency-declaration",
+      "title": "前端构建依赖显式声明与校验",
+      "targetStage": "coding",
+      "severity": "critical",
+      "status": "active",
+      "promptDirective": "在配置或修改前端构建文件（如 vite.config.ts）时，必须确保所引用的构建工具与插件（如 vite、@vitejs/plugin-react）已显式声明在当前项目的 package.json 中，并在交付前执行完整构建命令验证依赖可正常解析。",
+      "rootCauseCategory": "env_infra",
+      "sourceIncidentIds": [
+        "inc-ff64add6"
+      ],
+      "hitCount": 1,
+      "appliedCount": 0,
+      "createdAt": "2026-11-23T04:05:44.249Z",
+      "updatedAt": "2026-11-23T04:05:44.249Z"
+    },
     {
       "id": "rsi-192e5828",
       "dedupeKey": "module-path-dependency-integrity",
