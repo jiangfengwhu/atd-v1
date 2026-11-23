@@ -1,0 +1,16 @@
+{
+  "jobId": "job-9d8b5995",
+  "repoFullName": "jiangfengwhu/atd-v1",
+  "baseBranch": "main",
+  "prdTitle": "动态改版",
+  "prdContent": "1. 主页动态展示形态变更，我们要做内容社区，做成列表形式吧，类似x.com的展示形态，同时添加点击统计、收藏，分享功能，分享的动态可以通过url直接跳转\n2. 主页排版右侧增加导航，类似x.com的热门话题，推荐关注\n3. 支持多账号切换",
+  "effectiveTechStack": "React + Vite + TypeScript (Cloudflare Workers Static Assets) + Hono API on Cloudflare Workers + Cloudflare D1 (SQLite) + Cloudflare KV",
+  "isDefaultCloudflare": true,
+  "agyModel": "gemini-4-neon-high",
+  "createdAt": "2026-11-23T16:07:01.042Z",
+  "rsiSystemPrompts": {
+    "architect": "",
+    "qa_spec": "",
+    "qa_critic": "=== RSI 系统自进化强约束规则 (QA Critic 边界评审 · 已自动注入 1 条历史经验) ===\n以下规则均由系统经 Decision 门控筛选并从历史真实故障中提炼，本轮必须严格遵守以避免重复踩坑：\n1. [CRITICAL] (环境与网络异常 · 触发 2 次) Cloudflare D1 迁移规范：在执行 Cloudflare Workers D1 迁移前，必须先验证：1. wrangler.toml 中 database_id 已正确配置；2. 迁移脚本应保持原子性且具备幂等性；3. CI 环境环境变量已包含有效的 CLOUDFLARE_API_TOKEN 及对应的账户…"
+  }
+}
