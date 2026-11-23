@@ -2,7 +2,7 @@
   {
     "id": "job-9d8b5995",
     "createdAt": "2026-11-23T16:07:01.042Z",
-    "updatedAt": "2026-11-23T16:13:49.789Z",
+    "updatedAt": "2026-11-23T16:14:00.126Z",
     "repoFullName": "jiangfengwhu/atd-v1",
     "defaultBranch": "main",
     "prdTitle": "动态改版",
@@ -11,31 +11,37 @@
     "planMode": "unified_single_turn",
     "agyModel": "gemini-4-neon-high",
     "agyMode": "auto",
-    "status": "running",
+    "status": "completed",
     "steps": [
       {
         "id": "architect",
         "label": "01. Architect Agent",
         "roleTitle": "读取仓库真实代码 · 增量架构 · 任务树",
-        "status": "running",
+        "status": "completed",
         "startedAt": "2026-11-23T16:07:31.924Z",
-        "message": "单对话联合规划中：正在阅读代码库并一次性生成架构方案、API 契约与原子任务树…"
+        "message": "单对话完成 · 识别 4 项歧义、5 项增量任务",
+        "completedAt": "2026-11-23T16:13:52.921Z",
+        "durationMs": 380998
       },
       {
         "id": "qa_spec",
         "label": "02. QA Spec Agent",
         "roleTitle": "结合现有路由与历史测试 · Playwright 初版",
-        "status": "running",
+        "status": "completed",
         "startedAt": "2026-11-23T16:07:31.924Z",
-        "message": "同会话同步产出接口测试清单与初版 Playwright E2E 脚本…"
+        "completedAt": "2026-11-23T16:13:52.921Z",
+        "durationMs": 380998,
+        "message": "单对话完成 · 生成 11 条接口用例与初版 E2E 测试"
       },
       {
         "id": "qa_critic",
         "label": "03. QA Critic Agent",
         "roleTitle": "边界异常评审 · 锁定独立只读回归测试集",
-        "status": "running",
+        "status": "completed",
         "startedAt": "2026-11-23T16:07:31.924Z",
-        "message": "同会话完成盲测安全评审并输出终版加固 E2E 套件…"
+        "completedAt": "2026-11-23T16:13:52.921Z",
+        "durationMs": 380998,
+        "message": "单对话完成 · 提出 7 项加固意见并锁定盲测 E2E 测试集"
       }
     ],
     "repoContext": {
@@ -137,7 +143,1121 @@
     },
     "planChannelBranch": "autodev-plan-channel",
     "planActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45212839201",
-    "planActionsRunId": 45212839201
+    "tokenUsage": {
+      "inputTokens": 63031,
+      "outputTokens": 24512,
+      "totalTokens": 87543,
+      "source": "estimated",
+      "model": "gemini-4-neon-high"
+    },
+    "planActionsRunId": 45212839201,
+    "architect": {
+      "ambiguities": [
+        {
+          "id": "AMB-1",
+          "severity": "medium",
+          "title": "动态点击统计的计数口径（累计点击与去重规则）",
+          "detail": "PRD 提出添加动态点击统计，但未明确同一用户多次打开同一条动态是每次打开均累计（PV 口径），还是按用户/浏览器在时间窗口内去重（UV 口径）。",
+          "clarificationSuggestion": "建议首期采用原子累加 PV 口径：每次用户点击进入动态详情或通过分享链接直接访问该动态时计数加一，并在前端避免开发模式下单次打开重复上报；后续如有防刷诉求再补充时间窗口去重。"
+        },
+        {
+          "id": "AMB-2",
+          "severity": "medium",
+          "title": "收藏列表的查看入口与隐私可见范围",
+          "detail": "PRD 要求增加收藏功能，未说明用户收藏后的内容在何处集中查看，以及他人访问某用户主页时是否可以查看其收藏列表。",
+          "clarificationSuggestion": "建议参照 X.com 习惯：在个人主页新增「收藏」标签页集中展示已收藏动态，且收藏列表仅账号本人可见，防止泄露用户个人偏好隐私。"
+        },
+        {
+          "id": "AMB-3",
+          "severity": "low",
+          "title": "右侧热门话题与推荐关注的排序规则与冷启动兜底",
+          "detail": "PRD 要求主页右侧增加类似 X.com 的热门话题与推荐关注模块，未约定热度计算权重及社区内容较少时的冷启动展示策略。",
+          "clarificationSuggestion": "建议热门话题优先基于真实动态标签的发帖数与互动量（点赞、评论、点击）加权排序，标签不足时以社区预设推荐话题补齐；推荐关注排除当前登录用户本人及已关注对象，按粉丝数与活跃发帖数降序推荐。"
+        },
+        {
+          "id": "AMB-4",
+          "severity": "medium",
+          "title": "多账号切换的并发账号上限与退出登录行为",
+          "detail": "PRD 要求支持多账号切换，未明确同一浏览器允许同时保持登录的最大账号数，以及多账号登录状态下点击退出登录是仅退出当前账号还是退出全部账号。",
+          "clarificationSuggestion": "建议同一浏览器最多托管 5 个已验证账号会话；单账号登录时直接展示「退出登录」，多账号登录时提供「退出当前账号」（自动切换至剩余已登录账号）与「退出全部账号」两个选项。"
+        }
+      ],
+      "architectureSummary": "在现有 Cloudflare Workers + Hono + D1 + Durable Objects + React/Vite 轻图文社区架构上进行严格增量演进，完全保留既有 0001~0003 迁移、通知中心、私信实时推送、图片裁剪及隐藏 /admin 管理后台。\n1. 数据层：新增幂等迁移 migrations/0004_feed_revamp_bookmarks_accounts.sql，通过独立 post_metrics 表（存储 views_count、bookmarks_count、shares_count）与 post_bookmarks 表实现零侵入扩展，避免对既有 posts 表执行非幂等 ALTER TABLE；并在用户删帖与后台删帖事务中级联清理关联统计与收藏记录。\n2. 业务接口层：扩展 src/routes/posts.ts 序列化输出及新增点击（POST /api/posts/:id/view）、收藏切换（POST /api/posts/:id/bookmark）、分享记录（POST /api/posts/:id/share）接口；扩展 src/routes/users.ts 支持本人专属收藏列表（tab=bookmarks）；新增 src/routes/discover.ts 提供基于 D1 json_each 实时聚合的热门话题（GET /api/discover/topics）与推荐关注（GET /api/discover/recommended-users）；扩展 src/routes/auth.ts 与 src/lib/cookies.ts，采用纯 HttpOnly 多账号会话托管 Cookie（session_vault，上限 5 个已验证会话令牌，绝不向前端脚本暴露凭证）实现账号列表查询（GET /api/auth/accounts）、安全无感切换（POST /api/auth/switch）与分级退出（POST /api/auth/logout）。\n3. 前端与路由层：将 CommunityPage.tsx 升级为 X.com 风格三栏布局（左侧主导航 <aside> + 居中单列动态信息流 <main> + 右侧发现导航 <aside>），严格保持左侧导航与主内容区紧凑间距以兼容既往布局契约；重构 PostCard.tsx 为单列时间线形态并内置评论/点赞/收藏/点击数/分享互动栏；新增 /posts/:id 前端直达路由与 PostDetailDialog 联动，支持分享链接直接打开目标动态并记录点击；左下角账号菜单集成多账号列表、即时切换、添加其他账号（复用 AuthDialog OTP 流程）与账号切换时自动断开重连 WebSocket（UserRealtimeHub）及全视图状态刷新。",
+      "techDecisions": [
+        "遵循 Cloudflare D1 迁移幂等与原子性规范：保留 0001~0003 既有迁移不变，0004 迁移仅使用 CREATE TABLE IF NOT EXISTS 与 CREATE INDEX IF NOT EXISTS 新建 post_metrics 和 post_bookmarks 表，避免 ALTER TABLE 重复列风险；部署前需确认 wrangler.toml 的 database_id 绑定配置及 CI 环境中 CLOUDFLARE_API_TOKEN、CLOUDFLARE_ACCOUNT_ID 凭证完整有效。",
+        "多账号切换采用全服务端 HttpOnly Cookie 托管方案（session_token 标记当前激活会话 + session_vault 托管最多 5 个已验证会话令牌），严禁在 localStorage 持久化凭证；切换接口强制校验目标 userId 归属当前浏览器有效托管会话，杜绝跨账号越权接管。",
+        "账号切换时主动调用 realtimeClient.disconnect() 后重新握手 /api/ws，确保 Durable Object UserRealtimeHub 立即切换至目标账号通道，并同步刷新动态流 likedByMe/bookmarkedByMe、未读通知私信数与右侧推荐关注列表。",
+        "动态详情直达 URL 采用 /posts/:id 路径，利用 wrangler.toml 既有的 single-page-application 回退机制直接加载应用并弹出 PostDetailDialog，既实现分享 URL 直达又保持既往点击卡片弹出双栏详情弹窗的交互与几何一致性。",
+        "三栏布局保持左侧导航为 DOM 中第一个 <aside>、居中动态流为 <main>、右侧热门话题与推荐关注为 <main> 之后的第二个 <aside>（lg 宽屏展示），确保既有左栏与主区紧凑间距不被破坏且小屏无横向溢出。",
+        "点击统计采用显式 POST /api/posts/:id/view 原子自增，保持 GET /api/posts/:id 纯只读无副作用；前端在单次打开动态详情或直达 /posts/:id 时防抖上报一次，避免 React 严格模式重复计数。"
+      ],
+      "apiContracts": [
+        {
+          "id": "API-1",
+          "method": "POST",
+          "path": "/api/posts/:id/view",
+          "summary": "记录动态点击/浏览次数（支持访客与登录用户，原子累加 views_count）",
+          "requestSchema": "{}",
+          "responseSchema": "{ ok: true, viewsCount: number }",
+          "errorCodes": [
+            "404"
+          ]
+        },
+        {
+          "id": "API-2",
+          "method": "POST",
+          "path": "/api/posts/:id/bookmark",
+          "summary": "切换当前登录用户对指定动态的收藏/取消收藏状态并同步更新收藏计数",
+          "requestSchema": "{}",
+          "responseSchema": "{ ok: true, bookmarked: boolean, bookmarksCount: number }",
+          "errorCodes": [
+            "401",
+            "404"
+          ]
+        },
+        {
+          "id": "API-3",
+          "method": "POST",
+          "path": "/api/posts/:id/share",
+          "summary": "记录动态分享次数并返回可直达的站内分享路径（支持访客与登录用户）",
+          "requestSchema": "{}",
+          "responseSchema": "{ ok: true, sharesCount: number, sharePath: string }",
+          "errorCodes": [
+            "404"
+          ]
+        },
+        {
+          "id": "API-4",
+          "method": "GET",
+          "path": "/api/posts/:id",
+          "summary": "获取单条动态详情及评论树（增量扩展返回点击数、收藏数、分享数及当前用户收藏态；GET /api/posts 列表同结构扩展）",
+          "requestSchema": "Path param: id (string)",
+          "responseSchema": "{ post: { id, title, content, imageUrl, tags, likesCount, commentsCount, viewsCount, bookmarksCount, sharesCount, likedByMe, bookmarkedByMe, author, createdAt }, comments: CommentItem[] }",
+          "errorCodes": [
+            "404"
+          ]
+        },
+        {
+          "id": "API-5",
+          "method": "GET",
+          "path": "/api/users/:id/activity",
+          "summary": "个人主页活动记录增量支持 tab=bookmarks 查询收藏动态列表（收藏列表仅本人有权读取）",
+          "requestSchema": "Query: tab=posts|likes|comments|replies|bookmarks, limit?: 1..50, offset?: >=0",
+          "responseSchema": "{ tab: string, items: PostItem[] | CommentActivityItem[] | ReplyActivityItem[], total: number }",
+          "errorCodes": [
+            "400",
+            "401",
+            "403",
+            "404"
+          ]
+        },
+        {
+          "id": "API-6",
+          "method": "GET",
+          "path": "/api/discover/topics",
+          "summary": "获取右侧导航热门话题列表（按真实动态标签发帖数与互动热度加权排序，冷启动补齐预设话题）",
+          "requestSchema": "Query: limit?: integer (1..12, default 6)",
+          "responseSchema": "{ topics: Array<{ tag: string, postsCount: number, heatScore: number }> }",
+          "errorCodes": [
+            "400"
+          ]
+        },
+        {
+          "id": "API-7",
+          "method": "GET",
+          "path": "/api/discover/recommended-users",
+          "summary": "获取右侧导航推荐关注创作者列表（排除当前用户本人与已关注对象，严禁返回用户邮箱）",
+          "requestSchema": "Query: limit?: integer (1..10, default 5)",
+          "responseSchema": "{ users: Array<{ id: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string, followersCount: number, postsCount: number, isFollowing: boolean }> }",
+          "errorCodes": [
+            "400"
+          ]
+        },
+        {
+          "id": "API-8",
+          "method": "GET",
+          "path": "/api/auth/accounts",
+          "summary": "获取当前浏览器多账号托管列表中全部有效已登录账号及当前激活账号 ID",
+          "requestSchema": "Cookie: session_token, session_vault (HttpOnly)",
+          "responseSchema": "{ activeUserId: string | null, accounts: Array<{ id: string, email: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string, createdAt: string, isActive: boolean }> }",
+          "errorCodes": []
+        },
+        {
+          "id": "API-9",
+          "method": "POST",
+          "path": "/api/auth/switch",
+          "summary": "将当前激活登录态切换为本浏览器已验证托管的其他账号",
+          "requestSchema": "{ userId: string }",
+          "responseSchema": "{ ok: true, user: AuthUser, accounts: AccountSummary[] }",
+          "errorCodes": [
+            "400",
+            "401",
+            "403"
+          ]
+        },
+        {
+          "id": "API-10",
+          "method": "POST",
+          "path": "/api/auth/logout",
+          "summary": "扩展退出登录：支持退出当前账号（若仍有其他已登录账号则自动切换至下一个有效账号）、移除指定托管账号或一键退出全部账号",
+          "requestSchema": "{ userId?: string, all?: boolean } (optional body)",
+          "responseSchema": "{ ok: true, activeUser: AuthUser | null, accounts: AccountSummary[] }",
+          "errorCodes": [
+            "403"
+          ]
+        }
+      ],
+      "tasks": [
+        {
+          "id": "T-01",
+          "title": "新增动态统计与收藏增量数据库迁移",
+          "module": "database",
+          "description": "创建幂等、原子的增量迁移文件 migrations/0004_feed_revamp_bookmarks_accounts.sql（不改动 0001~0003 既有迁移）：使用 CREATE TABLE IF NOT EXISTS 建立 post_metrics（post_id 主键、views_count、bookmarks_count、shares_count、updated_at）与 post_bookmarks（post_id 与 user_id 联合主键、created_at）及相关查询索引。同步核验 wrangler.toml 的 D1 database_id 绑定规范与本地/CI 迁移执行流程（wrangler d1 migrations apply DB --local 及部署工作流 CLOUDFLARE_API_TOKEN 校验），确保新旧数据平滑兼容且可重复安全执行。",
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "社区升级后，原有历史动态、评论、点赞、关注、私信与通知数据完整保留，不会丢失或损坏",
+            "任意历史动态与新发布动态默认具备点击数、收藏数与分享数统计能力，且初始数值准确显示为零",
+            "用户收藏或浏览动态后刷新页面或重新打开站点，相关统计数据与收藏记录保持持久不丢失"
+          ],
+          "estimatedComplexity": "S"
+        },
+        {
+          "id": "T-02",
+          "title": "实现动态点击统计、收藏、分享与本人收藏列表后端能力",
+          "module": "backend",
+          "description": "增量扩展 src/routes/posts.ts：更新 PostRow 与 serializePost，在 GET /api/posts、POST /api/posts 与 GET /api/posts/:id 中左连接 post_metrics 与 post_bookmarks 返回 viewsCount、bookmarksCount、sharesCount、bookmarkedByMe；新增 POST /api/posts/:id/view（访客/登录均可原子自增点击数）、POST /api/posts/:id/bookmark（需登录，事务式防并发切换收藏状态并维护计数）、POST /api/posts/:id/share（访客/登录均可累加分享数并返回 sharePath: /posts/:id）。在 src/routes/posts.ts（DELETE /:id）与 src/routes/admin.ts（DELETE /posts/:id）删帖批处理中同步清理 post_bookmarks 与 post_metrics。扩展 src/routes/users.ts：GET /:id 对本人返回 bookmarksCount，GET /:id/activity 新增 tab=bookmarks 仅允许账号本人访问（未登录返回 401，跨用户访问返回 403）。",
+          "dependsOn": [
+            "T-01"
+          ],
+          "acceptanceCriteria": [
+            "用户或未登录访客每次打开动态详情后，该动态的点击次数准确加一并实时同步展示",
+            "已登录用户可以对任意动态点击收藏与取消收藏，收藏计数随之加一或减一，未登录用户尝试收藏时会收到登录引导",
+            "用户或未登录访客触发分享操作后，该动态的分享次数准确加一并生成可直接访问该动态的专属分享链接",
+            "已登录用户可在自己的个人主页查看按收藏时间倒序排列的全部收藏动态，其他用户无法查看或窃取他人的隐私收藏列表",
+            "当作者或管理员删除某条动态后，该动态不再出现在任何用户的收藏列表中，访问其分享链接也会友好提示内容不存在"
+          ],
+          "estimatedComplexity": "M"
+        },
+        {
+          "id": "T-03",
+          "title": "实现右侧发现导航后端接口（热门话题与推荐关注）",
+          "module": "backend",
+          "description": "新建 src/routes/discover.ts 并在 src/index.ts 挂载至 /api/discover：实现 GET /api/discover/topics（校验 limit 范围 1..12，利用 D1 json_each(p.tags_json) 结合 post_metrics 统计各话题发帖量与互动热度并排序，社区冷启动标签不足时用预设精选话题兜底补齐）；实现 GET /api/discover/recommended-users（校验 limit 范围 1..10，排除当前登录用户自身及已关注用户，按粉丝数与发帖数降序返回推荐创作者公开信息，严格剔除 email 字段保护隐私）。",
+          "dependsOn": [
+            "T-01"
+          ],
+          "acceptanceCriteria": [
+            "首页右侧的热门话题榜单能够根据社区真实发布的话题标签与互动热度自动聚合排序，新发布带有热门标签的动态可即时反映在榜单中",
+            "首页右侧的推荐关注榜单会优先展示社区内活跃创作者的昵称、头像、简介与粉丝情况，不会向用户推荐自己或已经关注过的人",
+            "推荐关注列表展示的所有用户信息仅包含公开资料，严禁泄露任何用户的注册邮箱等隐私信息"
+          ],
+          "estimatedComplexity": "M"
+        },
+        {
+          "id": "T-04",
+          "title": "实现多账号安全会话托管与切换后端能力",
+          "module": "backend",
+          "description": "扩展 src/lib/cookies.ts 新增 USER_SESSION_VAULT_COOKIE（session_vault，HttpOnly、SameSite=Lax）与多令牌解析/序列化辅助函数；扩展 src/routes/auth.ts：1) verify-code 登录成功后在保留其他已登录账号会话的前提下将新令牌写入 session_vault（同用户自动去重，单浏览器上限 5 个账号）并置为当前 session_token；2) 新增 GET /api/auth/accounts 返回当前浏览器全部有效托管账号与 activeUserId；3) 新增 POST /api/auth/switch 校验目标 userId 必须归属当前浏览器有效托管会话（未登录返回 401，未托管账号返回 403，非法参数返回 400）后切换 session_token；4) 增强 POST /api/auth/logout，支持空请求体退出当前账号（有剩余有效账号时自动切回，无剩余时清空所有 Cookie，完全兼容单账号退出行为）以及 { all: true } 一次性退出并注销全部托管账号。",
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "用户在同一浏览器内可以依次验证并同时保持多个社区账号处于已登录状态，最多支持五个账号共存",
+            "用户在已登录的多个账号之间一键切换时，无需重复输入邮箱验证码即可立即以目标账号身份发帖、点赞、收藏、关注与收发私信",
+            "任何用户无法在未经邮箱验证的情况下冒充或切换到他人的账号，已退出的账号也无法被再次切回",
+            "多账号状态下用户可选择仅退出当前账号并自动切回其余已登录账号，或选择一键退出全部账号恢复访客状态；单账号退出体验与之前保持一致"
+          ],
+          "estimatedComplexity": "M"
+        },
+        {
+          "id": "T-05",
+          "title": "重构 X.com 风格动态列表流、右侧导航、分享直达与多账号切换前端界面",
+          "module": "frontend",
+          "description": "1) 更新 client/src/lib/api.ts 补全动态统计/收藏/分享、发现接口、个人收藏标签及多账号切换 API 封装；2) 重构 client/src/pages/CommunityPage.tsx 为 X.com 风格三栏布局（保留左侧导航为首个 <aside> 且与居中 <main> 保持紧凑间距，动态流右侧在 lg 及以上宽屏渲染发现导航 <aside> 展示「热门话题」与「推荐关注」卡片，支持点击话题筛选动态与直接一键关注/取消关注推荐用户）；3) 重构 client/src/components/PostCard.tsx 与主页信息流容器，从瀑布流改为类似 X.com 的单列纵向列表卡片形态，底部操作栏提供评论、点赞、收藏、点击统计与分享按钮（分享支持复制直达链接并弹出清晰提示）；4) 支持 /posts/:id 分享链接直达路由与 history 同步，在 PostDetailDialog.tsx 中集成点击上报、收藏与分享操作，同时保持桌面端双栏详情弹窗与移动端适配；5) 在 ProfileView.tsx 为本人主页新增「收藏」标签页并同步采用清晰列表展示；6) 升级左下角账号菜单及移动端入口，展示已登录账号列表、当前账号标识、一键切换、「添加其他账号」（复用 AuthDialog）、「退出登录/退出当前账号」与「退出全部账号」，切换账号时主动断开重连 realtimeClient 并刷新全站状态。",
+          "dependsOn": [
+            "T-02",
+            "T-03",
+            "T-04"
+          ],
+          "acceptanceCriteria": [
+            "用户打开社区首页时，中间主区域以类似 X.com 的单列纵向列表形式展示社区动态，每条动态清晰呈现作者信息、正文、配图、话题标签以及评论数、点赞数、收藏数、点击数和分享按钮",
+            "用户点击列表中的任意动态即可打开详情查看完整内容与评论，同时该动态的点击次数即时增加；在列表或详情中点击收藏按钮可即时切换收藏状态，在个人主页的收藏标签页可随时回看已收藏内容",
+            "用户点击动态上的分享按钮后，页面提示已复制分享链接且分享数增加；将分享链接发送给他人或在新窗口直接打开后，页面自动跳转并展示该条动态的完整详情，若动态不存在则友好提示并返回首页",
+            "用户在电脑宽屏浏览首页时，页面右侧展示热门话题与推荐关注模块；点击任意热门话题可快速筛选该话题下的动态，点击推荐用户旁的关注按钮可直接完成关注，点击用户名可进入其个人主页",
+            "用户点击左下角个人账号区域可查看当前已登录的所有账号列表，点击添加其他账号可登录新账号，点击列表中的其他账号可一键无感切换身份，切换后昵称头像、点赞收藏状态、通知私信未读数及实时消息通道立即同步为目标账号"
+          ],
+          "estimatedComplexity": "L"
+        }
+      ]
+    },
+    "qaSpec": {
+      "apiTestChecklist": [
+        {
+          "id": "TC-01",
+          "endpoint": "/api/posts/:id/view",
+          "method": "POST",
+          "scenario": "访客或已登录用户点击打开动态后累计点击数",
+          "expectedStatus": 200,
+          "assertion": "返回 ok: true 且 viewsCount 递增，后续查询 GET /api/posts/:id 返回一致的 viewsCount"
+        },
+        {
+          "id": "TC-02",
+          "endpoint": "/api/posts/:id/view",
+          "method": "POST",
+          "scenario": "对不存在的动态 ID 上报点击",
+          "expectedStatus": 404,
+          "assertion": "返回 404 错误提示帖子不存在"
+        },
+        {
+          "id": "TC-03",
+          "endpoint": "/api/posts/:id/bookmark",
+          "method": "POST",
+          "scenario": "未登录用户尝试收藏动态",
+          "expectedStatus": 401,
+          "assertion": "返回 401 拒绝操作"
+        },
+        {
+          "id": "TC-04",
+          "endpoint": "/api/posts/:id/bookmark",
+          "method": "POST",
+          "scenario": "已登录用户收藏动态后再次点击取消收藏",
+          "expectedStatus": 200,
+          "assertion": "首次返回 bookmarked: true 且 bookmarksCount 为 1；二次返回 bookmarked: false 且 bookmarksCount 为 0"
+        },
+        {
+          "id": "TC-05",
+          "endpoint": "/api/users/:id/activity?tab=bookmarks",
+          "method": "GET",
+          "scenario": "已登录用户查询本人个人主页收藏动态列表",
+          "expectedStatus": 200,
+          "assertion": "返回 tab: 'bookmarks' 且 items 包含已收藏动态并带 bookmarkedByMe: true"
+        },
+        {
+          "id": "TC-06",
+          "endpoint": "/api/posts/:id/share",
+          "method": "POST",
+          "scenario": "用户或访客触发分享动态",
+          "expectedStatus": 200,
+          "assertion": "返回 ok: true、sharesCount 递增且 sharePath 等于 /posts/:id"
+        },
+        {
+          "id": "TC-07",
+          "endpoint": "/api/discover/topics",
+          "method": "GET",
+          "scenario": "获取右侧导航热门话题列表",
+          "expectedStatus": 200,
+          "assertion": "返回 topics 数组，包含真实发布的动态标签及其 postsCount 与 heatScore"
+        },
+        {
+          "id": "TC-08",
+          "endpoint": "/api/discover/recommended-users",
+          "method": "GET",
+          "scenario": "已登录用户获取右侧推荐关注用户列表",
+          "expectedStatus": 200,
+          "assertion": "返回 users 数组，不包含当前登录用户本人及已关注用户"
+        },
+        {
+          "id": "TC-09",
+          "endpoint": "/api/auth/accounts",
+          "method": "GET",
+          "scenario": "同一浏览器上下文连续验证登录两个账号后查询账号列表",
+          "expectedStatus": 200,
+          "assertion": "accounts 至少包含两个账号且 activeUserId 指向最新登录账号"
+        },
+        {
+          "id": "TC-10",
+          "endpoint": "/api/auth/switch",
+          "method": "POST",
+          "scenario": "在已登录的两个账号之间一键切换",
+          "expectedStatus": 200,
+          "assertion": "返回目标账号信息，后续 GET /api/auth/me 返回切换后的账号"
+        },
+        {
+          "id": "TC-11",
+          "endpoint": "/api/auth/logout",
+          "method": "POST",
+          "scenario": "多账号状态下退出当前账号与退出全部账号",
+          "expectedStatus": 200,
+          "assertion": "退出当前账号后自动切回剩余账号；传入 all: true 后全部注销且 /api/auth/me 返回 authenticated: false"
+        }
+      ],
+      "e2eTestCode": "import { test, expect, type APIRequestContext } from '@playwright/test';\n\nfunction makeEmail(prefix: string): string {\n  const rand = Math.random().toString(36).slice(2, 7);\n  return `${prefix}-${Date.now()}-${rand}@example.com`;\n}\n\nasync function loginUser(\n  request: APIRequestContext,\n  email: string,\n  nickname: string\n): Promise<{ id: string; email: string; nickname: string }> {\n  const sendRes = await request.post('/api/auth/send-code', { data: { email } });\n  expect(sendRes.status()).toBe(200);\n  const sendJson = await sendRes.json();\n  const verifyRes = await request.post('/api/auth/verify-code', {\n    data: { email, code: sendJson.devCode, nickname },\n  });\n  expect(verifyRes.status()).toBe(200);\n  return (await verifyRes.json()).user;\n}\n\ntest.describe.serial('动态改版初版 E2E 校验套件', () => {\n  test('1. 列表形态展示、点击统计、收藏与分享链接直达', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1440, height: 900 });\n    const user = await loginUser(page.request, makeEmail('feed-revamp'), '内容创作者');\n\n    const title1 = `列表动态一-${Date.now()}`;\n    const title2 = `列表动态二-${Date.now()}`;\n    const tag = `热议话题${Date.now().toString().slice(-4)}`;\n\n    const p1 = await (await page.request.post('/api/posts', {\n      data: { title: title1, content: '第一条 X.com 风格动态正文内容', tags: [tag] },\n    })).json();\n    await page.request.post('/api/posts', {\n      data: { title: title2, content: '第二条动态用于校验单列纵向排列', tags: [tag] },\n    });\n    const postId = p1.post.id as string;\n\n    await page.goto('/');\n    const card1 = page.locator('article').filter({ hasText: title1 }).first();\n    const card2 = page.locator('article').filter({ hasText: title2 }).first();\n    await expect(card1).toBeVisible({ timeout: 10000 });\n    await expect(card2).toBeVisible({ timeout: 10000 });\n\n    const box1 = await card1.boundingBox();\n    const box2 = await card2.boundingBox();\n    expect(box1 && box2).toBeTruthy();\n    if (box1 && box2) {\n      expect(Math.abs(box1.x - box2.x)).toBeLessThanOrEqual(24);\n    }\n\n    // 收藏切换\n    const bookmarkBtn = card1.getByRole('button', { name: /收藏/i }).first();\n    await expect(bookmarkBtn).toBeVisible();\n    const bookmarkResp = page.waitForResponse(\n      (r) => r.url().includes(`/api/posts/${postId}/bookmark`) && r.request().method() === 'POST'\n    );\n    await bookmarkBtn.click();\n    expect((await bookmarkResp).status()).toBe(200);\n\n    // 分享计数与直达链接\n    const shareBtn = card1.getByRole('button', { name: /分享/i }).first();\n    await expect(shareBtn).toBeVisible();\n    const shareResp = page.waitForResponse(\n      (r) => r.url().includes(`/api/posts/${postId}/share`) && r.request().method() === 'POST'\n    );\n    await shareBtn.click();\n    expect((await shareResp).status()).toBe(200);\n\n    // 访客通过分享 URL 直达动态详情并累加点击数\n    const anonCtx = await browser.newContext();\n    try {\n      const anonPage = await anonCtx.newPage();\n      await anonPage.goto(`/posts/${postId}`);\n      await expect(anonPage.getByText(title1).first()).toBeVisible({ timeout: 10000 });\n      await expect\n        .poll(async () => (await (await page.request.get(`/api/posts/${postId}`)).json()).post.viewsCount)\n        .toBeGreaterThanOrEqual(1);\n    } finally {\n      await anonCtx.close();\n    }\n\n    // 个人主页收藏列表包含该动态\n    const bmAct = await (await page.request.get(`/api/users/${user.id}/activity?tab=bookmarks`)).json();\n    expect(bmAct.items.some((p: { id: string }) => p.id === postId)).toBe(true);\n  });\n\n  test('2. 右侧热门话题与推荐关注展示及互动', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1440, height: 900 });\n    const ctxCreator = await browser.newContext();\n    try {\n      const creatorNick = `推荐博主${Date.now().toString().slice(-4)}`;\n      await loginUser(ctxCreator.request, makeEmail('rec-creator'), creatorNick);\n      const hotTag = `精选趋势${Date.now().toString().slice(-4)}`;\n      await ctxCreator.request.post('/api/posts', {\n        data: { title: `趋势内容-${Date.now()}`, content: '用于生成热门话题', tags: [hotTag] },\n      });\n\n      await loginUser(page.request, makeEmail('rec-viewer'), '浏览者');\n      await page.goto('/');\n\n      await expect(page.getByText(/热门话题/).first()).toBeVisible({ timeout: 10000 });\n      await expect(page.getByText(/推荐关注/).first()).toBeVisible({ timeout: 10000 });\n      await expect(page.getByText(hotTag).first()).toBeVisible({ timeout: 10000 });\n    } finally {\n      await ctxCreator.close();\n    }\n  });\n\n  test('3. 多账号登录与一键切换', async ({ page }) => {\n    await page.setViewportSize({ width: 1440, height: 900 });\n    const nickA = `主号A${Date.now().toString().slice(-4)}`;\n    const nickB = `副号B${Date.now().toString().slice(-4)}`;\n    const userA = await loginUser(page.request, makeEmail('multi-a'), nickA);\n    const userB = await loginUser(page.request, makeEmail('multi-b'), nickB);\n\n    const accountsJson = await (await page.request.get('/api/auth/accounts')).json();\n    expect(accountsJson.activeUserId).toBe(userB.id);\n    expect(accountsJson.accounts.length).toBeGreaterThanOrEqual(2);\n\n    await page.goto('/');\n    const sidebar = page.locator('aside').first();\n    const trigger = sidebar.getByRole('button', { name: new RegExp(`${nickB}|个人资料|账号`, 'i') }).last();\n    await expect(trigger).toBeVisible({ timeout: 10000 });\n    await trigger.click();\n\n    const switchTarget = page.getByRole('menuitem', { name: new RegExp(nickA) }).or(page.getByRole('button', { name: new RegExp(nickA) })).first();\n    await expect(switchTarget).toBeVisible({ timeout: 10000 });\n    const switchResp = page.waitForResponse(\n      (r) => r.url().includes('/api/auth/switch') && r.request().method() === 'POST'\n    );\n    await switchTarget.click();\n    expect((await switchResp).status()).toBe(200);\n\n    const meAfter = await (await page.request.get('/api/auth/me')).json();\n    expect(meAfter.user.id).toBe(userA.id);\n  });\n});\n",
+      "coverageNotes": [
+        "覆盖主页 X.com 风格单列列表形态的纵向对齐校验、动态点击统计、收藏切换、分享计数与 /posts/:id 访客直达",
+        "覆盖主页右侧热门话题与推荐关注模块渲染及接口基础契约",
+        "覆盖同浏览器多账号登录、账号列表查询与左下角菜单一键切换身份"
+      ]
+    },
+    "qaCritic": {
+      "reviewSummary": "初版 QA Spec 覆盖了三大核心功能的正向主流程，但在安全隔离（多账号越权切换防护、收藏列表 IDOR 隔离、推荐关注邮箱隐私脱敏）、非法输入边界（发现接口分页越界、空 userId 切换、不存在动态的点击/收藏/分享与直达 404 容错）、级联数据一致性（删帖后清理收藏与统计）、并发计数安全（并发点击与高频收藏防负数）、以及三栏布局几何与账号切换状态同步（点赞/收藏状态随身份切换即时更新、单账号退出与全部退出后防旧账号回切）方面存在明显缺口。同时依据历史 D1 迁移故障经验，需确保迁移脚本幂等与无侵入。已将全部 7 项审查发现加固至最终 API 测试清单与盲测 E2E 套件，并全量校验 Playwright 严格模式选择器规范（所有 .or() 均显式附加 .first()）。",
+      "findings": [
+        {
+          "id": "CRIT-01",
+          "category": "security",
+          "severity": "high",
+          "issue": "初版测试未验证多账号切换接口 /api/auth/switch 的越权接管风险（IDOR）：攻击者若携带自身合法会话尝试切换至未在当前浏览器验证过的其他用户 ID，或已退出登录的旧账号 ID，必须被服务端严格拒绝。",
+          "recommendation": "在隔离浏览器上下文创建第三方用户 C，验证当前会话请求 POST /api/auth/switch 传入 userC.id 必须返回 403；并在注销账号 B 后再次尝试切回 B 必须返回 403；同时校验未登录请求返回 401、缺失 userId 返回 400。"
+        },
+        {
+          "id": "CRIT-02",
+          "category": "security",
+          "severity": "high",
+          "issue": "初版测试未覆盖收藏列表隐私隔离与推荐关注隐私脱敏：他人访问 /api/users/:id/activity?tab=bookmarks 可能造成收藏隐私泄露；/api/discover/recommended-users 若直接透传用户表字段可能泄露注册邮箱。",
+          "recommendation": "增加未登录访问他人收藏返回 401、用户 B 访问用户 A 收藏返回 403 的强断言；对 /api/discover/recommended-users 原始响应文本断言严禁包含任意用户邮箱字符串。"
+        },
+        {
+          "id": "CRIT-03",
+          "category": "invalid_input",
+          "severity": "medium",
+          "issue": "初版测试缺少对 /api/discover/topics、/api/discover/recommended-users 非法 limit 参数，以及 /api/posts/:id/bookmark、/api/posts/:id/share 对不存在动态 ID 的异常路径覆盖。",
+          "recommendation": "补充 limit=0、limit=99、limit=abc 返回 400 的参数边界测试，以及对不存在动态 ID 执行 view/bookmark/share 均返回 404 的契约测试；同时测试访问 /posts/non-existent-id 页面无前端未捕获异常且优雅提示不存在。"
+        },
+        {
+          "id": "CRIT-04",
+          "category": "boundary",
+          "severity": "high",
+          "issue": "未验证删除动态后的级联清理边界：若删帖未同步清理 post_bookmarks 与 post_metrics，个人主页收藏列表将残留脏数据或导致页面异常；另需落实 RSI 历史经验（D1 迁移幂等与配置校验）。",
+          "recommendation": "补充「发帖 -> 点击/收藏/分享 -> 删帖 -> 验证收藏列表不再包含该动态且详情接口返回 404」闭环校验；并在技术约束中确保 0004 迁移采用全幂等 CREATE TABLE IF NOT EXISTS 建表，避免 ALTER TABLE 导致 D1 迁移中断。"
+        },
+        {
+          "id": "CRIT-05",
+          "category": "ui_interaction",
+          "severity": "high",
+          "issue": "初版测试仅断言「热门话题」「推荐关注」文本可见，未验证其位于中间动态流的右侧几何位置，也未验证点击热门话题实际过滤动态流、点击推荐关注按钮实际完成关注，以及公开页面仍严禁泄露 /admin 链接。",
+          "recommendation": "在 1440x900 视口下校验三栏相对几何关系（左侧导航在列表左侧、热门话题与推荐关注在列表右侧），实际点击热门话题校验筛选效果与不相关动态隐藏，实际点击推荐关注用户按钮校验 POST /api/users/:id/follow 成功并更新为已关注状态，并保留 /admin 零链接与零 pageerror 审计。"
+        },
+        {
+          "id": "CRIT-06",
+          "category": "concurrency",
+          "severity": "medium",
+          "issue": "高并发场景下，多个访客同时打开同一条动态（并发调用 /view）或快速连点收藏可能导致计数丢失、重复插入报错或出现负数。",
+          "recommendation": "增加并发 Promise.all 调用 POST /api/posts/:id/view 验证计数准确累加无 500 报错，以及连续切换收藏状态确保 bookmarksCount 始终 >= 0 且与 bookmarked 状态严格一致。"
+        },
+        {
+          "id": "CRIT-07",
+          "category": "ui_interaction",
+          "severity": "medium",
+          "issue": "多账号切换后仅验证了 /api/auth/me 变更，未验证前端页面视图状态（如不同账号对同一条动态的收藏状态 bookmarkedByMe、点赞状态 likedByMe 及个人主页收藏页内容）以及「添加其他账号」UI 流程与单账号退出/全部退出状态清理。",
+          "recommendation": "增加账号 A 收藏某动态后切换至账号 B 验证该动态在 B 视角下呈未收藏状态、再切回 A 恢复已收藏状态的端到端校验，并覆盖 UI 内点击「添加其他账号」完成 OTP 登录及退出当前/全部账号闭环。"
+        }
+      ],
+      "finalApiTestChecklist": [
+        {
+          "id": "TC-01",
+          "endpoint": "/api/posts/:id/view",
+          "method": "POST",
+          "scenario": "匿名访客与已登录用户连续及并发上报动态点击统计",
+          "expectedStatus": 200,
+          "assertion": "每次返回 ok: true 且 viewsCount 原子累加无并发 500，GET /api/posts/:id 返回一致点击数"
+        },
+        {
+          "id": "TC-02",
+          "endpoint": "/api/posts/:id/view",
+          "method": "POST",
+          "scenario": "对不存在的动态 ID 上报点击",
+          "expectedStatus": 404,
+          "assertion": "返回 404 错误且不写入孤立统计记录"
+        },
+        {
+          "id": "TC-03",
+          "endpoint": "/api/posts/:id/bookmark",
+          "method": "POST",
+          "scenario": "未登录用户尝试收藏动态",
+          "expectedStatus": 401,
+          "assertion": "返回 401 提示请先登录"
+        },
+        {
+          "id": "TC-04",
+          "endpoint": "/api/posts/:id/bookmark",
+          "method": "POST",
+          "scenario": "已登录用户对不存在的动态 ID 执行收藏",
+          "expectedStatus": 404,
+          "assertion": "返回 404 提示帖子不存在"
+        },
+        {
+          "id": "TC-05",
+          "endpoint": "/api/posts/:id/bookmark",
+          "method": "POST",
+          "scenario": "已登录用户收藏 -> 取消收藏 -> 再次收藏状态切换与计数一致性",
+          "expectedStatus": 200,
+          "assertion": "bookmarked 在 true/false 间准确切换，bookmarksCount 严格同步且永不为负"
+        },
+        {
+          "id": "TC-06",
+          "endpoint": "/api/users/:id/activity?tab=bookmarks",
+          "method": "GET",
+          "scenario": "本人查询收藏动态列表与未登录/跨用户隐私隔离校验",
+          "expectedStatus": 200,
+          "assertion": "本人查询返回 200 且包含已收藏动态；未登录返回 401；其他用户越权查询返回 403"
+        },
+        {
+          "id": "TC-07",
+          "endpoint": "/api/posts/:id/share",
+          "method": "POST",
+          "scenario": "访客或登录用户触发分享及不存在动态 ID 边界校验",
+          "expectedStatus": 200,
+          "assertion": "有效动态返回 200、sharesCount 递增与 sharePath=/posts/:id；不存在动态返回 404"
+        },
+        {
+          "id": "TC-08",
+          "endpoint": "/api/posts/:id",
+          "method": "DELETE",
+          "scenario": "作者删除已被浏览、收藏、分享的动态后验证级联清理",
+          "expectedStatus": 200,
+          "assertion": "删除后 GET /api/posts/:id 返回 404，且原收藏用户的收藏列表中不再出现该动态"
+        },
+        {
+          "id": "TC-09",
+          "endpoint": "/api/discover/topics",
+          "method": "GET",
+          "scenario": "获取热门话题列表与非法 limit 参数校验",
+          "expectedStatus": 200,
+          "assertion": "默认返回 topics 数组并包含真实高互动标签；limit=0 或 limit=99 返回 400"
+        },
+        {
+          "id": "TC-10",
+          "endpoint": "/api/discover/recommended-users",
+          "method": "GET",
+          "scenario": "获取推荐关注列表、排除本人/已关注、严禁泄露邮箱与非法 limit 校验",
+          "expectedStatus": 200,
+          "assertion": "返回 users 数组不含当前用户与已关注用户，原始响应文本不含任何邮箱地址；limit=0 或 limit=99 返回 400"
+        },
+        {
+          "id": "TC-11",
+          "endpoint": "/api/auth/accounts",
+          "method": "GET",
+          "scenario": "多账号登录后查询当前浏览器托管账号列表",
+          "expectedStatus": 200,
+          "assertion": "返回 activeUserId 及所有有效已登录账号摘要，且不泄露任何会话令牌"
+        },
+        {
+          "id": "TC-12",
+          "endpoint": "/api/auth/switch",
+          "method": "POST",
+          "scenario": "切换至已托管账号成功，未登录/空参数/未托管他人账号被严密拦截",
+          "expectedStatus": 200,
+          "assertion": "切换至本浏览器已登录账号返回 200 并更新 /api/auth/me；未登录返回 401；空 userId 返回 400；尝试切换至他人未托管账号返回 403"
+        },
+        {
+          "id": "TC-13",
+          "endpoint": "/api/auth/logout",
+          "method": "POST",
+          "scenario": "多账号状态下退出当前账号自动切回剩余账号、防回切已注销账号及一键退出全部账号",
+          "expectedStatus": 200,
+          "assertion": "退出当前账号后自动切回剩余有效账号且再次切回已退出账号返回 403；传入 all: true 后所有会话失效，/api/auth/me 返回 authenticated: false 且 accounts 为空"
+        }
+      ],
+      "finalE2eTestCode": "import { test, expect, type APIRequestContext } from '@playwright/test';\n\nfunction makeEmail(prefix: string): string {\n  const rand = Math.random().toString(36).slice(2, 7);\n  return `${prefix}-${Date.now()}-${rand}@example.com`;\n}\n\nasync function loginUser(\n  request: APIRequestContext,\n  email: string,\n  nickname: string\n): Promise<{ id: string; email: string; nickname: string }> {\n  const sendRes = await request.post('/api/auth/send-code', { data: { email } });\n  expect(sendRes.status(), 'send-code 应返回 200').toBe(200);\n  const sendJson = await sendRes.json();\n  expect(sendJson.devCode).toMatch(/^\\d{6}$/);\n\n  const verifyRes = await request.post('/api/auth/verify-code', {\n    data: { email, code: sendJson.devCode, nickname },\n  });\n  expect(verifyRes.status(), 'verify-code 应返回 200').toBe(200);\n  const verifyJson = await verifyRes.json();\n  expect(verifyJson.ok).toBe(true);\n  return verifyJson.user;\n}\n\ntest.describe.serial('动态改版（X.com列表流、点击/收藏/分享直达、右侧导航、多账号切换）加固盲测套件', () => {\n  test('1. 主页单列列表形态、点击统计并发累加、收藏隐私隔离、分享 URL 直达与删帖级联清理', async ({ page, browser }) => {\n    const pageErrors: string[] = [];\n    page.on('pageerror', (err) => pageErrors.push(err.message));\n    await page.setViewportSize({ width: 1440, height: 900 });\n\n    const ctxB = await browser.newContext();\n    const anonCtx = await browser.newContext();\n    try {\n      const userA = await loginUser(page.request, makeEmail('feed-a'), '列表作者A');\n      await loginUser(ctxB.request, makeEmail('feed-b'), '旁观读者B');\n\n      // 异常与权限边界校验\n      expect((await anonCtx.request.post('/api/posts/non-existent-id/view')).status()).toBe(404);\n      expect((await anonCtx.request.post('/api/posts/non-existent-id/share')).status()).toBe(404);\n      expect((await anonCtx.request.post('/api/posts/non-existent-id/bookmark')).status()).toBe(401);\n      expect((await page.request.post('/api/posts/non-existent-id/bookmark')).status()).toBe(404);\n      expect((await anonCtx.request.get(`/api/users/${userA.id}/activity?tab=bookmarks`)).status()).toBe(401);\n\n      const tag = `动态改版${Date.now().toString().slice(-4)}`;\n      const title1 = `X风格单列动态一-${Date.now()}`;\n      const content1 = '第一条正文内容，用于校验列表流展示、点击、收藏与分享直达。';\n      const title2 = `X风格单列动态二-${Date.now()}`;\n\n      const p1Res = await page.request.post('/api/posts', {\n        data: { title: title1, content: content1, tags: [tag] },\n      });\n      expect(p1Res.status()).toBe(201);\n      const postId = (await p1Res.json()).post.id as string;\n\n      const p2Res = await page.request.post('/api/posts', {\n        data: { title: title2, content: '第二条动态用于验证纵向单列排列', tags: [tag] },\n      });\n      expect(p2Res.status()).toBe(201);\n\n      // 并发点击累加校验（匿名访客也可正常累加）\n      const concurrentViews = await Promise.all([\n        anonCtx.request.post(`/api/posts/${postId}/view`),\n        anonCtx.request.post(`/api/posts/${postId}/view`),\n        page.request.post(`/api/posts/${postId}/view`),\n      ]);\n      for (const r of concurrentViews) {\n        expect(r.status()).toBe(200);\n      }\n      const afterViewsJson = await (await page.request.get(`/api/posts/${postId}`)).json();\n      expect(afterViewsJson.post.viewsCount, '3次并发点击后 viewsCount 应至少为 3').toBeGreaterThanOrEqual(3);\n\n      // 进入首页验证：无 /admin 链接泄露 + 单列纵向列表几何形态\n      await page.goto('/');\n      await expect(page.locator('a[href=\"/admin\"]')).toHaveCount(0);\n      await expect(page.locator('a[href=\"/admin/\"]')).toHaveCount(0);\n\n      const card1 = page.locator('article').filter({ hasText: title1 }).first();\n      const card2 = page.locator('article').filter({ hasText: title2 }).first();\n      await expect(card1).toBeVisible({ timeout: 10000 });\n      await expect(card2).toBeVisible({ timeout: 10000 });\n\n      const box1 = await card1.boundingBox();\n      const box2 = await card2.boundingBox();\n      expect(box1, '动态卡片一应具备可见尺寸').not.toBeNull();\n      expect(box2, '动态卡片二应具备可见尺寸').not.toBeNull();\n      if (box1 && box2) {\n        expect(Math.abs(box1.x - box2.x), '列表流中两条动态左边界应对齐而非多列瀑布流').toBeLessThanOrEqual(24);\n        const topBox = box1.y < box2.y ? box1 : box2;\n        const bottomBox = box1.y < box2.y ? box2 : box1;\n        expect(bottomBox.y, '动态卡片应纵向依次排布不横向并列').toBeGreaterThanOrEqual(topBox.y + topBox.height - 12);\n      }\n\n      // UI 点击收藏按钮并验证状态与计数持久化\n      const bookmarkBtn = card1.getByRole('button', { name: /收藏/i }).first();\n      await expect(bookmarkBtn).toBeVisible();\n      const bookmarkPromise = page.waitForResponse(\n        (res) => res.url().includes(`/api/posts/${postId}/bookmark`) && res.request().method() === 'POST'\n      );\n      await bookmarkBtn.click();\n      const bookmarkRes = await bookmarkPromise;\n      expect(bookmarkRes.status()).toBe(200);\n      const bookmarkJson = await bookmarkRes.json();\n      expect(bookmarkJson.bookmarked).toBe(true);\n      expect(bookmarkJson.bookmarksCount).toBe(1);\n\n      // 收藏隐私隔离（IDOR 防护）：用户 B 严禁查看用户 A 的收藏列表\n      const crossBookmarks = await ctxB.request.get(`/api/users/${userA.id}/activity?tab=bookmarks`);\n      expect(crossBookmarks.status(), '他人跨用户查询收藏列表必须返回 403').toBe(403);\n\n      // 用户 A 个人主页「收藏」标签页可查看该动态\n      const ownBookmarksJson = await (await page.request.get(`/api/users/${userA.id}/activity?tab=bookmarks`)).json();\n      expect(ownBookmarksJson.items.some((p: { id: string }) => p.id === postId)).toBe(true);\n\n      // UI 点击分享按钮，校验分享接口与直达路径\n      const shareBtn = card1.getByRole('button', { name: /分享/i }).first();\n      await expect(shareBtn).toBeVisible();\n      const sharePromise = page.waitForResponse(\n        (res) => res.url().includes(`/api/posts/${postId}/share`) && res.request().method() === 'POST'\n      );\n      await shareBtn.click();\n      const shareRes = await sharePromise;\n      expect(shareRes.status()).toBe(200);\n      const shareJson = await shareRes.json();\n      expect(shareJson.sharesCount).toBeGreaterThanOrEqual(1);\n      expect(shareJson.sharePath).toBe(`/posts/${postId}`);\n\n      // 匿名访客通过分享 URL /posts/:id 直接跳转并展示动态详情，同时点击数继续递增\n      const viewsBeforeShareJump = afterViewsJson.post.viewsCount as number;\n      const anonPage = await anonCtx.newPage();\n      const anonErrors: string[] = [];\n      anonPage.on('pageerror', (err) => anonErrors.push(err.message));\n      await anonPage.setViewportSize({ width: 1280, height: 800 });\n      await anonPage.goto(`/posts/${postId}`);\n      await expect(anonPage.getByText(title1).first()).toBeVisible({ timeout: 10000 });\n      await expect(anonPage.getByText(content1).first()).toBeVisible({ timeout: 10000 });\n      await expect\n        .poll(async () => (await (await page.request.get(`/api/posts/${postId}`)).json()).post.viewsCount)\n        .toBeGreaterThan(viewsBeforeShareJump);\n\n      // 访问不存在的分享 URL 应优雅展示错误提示且无 JS 崩溃\n      await anonPage.goto('/posts/non-existent-share-id');\n      await expect(anonPage.getByText(/不存在|无法加载|未找到|已删除/i).first()).toBeVisible({ timeout: 10000 });\n      expect(anonErrors, '直达有效及无效分享链接均不应触发前端异常').toEqual([]);\n      await anonPage.close();\n\n      // 进入个人主页 UI 核对「收藏」标签页展示\n      const sidebar = page.locator('aside').first();\n      await sidebar\n        .getByRole('button', { name: /主页/ })\n        .or(sidebar.getByRole('link', { name: /主页/ }))\n        .first()\n        .click();\n      const bookmarksTab = page\n        .getByRole('tab', { name: /收藏/ })\n        .or(page.getByRole('button', { name: /收藏/ }))\n        .first();\n      await expect(bookmarksTab).toBeVisible({ timeout: 10000 });\n      await bookmarksTab.click();\n      await expect(page.getByText(title1).first()).toBeVisible({ timeout: 10000 });\n\n      // 删帖级联清理：删除后收藏列表不再残留且详情返回 404\n      expect((await page.request.delete(`/api/posts/${postId}`)).status()).toBe(200);\n      expect((await page.request.get(`/api/posts/${postId}`)).status()).toBe(404);\n      const bookmarksAfterDel = await (await page.request.get(`/api/users/${userA.id}/activity?tab=bookmarks`)).json();\n      expect(bookmarksAfterDel.items.some((p: { id: string }) => p.id === postId)).toBe(false);\n      expect(pageErrors).toEqual([]);\n    } finally {\n      await ctxB.close();\n      await anonCtx.close();\n    }\n  });\n\n  test('2. 右侧导航（热门话题、推荐关注）接口契约、隐私脱敏、三栏几何布局与交互闭环', async ({ page, browser }) => {\n    const pageErrors: string[] = [];\n    page.on('pageerror', (err) => pageErrors.push(err.message));\n    await page.setViewportSize({ width: 1440, height: 900 });\n\n    const ctxCreator = await browser.newContext();\n    try {\n      const creatorEmail = makeEmail('discover-creator');\n      const creatorNick = `活跃达人${Date.now().toString().slice(-4)}`;\n      const creator = await loginUser(ctxCreator.request, creatorEmail, creatorNick);\n\n      const hotTag = `趋势热词${Date.now().toString().slice(-4)}`;\n      const otherTag = `普通标签${Date.now().toString().slice(-4)}`;\n      const hotPostTitle = `热词精选帖子-${Date.now()}`;\n      const otherPostTitle = `其他分类帖子-${Date.now()}`;\n\n      // 发布多篇带热词标签的动态提升其热度排名\n      for (let i = 0; i < 3; i += 1) {\n        const res = await ctxCreator.request.post('/api/posts', {\n          data: {\n            title: i === 0 ? hotPostTitle : `${hotPostTitle}-${i}`,\n            content: '测试热门话题实时聚合排序', \n            tags: [hotTag],\n          },\n        });\n        expect(res.status()).toBe(201);\n      }\n      await ctxCreator.request.post('/api/posts', {\n        data: { title: otherPostTitle, content: '用于验证点击热门话题筛选隔离', tags: [otherTag] },\n      });\n\n      const viewer = await loginUser(page.request, makeEmail('discover-viewer'), '探索用户');\n\n      // 发现接口参数边界与隐私脱敏审计\n      expect((await page.request.get('/api/discover/topics?limit=0')).status()).toBe(400);\n      expect((await page.request.get('/api/discover/topics?limit=99')).status()).toBe(400);\n      expect((await page.request.get('/api/discover/recommended-users?limit=0')).status()).toBe(400);\n      expect((await page.request.get('/api/discover/recommended-users?limit=99')).status()).toBe(400);\n\n      const topicsJson = await (await page.request.get('/api/discover/topics?limit=10')).json();\n      expect(Array.isArray(topicsJson.topics)).toBe(true);\n      expect(topicsJson.topics.some((t: { tag: string }) => t.tag === hotTag)).toBe(true);\n\n      const recRes = await page.request.get('/api/discover/recommended-users?limit=10');\n      expect(recRes.status()).toBe(200);\n      const recRawText = await recRes.text();\n      expect(recRawText, '推荐关注接口严禁泄露任何用户邮箱').not.toContain(creatorEmail);\n      const recJson = JSON.parse(recRawText);\n      expect(recJson.users.some((u: { id: string }) => u.id === viewer.id), '推荐关注不应包含当前登录用户本人').toBe(false);\n      expect(recJson.users.some((u: { id: string }) => u.id === creator.id)).toBe(true);\n\n      // 浏览器 1440px 宽屏验证三栏几何布局：左导航 < 居中列表 < 右侧发现栏\n      await page.goto('/');\n      const leftSidebar = page.locator('aside').first();\n      const feedArticle = page.locator('article').filter({ hasText: hotPostTitle }).first();\n      const trendingTitle = page.getByText(/热门话题/).first();\n      const recTitle = page.getByText(/推荐关注/).first();\n\n      await expect(leftSidebar).toBeVisible({ timeout: 10000 });\n      await expect(feedArticle).toBeVisible({ timeout: 10000 });\n      await expect(trendingTitle).toBeVisible({ timeout: 10000 });\n      await expect(recTitle).toBeVisible({ timeout: 10000 });\n\n      const leftBox = await leftSidebar.boundingBox();\n      const articleBox = await feedArticle.boundingBox();\n      const trendingBox = await trendingTitle.boundingBox();\n      expect(leftBox && articleBox && trendingBox).toBeTruthy();\n      if (leftBox && articleBox && trendingBox) {\n        expect(leftBox.x + leftBox.width, '左侧导航栏应位于动态列表左侧').toBeLessThanOrEqual(articleBox.x + 24);\n        expect(trendingBox.x, '右侧热门话题模块应位于动态列表右侧').toBeGreaterThanOrEqual(\n          articleBox.x + articleBox.width - 20\n        );\n      }\n\n      // 点击右侧热门话题筛选动态流\n      const rightAside = page.locator('aside').nth(1);\n      const topicBtn = rightAside\n        .getByRole('button', { name: new RegExp(hotTag) })\n        .or(page.getByRole('button', { name: new RegExp(hotTag) }))\n        .first();\n      await expect(topicBtn).toBeVisible({ timeout: 10000 });\n      await topicBtn.click();\n      await expect(page.locator('article').filter({ hasText: hotPostTitle }).first()).toBeVisible({ timeout: 10000 });\n      await expect(page.locator('article').filter({ hasText: otherPostTitle })).toHaveCount(0, { timeout: 10000 });\n\n      // 在右侧推荐关注模块直接点击关注目标博主\n      const recUserRow = rightAside\n        .locator('li, div')\n        .filter({ hasText: creatorNick })\n        .filter({ has: page.getByRole('button', { name: /^关注$/ }) })\n        .last();\n      const followBtn = recUserRow\n        .getByRole('button', { name: /^关注$/ })\n        .or(rightAside.getByRole('button', { name: /^关注$/ }))\n        .first();\n      await expect(followBtn).toBeVisible({ timeout: 10000 });\n      const followResp = page.waitForResponse(\n        (r) => r.url().includes('/follow') && r.request().method() === 'POST'\n      );\n      await followBtn.click();\n      expect((await followResp).status()).toBe(200);\n      await expect(rightAside.getByRole('button', { name: /已关注/ }).first()).toBeVisible({ timeout: 10000 });\n      expect(pageErrors).toEqual([]);\n    } finally {\n      await ctxCreator.close();\n    }\n  });\n\n  test('3. 多账号安全切换、防越权接管、UI 身份状态同步、添加账号与分级退出闭环', async ({ page, browser }) => {\n    const pageErrors: string[] = [];\n    page.on('pageerror', (err) => pageErrors.push(err.message));\n    await page.setViewportSize({ width: 1440, height: 900 });\n\n    const ctxOther = await browser.newContext();\n    const anonCtx = await browser.newContext();\n    try {\n      // 未登录切换账号必须返回 401\n      expect((await anonCtx.request.post('/api/auth/switch', { data: { userId: 'any-id' } })).status()).toBe(401);\n\n      // 独立浏览器上下文中的第三方账号 C（从未在 page 上下文登录）\n      const userC = await loginUser(ctxOther.request, makeEmail('multi-victim-c'), '外部账号C');\n\n      const nickA = `多账号甲${Date.now().toString().slice(-4)}`;\n      const nickB = `多账号乙${Date.now().toString().slice(-4)}`;\n      const userA = await loginUser(page.request, makeEmail('multi-a'), nickA);\n\n      // 账号 A 发布并收藏一篇动态，用于验证切换账号后前端收藏态同步\n      const sharedTitle = `身份态同步验证帖-${Date.now()}`;\n      const postId = (\n        await (\n          await page.request.post('/api/posts', {\n            data: { title: sharedTitle, content: '仅账号A收藏，切换至账号B应显示未收藏' },\n          })\n        ).json()\n      ).post.id as string;\n      expect((await page.request.post(`/api/posts/${postId}/bookmark`)).status()).toBe(200);\n\n      // 在同一浏览器上下文登录第二个账号 B\n      const userB = await loginUser(page.request, makeEmail('multi-b'), nickB);\n\n      // 参数边界与安全隔离（防跨用户越权接管）：空 userId 返回 400，未托管的外部账号 C 返回 403\n      expect((await page.request.post('/api/auth/switch', { data: { userId: '' } })).status()).toBe(400);\n      expect(\n        (await page.request.post('/api/auth/switch', { data: { userId: userC.id } })).status(),\n        '严禁切换至未在当前浏览器验证过的外部账号'\n      ).toBe(403);\n\n      const accListJson = await (await page.request.get('/api/auth/accounts')).json();\n      expect(accListJson.activeUserId).toBe(userB.id);\n      expect(accListJson.accounts.some((a: { id: string }) => a.id === userA.id)).toBe(true);\n      expect(accListJson.accounts.some((a: { id: string }) => a.id === userB.id)).toBe(true);\n\n      // 账号 B 视角下该动态未收藏\n      const postAsB = await (await page.request.get(`/api/posts/${postId}`)).json();\n      expect(postAsB.post.bookmarkedByMe).toBe(false);\n\n      // 浏览器 UI 验证：当前为账号 B，打开左下角账号菜单一键切换至账号 A\n      await page.goto('/');\n      const sidebar = page.locator('aside').first();\n      const triggerB = sidebar\n        .getByRole('button', { name: new RegExp(`${nickB}|个人资料|账号`, 'i') })\n        .last();\n      await expect(triggerB).toBeVisible({ timeout: 10000 });\n      await triggerB.click();\n\n      const switchToA = page\n        .getByRole('menuitem', { name: new RegExp(nickA) })\n        .or(page.getByRole('button', { name: new RegExp(nickA) }))\n        .first();\n      await expect(switchToA).toBeVisible({ timeout: 10000 });\n\n      const switchPromise = page.waitForResponse(\n        (r) => r.url().includes('/api/auth/switch') && r.request().method() === 'POST'\n      );\n      await switchToA.click();\n      expect((await switchPromise).status()).toBe(200);\n\n      // 验证激活身份已变为账号 A，且接口与页面数据均已同步为 A 视角\n      const meAsA = await (await page.request.get('/api/auth/me')).json();\n      expect(meAsA.user.id).toBe(userA.id);\n      const postAsA = await (await page.request.get(`/api/posts/${postId}`)).json();\n      expect(postAsA.post.bookmarkedByMe).toBe(true);\n      await expect(sidebar.getByText(nickA).first()).toBeVisible({ timeout: 10000 });\n\n      // 通过左下角账号菜单「添加其他账号」UI 流程再新增第三个账号 D\n      const triggerA = sidebar\n        .getByRole('button', { name: new RegExp(`${nickA}|个人资料|账号`, 'i') })\n        .last();\n      await triggerA.click();\n      const addAccountBtn = page\n        .getByRole('menuitem', { name: /添加.*账号/i })\n        .or(page.getByRole('button', { name: /添加.*账号/i }))\n        .first();\n      await expect(addAccountBtn).toBeVisible({ timeout: 10000 });\n      await addAccountBtn.click();\n\n      const emailD = makeEmail('multi-d');\n      const nickD = `新加丙${Date.now().toString().slice(-4)}`;\n      const emailInput = page\n        .getByPlaceholder(/邮箱|email/i)\n        .or(page.locator('input[type=\"email\"]'))\n        .first();\n      await expect(emailInput).toBeVisible({ timeout: 10000 });\n      await emailInput.fill(emailD);\n\n      const sendDPromise = page.waitForResponse(\n        (r) => r.url().includes('/api/auth/send-code') && r.request().method() === 'POST'\n      );\n      await page.getByRole('button', { name: /获取验证码|发送验证码/i }).first().click();\n      const sendDJson = await (await sendDPromise).json();\n      expect(sendDJson.devCode).toMatch(/^\\d{6}$/);\n\n      await page\n        .getByPlaceholder(/验证码|code/i)\n        .or(page.locator('input[inputmode=\"numeric\"]'))\n        .first()\n        .fill(sendDJson.devCode);\n      const nickInput = page.getByPlaceholder(/昵称/i).first();\n      if (await nickInput.isVisible().catch(() => false)) {\n        await nickInput.fill(nickD);\n      }\n      const verifyDPromise = page.waitForResponse(\n        (r) => r.url().includes('/api/auth/verify-code') && r.request().method() === 'POST'\n      );\n      await page\n        .getByRole('button', { name: /验证并登录|确认登录|登录/i })\n        .filter({ hasNotText: /获取验证码|发送验证码/i })\n        .first()\n        .click();\n      expect((await verifyDPromise).status()).toBe(200);\n\n      const meAsD = await (await page.request.get('/api/auth/me')).json();\n      expect(meAsD.user.email).toBe(emailD);\n      const userDId = meAsD.user.id as string;\n\n      // 退出当前账号 D -> 自动切回剩余账号，且严禁再次切回已注销的账号 D\n      const logoutOneRes = await page.request.post('/api/auth/logout', { data: {} });\n      expect(logoutOneRes.status()).toBe(200);\n      const meAfterOne = await (await page.request.get('/api/auth/me')).json();\n      expect(meAfterOne.authenticated).toBe(true);\n      expect(meAfterOne.user.id).not.toBe(userDId);\n\n      const switchRevokedRes = await page.request.post('/api/auth/switch', { data: { userId: userDId } });\n      expect(switchRevokedRes.status(), '已退出注销的账号严禁再次切回').toBe(403);\n\n      // 一键退出全部账号 -> 所有托管账号清空，恢复未登录态\n      const logoutAllRes = await page.request.post('/api/auth/logout', { data: { all: true } });\n      expect(logoutAllRes.status()).toBe(200);\n      const meAfterAll = await (await page.request.get('/api/auth/me')).json();\n      expect(meAfterAll.authenticated).toBe(false);\n      const accAfterAll = await (await page.request.get('/api/auth/accounts')).json();\n      expect(accAfterAll.accounts).toEqual([]);\n      expect(pageErrors).toEqual([]);\n    } finally {\n      await ctxOther.close();\n      await anonCtx.close();\n    }\n  });\n});\n"
+    },
+    "runId": "run-9b961baa",
+    "run": {
+      "id": "run-9b961baa",
+      "createdAt": "2026-11-23T16:14:00.121Z",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "defaultBranch": "main",
+      "prdTitle": "动态改版",
+      "prdContent": "1. 主页动态展示形态变更，我们要做内容社区，做成列表形式吧，类似x.com的展示形态，同时添加点击统计、收藏，分享功能，分享的动态可以通过url直接跳转\n2. 主页排版右侧增加导航，类似x.com的热门话题，推荐关注\n3. 支持多账号切换",
+      "repoContext": {
+        "repoFullName": "jiangfengwhu/atd-v1",
+        "branch": "main",
+        "headSha": "1159063e8340895661f5b55bfc45cb302cc4e605",
+        "fetchedAt": "2026-11-23T16:07:01.060Z",
+        "isEmptyRepo": false,
+        "totalFiles": 66,
+        "fileTree": [
+          ".github/workflows/autodev-agy.yml",
+          ".github/workflows/autodev-deploy-cf.yml",
+          ".github/workflows/autodev-plan.yml",
+          ".gitignore",
+          "README.md",
+          "client/index.html",
+          "client/src/App.tsx",
+          "client/src/components/AuthDialog.tsx",
+          "client/src/components/AvatarBadge.tsx",
+          "client/src/components/ComposeDialog.tsx",
+          "client/src/components/ImageCropDialog.tsx",
+          "client/src/components/MessagesView.tsx",
+          "client/src/components/NotificationsView.tsx",
+          "client/src/components/PostCard.tsx",
+          "client/src/components/PostDetailDialog.tsx",
+          "client/src/components/ProfileDialog.tsx",
+          "client/src/components/ProfileView.tsx",
+          "client/src/components/ui/button.tsx",
+          "client/src/components/ui/dialog.tsx",
+          "client/src/components/ui/input.tsx",
+          "client/src/index.css",
+          "client/src/lib/api.ts",
+          "client/src/lib/image-crop.ts",
+          "client/src/lib/realtime.ts",
+          "client/src/lib/utils.ts",
+          "client/src/main.tsx",
+          "client/src/pages/AdminPage.tsx",
+          "client/src/pages/CommunityPage.tsx",
+          "docs/iterations/run-7026568c-prd.md",
+          "docs/iterations/run-7026568c-spec.json",
+          "docs/iterations/run-96e1a2ad-prd.md",
+          "docs/iterations/run-96e1a2ad-spec.json",
+          "docs/iterations/run-f8b35bdc-prd.md",
+          "docs/iterations/run-f8b35bdc-spec.json",
+          "docs/prd.md",
+          "docs/spec.json",
+          "migrations/0001_init.sql",
+          "migrations/0002_social_profile_dm.sql",
+          "migrations/0003_notifications.sql",
+          "package.json",
+          "playwright.config.ts",
+          "postcss.config.js",
+          "src/index.ts",
+          "src/lib/admin-config.ts",
+          "src/lib/cookies.ts",
+          "src/lib/crypto.ts",
+          "src/lib/notifications.ts",
+          "src/lib/realtime.ts",
+          "src/lib/validation.ts",
+          "src/realtime/user-hub.ts",
+          "src/routes/admin.ts",
+          "src/routes/auth.ts",
+          "src/routes/messages.ts",
+          "src/routes/notifications.ts",
+          "src/routes/posts.ts",
+          "src/routes/uploads.ts",
+          "src/routes/users.ts",
+          "src/types.ts",
+          "tailwind.config.js",
+          "tests/e2e/run-7026568c.spec.ts",
+          "tests/e2e/run-96e1a2ad.spec.ts",
+          "tests/e2e/run-f8b35bdc.spec.ts",
+          "tsconfig.json",
+          "vite.config.ts",
+          "wrangler.toml"
+        ],
+        "packageJsonSnippet": "{\n  \"name\": \"atd-v1-community\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"dev\": \"npm run build:client && wrangler dev --port 8787 --ip 127.0.0.1\",\n    \"dev:client\": \"vite\",\n    \"build:client\": \"vite build\",\n    \"build\": \"vite build\",\n    \"typecheck\": \"tsc --noEmit\",\n    \"db:migrate:local\": \"wrangler d1 migrations apply DB --local\",\n    \"test:e2e\": \"playwright test\"\n  },\n  \"dependencies\": {\n    \"@radix-ui/react-dialog\": \"^1.1.6\",\n    \"@radix-ui/react-slot\": \"^1.1.2\",\n    \"@radix-ui/react-tabs\": \"^1.1.3\",\n    \"class-variance-authority\": \"^0.7.1\",\n    \"clsx\": \"^2.1.1\",\n    \"hono\": \"^4.7.4\",\n    \"lucide-react\": \"^0.475.0\",\n    \"react\": \"^18.3.1\",\n    \"react-dom\": \"^18.3.1\",\n    \"react-easy-crop\": \"^6.2.5\",\n    \"tailwind-merge\": \"^3.0.2\"\n  },\n  \"devDependencies\": {\n    \"@cloudflare/workers-types\": \"^5.20261119.1\",\n    \"@playwright/test\": \"^1.50.1\",\n    \"@types/react\": \"^18.3.18\",\n    \"@types/react-dom\": \"^18.3.5\",\n    \"@vitejs/plugin-react\": \"^4.3.4\",\n    \"autoprefixer\": \"^10.4.20\",\n    \"postcss\": \"^8.5.1\",\n    \"tailwindcss\": \"^3.4.17\",\n    \"typescript\": \"^5.7.3\",\n    \"vite\": \"^6.1.0\",\n    \"wrangler\": \"^4.16.0\"\n  }\n}\n",
+        "wranglerConfigSnippet": "name = \"atd-v1-community\"\nmain = \"src/index.ts\"\ncompatibility_date = \"2025-02-04\"\n\n[assets]\ndirectory = \"dist/client\"\nbinding = \"ASSETS\"\nnot_found_handling = \"single-page-application\"\nrun_worker_first = [\"/api/*\"]\n\n[[d1_databases]]\nbinding = \"DB\"\ndatabase_name = \"atd-v1-community-db\"\ndatabase_id = \"00000000-0000-0000-0000-000000000000\"\nmigrations_dir = \"migrations\"\n\n[[durable_objects.bindings]]\nname = \"USER_REALTIME\"\nclass_name = \"UserRealtimeHub\"\n\n[[migrations]]\ntag = \"v1\"\nnew_sqlite_classes = [\"UserRealtimeHub\"]\n",
+        "existingMigrations": [
+          {
+            "path": "migrations/0001_init.sql",
+            "snippet": "-- Idempotent initial schema for atd-v1 community\n\nCREATE TABLE IF NOT EXISTS users (\n  id TEXT PRIMARY KEY,\n  email TEXT NOT NULL UNIQUE,\n  nickname TEXT NOT NULL,\n  avatar_seed TEXT NOT NULL,\n  created_at TEXT NOT NULL,\n  updated_at TEXT NOT NULL\n);\n\nCREATE TABLE IF NOT EXISTS email_otps (\n  id TEXT PRIMARY KEY,\n  email TEXT NOT NULL,\n  code_hash TEXT NOT NULL,\n  attempts INTEGER NOT NULL DEFAULT 0,\n  consumed INTEGER NOT NULL DEFAULT 0,\n  expires_at TEXT NOT NULL,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_email_otps_lookup\n  ON email_otps (email, consumed, created_at DESC);\n\nCREATE TABLE IF NOT EXISTS sessions (\n  id TEXT PRIMARY KEY,\n  user_id TEXT NOT NULL,\n  token_hash TEXT NOT NULL UNIQUE,\n  expires_at TEXT NOT NULL,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_sessions_token_hash\n  ON sessions (token_hash);\n\nCREATE INDEX IF NOT EXISTS idx_sessions_user_id\n  ON sessions (user_id);\n\nCREATE TABLE IF NOT EXISTS admin_config (\n  id INTEGER PRIMARY KEY CHECK (id = 1),\n  password_hash TEXT NOT NULL,\n  is_default_password INTEGER NOT NULL DEFAULT 1,\n  resend_api_key TEXT NOT NULL DEFAULT '',\n  resend_from_email TEXT NOT NULL DEFAULT 'onboarding@resend.dev',\n  site_name TEXT NOT NULL DEFAULT '拾光集 · 轻图文社区',\n  failed_attempts INTEGER NOT NULL DEFAULT 0,\n  locked_until TEXT,\n  updated_at TEXT NOT NULL\n);\n\nCREATE TABLE IF NOT EXISTS admin_sessions (\n  id TEXT PRIMARY KEY,\n  token_hash TEXT NOT NULL UNIQUE,\n  expires_at TEXT NOT NULL,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_admin_sessions_token_hash\n  ON admin_sessions (token_hash);\n\nCREATE TABLE IF NOT EXISTS posts (\n  id TEXT PRIMARY KEY,\n  author_id TEXT NOT NULL,\n  title TEXT NOT NULL,\n  content TEXT NOT NULL,\n  image_url TEXT NOT NULL DEFAULT '',\n  tags_json TEXT\n... (已截断)"
+          },
+          {
+            "path": "migrations/0002_social_profile_dm.sql",
+            "snippet": "-- Incremental idempotent schema for social profile, follows, comment replies, and direct messages\n\nCREATE TABLE IF NOT EXISTS user_profiles (\n  user_id TEXT PRIMARY KEY,\n  avatar_url TEXT NOT NULL DEFAULT '',\n  bio TEXT NOT NULL DEFAULT '',\n  updated_at TEXT NOT NULL\n);\n\nCREATE TABLE IF NOT EXISTS user_follows (\n  follower_id TEXT NOT NULL,\n  following_id TEXT NOT NULL,\n  created_at TEXT NOT NULL,\n  PRIMARY KEY (follower_id, following_id)\n);\n\nCREATE INDEX IF NOT EXISTS idx_user_follows_follower\n  ON user_follows (follower_id, created_at DESC);\n\nCREATE INDEX IF NOT EXISTS idx_user_follows_following\n  ON user_follows (following_id, created_at DESC);\n\nCREATE TABLE IF NOT EXISTS comment_replies (\n  id TEXT PRIMARY KEY,\n  comment_id TEXT NOT NULL,\n  post_id TEXT NOT NULL,\n  author_id TEXT NOT NULL,\n  reply_to_user_id TEXT,\n  content TEXT NOT NULL,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_comment_replies_comment\n  ON comment_replies (comment_id, created_at ASC);\n\nCREATE INDEX IF NOT EXISTS idx_comment_replies_post\n  ON comment_replies (post_id, created_at ASC);\n\nCREATE INDEX IF NOT EXISTS idx_comment_replies_author\n  ON comment_replies (author_id, created_at DESC);\n\nCREATE TABLE IF NOT EXISTS direct_messages (\n  id TEXT PRIMARY KEY,\n  conversation_key TEXT NOT NULL,\n  sender_id TEXT NOT NULL,\n  receiver_id TEXT NOT NULL,\n  content TEXT NOT NULL,\n  is_read INTEGER NOT NULL DEFAULT 0,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_dm_conv_created\n  ON direct_messages (conversation_key, created_at ASC);\n\nCREATE INDEX IF NOT EXISTS idx_dm_receiver_read\n  ON direct_messages (receiver_id, is_read, sender_id, created_at DESC);\n\nCREATE INDEX IF NOT EXISTS idx_dm_sender_created\n  ON direct_messages (sender_id, created_at DESC);\n"
+          },
+          {
+            "path": "migrations/0003_notifications.sql",
+            "snippet": "-- Incremental idempotent schema for notifications\n\nCREATE TABLE IF NOT EXISTS notifications (\n  id TEXT PRIMARY KEY,\n  recipient_id TEXT NOT NULL,\n  actor_id TEXT NOT NULL,\n  type TEXT NOT NULL CHECK (type IN ('comment', 'like', 'follow')),\n  post_id TEXT,\n  comment_id TEXT,\n  content_preview TEXT NOT NULL DEFAULT '',\n  is_read INTEGER NOT NULL DEFAULT 0,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_notifications_recipient_created\n  ON notifications (recipient_id, created_at DESC);\n\nCREATE INDEX IF NOT EXISTS idx_notifications_recipient_type_created\n  ON notifications (recipient_id, type, created_at DESC);\n\nCREATE INDEX IF NOT EXISTS idx_notifications_recipient_unread\n  ON notifications (recipient_id, is_read);\n\nCREATE INDEX IF NOT EXISTS idx_notifications_post_id\n  ON notifications (post_id);\n\nCREATE INDEX IF NOT EXISTS idx_notifications_dedup\n  ON notifications (recipient_id, actor_id, type, post_id, is_read);\n"
+          }
+        ],
+        "existingE2eTests": [
+          "tests/e2e/run-7026568c.spec.ts",
+          "tests/e2e/run-96e1a2ad.spec.ts",
+          "tests/e2e/run-f8b35bdc.spec.ts"
+        ],
+        "previousSpecSummary": "{\n  \"schemaVersion\": \"1.1\",\n  \"generatedBy\": \"AutoDev Studio\",\n  \"runId\": \"run-7026568c\",\n  \"createdAt\": \"2026-11-23T02:49:36.437Z\",\n  \"repository\": \"jiangfengwhu/atd-v1\",\n  \"baseBranch\": \"main\",\n  \"baseCommitSha\": \"5e8fc05637ab9c81ead57581604c529ab856b16e\",\n  \"e2eTestPath\": \"tests/e2e/run-7026568c.spec.ts\",\n  \"e2eVaultPath\": \".autodev-e2e-vault/run-7026568c/e2e.spec.ts\",\n  \"blindE2eVerification\": false,\n  \"archivedSpecPath\": \"docs/iterations/run-7026568c-spec.json\",\n  \"prdTitle\": \"接入通知\",\n  \"architecture\": {\n    \"summary\": \"在现有 Cloudflare Workers + Hono + D1 + React/Vite 架构上执行纯增量演进：1）新增幂等 D1 迁移 migrations/0003_notifications.sql 建立 notifications 表与查询索引，新增 /api/notifications 路由并在点赞、评论、二级回复、关注及删帖链路接入通知生成（含自发排除与未读去重）与清理；2）引入基于 Cloudflare Durable Objects WebSocket Hibernation API 的 UserRealtimeHub（按用户 ID 分片、支持 ping/pong 自动休眠响应与多端广播），通过 /api/ws 提供经 HttpOnly 会话 Cookie 鉴权与 Origin 校验的实时通道，写入仍走现有可靠 REST 接口并即时推送 notification:new、notification:read、dm:new、dm:read 事件，彻底移除前端所有 setInterval 轮询定时器；3）重构 "
+      },
+      "architect": {
+        "ambiguities": [
+          {
+            "id": "AMB-1",
+            "severity": "medium",
+            "title": "动态点击统计的计数口径（累计点击与去重规则）",
+            "detail": "PRD 提出添加动态点击统计，但未明确同一用户多次打开同一条动态是每次打开均累计（PV 口径），还是按用户/浏览器在时间窗口内去重（UV 口径）。",
+            "clarificationSuggestion": "建议首期采用原子累加 PV 口径：每次用户点击进入动态详情或通过分享链接直接访问该动态时计数加一，并在前端避免开发模式下单次打开重复上报；后续如有防刷诉求再补充时间窗口去重。"
+          },
+          {
+            "id": "AMB-2",
+            "severity": "medium",
+            "title": "收藏列表的查看入口与隐私可见范围",
+            "detail": "PRD 要求增加收藏功能，未说明用户收藏后的内容在何处集中查看，以及他人访问某用户主页时是否可以查看其收藏列表。",
+            "clarificationSuggestion": "建议参照 X.com 习惯：在个人主页新增「收藏」标签页集中展示已收藏动态，且收藏列表仅账号本人可见，防止泄露用户个人偏好隐私。"
+          },
+          {
+            "id": "AMB-3",
+            "severity": "low",
+            "title": "右侧热门话题与推荐关注的排序规则与冷启动兜底",
+            "detail": "PRD 要求主页右侧增加类似 X.com 的热门话题与推荐关注模块，未约定热度计算权重及社区内容较少时的冷启动展示策略。",
+            "clarificationSuggestion": "建议热门话题优先基于真实动态标签的发帖数与互动量（点赞、评论、点击）加权排序，标签不足时以社区预设推荐话题补齐；推荐关注排除当前登录用户本人及已关注对象，按粉丝数与活跃发帖数降序推荐。"
+          },
+          {
+            "id": "AMB-4",
+            "severity": "medium",
+            "title": "多账号切换的并发账号上限与退出登录行为",
+            "detail": "PRD 要求支持多账号切换，未明确同一浏览器允许同时保持登录的最大账号数，以及多账号登录状态下点击退出登录是仅退出当前账号还是退出全部账号。",
+            "clarificationSuggestion": "建议同一浏览器最多托管 5 个已验证账号会话；单账号登录时直接展示「退出登录」，多账号登录时提供「退出当前账号」（自动切换至剩余已登录账号）与「退出全部账号」两个选项。"
+          }
+        ],
+        "architectureSummary": "在现有 Cloudflare Workers + Hono + D1 + Durable Objects + React/Vite 轻图文社区架构上进行严格增量演进，完全保留既有 0001~0003 迁移、通知中心、私信实时推送、图片裁剪及隐藏 /admin 管理后台。\n1. 数据层：新增幂等迁移 migrations/0004_feed_revamp_bookmarks_accounts.sql，通过独立 post_metrics 表（存储 views_count、bookmarks_count、shares_count）与 post_bookmarks 表实现零侵入扩展，避免对既有 posts 表执行非幂等 ALTER TABLE；并在用户删帖与后台删帖事务中级联清理关联统计与收藏记录。\n2. 业务接口层：扩展 src/routes/posts.ts 序列化输出及新增点击（POST /api/posts/:id/view）、收藏切换（POST /api/posts/:id/bookmark）、分享记录（POST /api/posts/:id/share）接口；扩展 src/routes/users.ts 支持本人专属收藏列表（tab=bookmarks）；新增 src/routes/discover.ts 提供基于 D1 json_each 实时聚合的热门话题（GET /api/discover/topics）与推荐关注（GET /api/discover/recommended-users）；扩展 src/routes/auth.ts 与 src/lib/cookies.ts，采用纯 HttpOnly 多账号会话托管 Cookie（session_vault，上限 5 个已验证会话令牌，绝不向前端脚本暴露凭证）实现账号列表查询（GET /api/auth/accounts）、安全无感切换（POST /api/auth/switch）与分级退出（POST /api/auth/logout）。\n3. 前端与路由层：将 CommunityPage.tsx 升级为 X.com 风格三栏布局（左侧主导航 <aside> + 居中单列动态信息流 <main> + 右侧发现导航 <aside>），严格保持左侧导航与主内容区紧凑间距以兼容既往布局契约；重构 PostCard.tsx 为单列时间线形态并内置评论/点赞/收藏/点击数/分享互动栏；新增 /posts/:id 前端直达路由与 PostDetailDialog 联动，支持分享链接直接打开目标动态并记录点击；左下角账号菜单集成多账号列表、即时切换、添加其他账号（复用 AuthDialog OTP 流程）与账号切换时自动断开重连 WebSocket（UserRealtimeHub）及全视图状态刷新。",
+        "techDecisions": [
+          "遵循 Cloudflare D1 迁移幂等与原子性规范：保留 0001~0003 既有迁移不变，0004 迁移仅使用 CREATE TABLE IF NOT EXISTS 与 CREATE INDEX IF NOT EXISTS 新建 post_metrics 和 post_bookmarks 表，避免 ALTER TABLE 重复列风险；部署前需确认 wrangler.toml 的 database_id 绑定配置及 CI 环境中 CLOUDFLARE_API_TOKEN、CLOUDFLARE_ACCOUNT_ID 凭证完整有效。",
+          "多账号切换采用全服务端 HttpOnly Cookie 托管方案（session_token 标记当前激活会话 + session_vault 托管最多 5 个已验证会话令牌），严禁在 localStorage 持久化凭证；切换接口强制校验目标 userId 归属当前浏览器有效托管会话，杜绝跨账号越权接管。",
+          "账号切换时主动调用 realtimeClient.disconnect() 后重新握手 /api/ws，确保 Durable Object UserRealtimeHub 立即切换至目标账号通道，并同步刷新动态流 likedByMe/bookmarkedByMe、未读通知私信数与右侧推荐关注列表。",
+          "动态详情直达 URL 采用 /posts/:id 路径，利用 wrangler.toml 既有的 single-page-application 回退机制直接加载应用并弹出 PostDetailDialog，既实现分享 URL 直达又保持既往点击卡片弹出双栏详情弹窗的交互与几何一致性。",
+          "三栏布局保持左侧导航为 DOM 中第一个 <aside>、居中动态流为 <main>、右侧热门话题与推荐关注为 <main> 之后的第二个 <aside>（lg 宽屏展示），确保既有左栏与主区紧凑间距不被破坏且小屏无横向溢出。",
+          "点击统计采用显式 POST /api/posts/:id/view 原子自增，保持 GET /api/posts/:id 纯只读无副作用；前端在单次打开动态详情或直达 /posts/:id 时防抖上报一次，避免 React 严格模式重复计数。"
+        ],
+        "apiContracts": [
+          {
+            "id": "API-1",
+            "method": "POST",
+            "path": "/api/posts/:id/view",
+            "summary": "记录动态点击/浏览次数（支持访客与登录用户，原子累加 views_count）",
+            "requestSchema": "{}",
+            "responseSchema": "{ ok: true, viewsCount: number }",
+            "errorCodes": [
+              "404"
+            ]
+          },
+          {
+            "id": "API-2",
+            "method": "POST",
+            "path": "/api/posts/:id/bookmark",
+            "summary": "切换当前登录用户对指定动态的收藏/取消收藏状态并同步更新收藏计数",
+            "requestSchema": "{}",
+            "responseSchema": "{ ok: true, bookmarked: boolean, bookmarksCount: number }",
+            "errorCodes": [
+              "401",
+              "404"
+            ]
+          },
+          {
+            "id": "API-3",
+            "method": "POST",
+            "path": "/api/posts/:id/share",
+            "summary": "记录动态分享次数并返回可直达的站内分享路径（支持访客与登录用户）",
+            "requestSchema": "{}",
+            "responseSchema": "{ ok: true, sharesCount: number, sharePath: string }",
+            "errorCodes": [
+              "404"
+            ]
+          },
+          {
+            "id": "API-4",
+            "method": "GET",
+            "path": "/api/posts/:id",
+            "summary": "获取单条动态详情及评论树（增量扩展返回点击数、收藏数、分享数及当前用户收藏态；GET /api/posts 列表同结构扩展）",
+            "requestSchema": "Path param: id (string)",
+            "responseSchema": "{ post: { id, title, content, imageUrl, tags, likesCount, commentsCount, viewsCount, bookmarksCount, sharesCount, likedByMe, bookmarkedByMe, author, createdAt }, comments: CommentItem[] }",
+            "errorCodes": [
+              "404"
+            ]
+          },
+          {
+            "id": "API-5",
+            "method": "GET",
+            "path": "/api/users/:id/activity",
+            "summary": "个人主页活动记录增量支持 tab=bookmarks 查询收藏动态列表（收藏列表仅本人有权读取）",
+            "requestSchema": "Query: tab=posts|likes|comments|replies|bookmarks, limit?: 1..50, offset?: >=0",
+            "responseSchema": "{ tab: string, items: PostItem[] | CommentActivityItem[] | ReplyActivityItem[], total: number }",
+            "errorCodes": [
+              "400",
+              "401",
+              "403",
+              "404"
+            ]
+          },
+          {
+            "id": "API-6",
+            "method": "GET",
+            "path": "/api/discover/topics",
+            "summary": "获取右侧导航热门话题列表（按真实动态标签发帖数与互动热度加权排序，冷启动补齐预设话题）",
+            "requestSchema": "Query: limit?: integer (1..12, default 6)",
+            "responseSchema": "{ topics: Array<{ tag: string, postsCount: number, heatScore: number }> }",
+            "errorCodes": [
+              "400"
+            ]
+          },
+          {
+            "id": "API-7",
+            "method": "GET",
+            "path": "/api/discover/recommended-users",
+            "summary": "获取右侧导航推荐关注创作者列表（排除当前用户本人与已关注对象，严禁返回用户邮箱）",
+            "requestSchema": "Query: limit?: integer (1..10, default 5)",
+            "responseSchema": "{ users: Array<{ id: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string, followersCount: number, postsCount: number, isFollowing: boolean }> }",
+            "errorCodes": [
+              "400"
+            ]
+          },
+          {
+            "id": "API-8",
+            "method": "GET",
+            "path": "/api/auth/accounts",
+            "summary": "获取当前浏览器多账号托管列表中全部有效已登录账号及当前激活账号 ID",
+            "requestSchema": "Cookie: session_token, session_vault (HttpOnly)",
+            "responseSchema": "{ activeUserId: string | null, accounts: Array<{ id: string, email: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string, createdAt: string, isActive: boolean }> }",
+            "errorCodes": []
+          },
+          {
+            "id": "API-9",
+            "method": "POST",
+            "path": "/api/auth/switch",
+            "summary": "将当前激活登录态切换为本浏览器已验证托管的其他账号",
+            "requestSchema": "{ userId: string }",
+            "responseSchema": "{ ok: true, user: AuthUser, accounts: AccountSummary[] }",
+            "errorCodes": [
+              "400",
+              "401",
+              "403"
+            ]
+          },
+          {
+            "id": "API-10",
+            "method": "POST",
+            "path": "/api/auth/logout",
+            "summary": "扩展退出登录：支持退出当前账号（若仍有其他已登录账号则自动切换至下一个有效账号）、移除指定托管账号或一键退出全部账号",
+            "requestSchema": "{ userId?: string, all?: boolean } (optional body)",
+            "responseSchema": "{ ok: true, activeUser: AuthUser | null, accounts: AccountSummary[] }",
+            "errorCodes": [
+              "403"
+            ]
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T-01",
+            "title": "新增动态统计与收藏增量数据库迁移",
+            "module": "database",
+            "description": "创建幂等、原子的增量迁移文件 migrations/0004_feed_revamp_bookmarks_accounts.sql（不改动 0001~0003 既有迁移）：使用 CREATE TABLE IF NOT EXISTS 建立 post_metrics（post_id 主键、views_count、bookmarks_count、shares_count、updated_at）与 post_bookmarks（post_id 与 user_id 联合主键、created_at）及相关查询索引。同步核验 wrangler.toml 的 D1 database_id 绑定规范与本地/CI 迁移执行流程（wrangler d1 migrations apply DB --local 及部署工作流 CLOUDFLARE_API_TOKEN 校验），确保新旧数据平滑兼容且可重复安全执行。",
+            "dependsOn": [],
+            "acceptanceCriteria": [
+              "社区升级后，原有历史动态、评论、点赞、关注、私信与通知数据完整保留，不会丢失或损坏",
+              "任意历史动态与新发布动态默认具备点击数、收藏数与分享数统计能力，且初始数值准确显示为零",
+              "用户收藏或浏览动态后刷新页面或重新打开站点，相关统计数据与收藏记录保持持久不丢失"
+            ],
+            "estimatedComplexity": "S"
+          },
+          {
+            "id": "T-02",
+            "title": "实现动态点击统计、收藏、分享与本人收藏列表后端能力",
+            "module": "backend",
+            "description": "增量扩展 src/routes/posts.ts：更新 PostRow 与 serializePost，在 GET /api/posts、POST /api/posts 与 GET /api/posts/:id 中左连接 post_metrics 与 post_bookmarks 返回 viewsCount、bookmarksCount、sharesCount、bookmarkedByMe；新增 POST /api/posts/:id/view（访客/登录均可原子自增点击数）、POST /api/posts/:id/bookmark（需登录，事务式防并发切换收藏状态并维护计数）、POST /api/posts/:id/share（访客/登录均可累加分享数并返回 sharePath: /posts/:id）。在 src/routes/posts.ts（DELETE /:id）与 src/routes/admin.ts（DELETE /posts/:id）删帖批处理中同步清理 post_bookmarks 与 post_metrics。扩展 src/routes/users.ts：GET /:id 对本人返回 bookmarksCount，GET /:id/activity 新增 tab=bookmarks 仅允许账号本人访问（未登录返回 401，跨用户访问返回 403）。",
+            "dependsOn": [
+              "T-01"
+            ],
+            "acceptanceCriteria": [
+              "用户或未登录访客每次打开动态详情后，该动态的点击次数准确加一并实时同步展示",
+              "已登录用户可以对任意动态点击收藏与取消收藏，收藏计数随之加一或减一，未登录用户尝试收藏时会收到登录引导",
+              "用户或未登录访客触发分享操作后，该动态的分享次数准确加一并生成可直接访问该动态的专属分享链接",
+              "已登录用户可在自己的个人主页查看按收藏时间倒序排列的全部收藏动态，其他用户无法查看或窃取他人的隐私收藏列表",
+              "当作者或管理员删除某条动态后，该动态不再出现在任何用户的收藏列表中，访问其分享链接也会友好提示内容不存在"
+            ],
+            "estimatedComplexity": "M"
+          },
+          {
+            "id": "T-03",
+            "title": "实现右侧发现导航后端接口（热门话题与推荐关注）",
+            "module": "backend",
+            "description": "新建 src/routes/discover.ts 并在 src/index.ts 挂载至 /api/discover：实现 GET /api/discover/topics（校验 limit 范围 1..12，利用 D1 json_each(p.tags_json) 结合 post_metrics 统计各话题发帖量与互动热度并排序，社区冷启动标签不足时用预设精选话题兜底补齐）；实现 GET /api/discover/recommended-users（校验 limit 范围 1..10，排除当前登录用户自身及已关注用户，按粉丝数与发帖数降序返回推荐创作者公开信息，严格剔除 email 字段保护隐私）。",
+            "dependsOn": [
+              "T-01"
+            ],
+            "acceptanceCriteria": [
+              "首页右侧的热门话题榜单能够根据社区真实发布的话题标签与互动热度自动聚合排序，新发布带有热门标签的动态可即时反映在榜单中",
+              "首页右侧的推荐关注榜单会优先展示社区内活跃创作者的昵称、头像、简介与粉丝情况，不会向用户推荐自己或已经关注过的人",
+              "推荐关注列表展示的所有用户信息仅包含公开资料，严禁泄露任何用户的注册邮箱等隐私信息"
+            ],
+            "estimatedComplexity": "M"
+          },
+          {
+            "id": "T-04",
+            "title": "实现多账号安全会话托管与切换后端能力",
+            "module": "backend",
+            "description": "扩展 src/lib/cookies.ts 新增 USER_SESSION_VAULT_COOKIE（session_vault，HttpOnly、SameSite=Lax）与多令牌解析/序列化辅助函数；扩展 src/routes/auth.ts：1) verify-code 登录成功后在保留其他已登录账号会话的前提下将新令牌写入 session_vault（同用户自动去重，单浏览器上限 5 个账号）并置为当前 session_token；2) 新增 GET /api/auth/accounts 返回当前浏览器全部有效托管账号与 activeUserId；3) 新增 POST /api/auth/switch 校验目标 userId 必须归属当前浏览器有效托管会话（未登录返回 401，未托管账号返回 403，非法参数返回 400）后切换 session_token；4) 增强 POST /api/auth/logout，支持空请求体退出当前账号（有剩余有效账号时自动切回，无剩余时清空所有 Cookie，完全兼容单账号退出行为）以及 { all: true } 一次性退出并注销全部托管账号。",
+            "dependsOn": [],
+            "acceptanceCriteria": [
+              "用户在同一浏览器内可以依次验证并同时保持多个社区账号处于已登录状态，最多支持五个账号共存",
+              "用户在已登录的多个账号之间一键切换时，无需重复输入邮箱验证码即可立即以目标账号身份发帖、点赞、收藏、关注与收发私信",
+              "任何用户无法在未经邮箱验证的情况下冒充或切换到他人的账号，已退出的账号也无法被再次切回",
+              "多账号状态下用户可选择仅退出当前账号并自动切回其余已登录账号，或选择一键退出全部账号恢复访客状态；单账号退出体验与之前保持一致"
+            ],
+            "estimatedComplexity": "M"
+          },
+          {
+            "id": "T-05",
+            "title": "重构 X.com 风格动态列表流、右侧导航、分享直达与多账号切换前端界面",
+            "module": "frontend",
+            "description": "1) 更新 client/src/lib/api.ts 补全动态统计/收藏/分享、发现接口、个人收藏标签及多账号切换 API 封装；2) 重构 client/src/pages/CommunityPage.tsx 为 X.com 风格三栏布局（保留左侧导航为首个 <aside> 且与居中 <main> 保持紧凑间距，动态流右侧在 lg 及以上宽屏渲染发现导航 <aside> 展示「热门话题」与「推荐关注」卡片，支持点击话题筛选动态与直接一键关注/取消关注推荐用户）；3) 重构 client/src/components/PostCard.tsx 与主页信息流容器，从瀑布流改为类似 X.com 的单列纵向列表卡片形态，底部操作栏提供评论、点赞、收藏、点击统计与分享按钮（分享支持复制直达链接并弹出清晰提示）；4) 支持 /posts/:id 分享链接直达路由与 history 同步，在 PostDetailDialog.tsx 中集成点击上报、收藏与分享操作，同时保持桌面端双栏详情弹窗与移动端适配；5) 在 ProfileView.tsx 为本人主页新增「收藏」标签页并同步采用清晰列表展示；6) 升级左下角账号菜单及移动端入口，展示已登录账号列表、当前账号标识、一键切换、「添加其他账号」（复用 AuthDialog）、「退出登录/退出当前账号」与「退出全部账号」，切换账号时主动断开重连 realtimeClient 并刷新全站状态。",
+            "dependsOn": [
+              "T-02",
+              "T-03",
+              "T-04"
+            ],
+            "acceptanceCriteria": [
+              "用户打开社区首页时，中间主区域以类似 X.com 的单列纵向列表形式展示社区动态，每条动态清晰呈现作者信息、正文、配图、话题标签以及评论数、点赞数、收藏数、点击数和分享按钮",
+              "用户点击列表中的任意动态即可打开详情查看完整内容与评论，同时该动态的点击次数即时增加；在列表或详情中点击收藏按钮可即时切换收藏状态，在个人主页的收藏标签页可随时回看已收藏内容",
+              "用户点击动态上的分享按钮后，页面提示已复制分享链接且分享数增加；将分享链接发送给他人或在新窗口直接打开后，页面自动跳转并展示该条动态的完整详情，若动态不存在则友好提示并返回首页",
+              "用户在电脑宽屏浏览首页时，页面右侧展示热门话题与推荐关注模块；点击任意热门话题可快速筛选该话题下的动态，点击推荐用户旁的关注按钮可直接完成关注，点击用户名可进入其个人主页",
+              "用户点击左下角个人账号区域可查看当前已登录的所有账号列表，点击添加其他账号可登录新账号，点击列表中的其他账号可一键无感切换身份，切换后昵称头像、点赞收藏状态、通知私信未读数及实时消息通道立即同步为目标账号"
+            ],
+            "estimatedComplexity": "L"
+          }
+        ]
+      },
+      "qaSpec": {
+        "apiTestChecklist": [
+          {
+            "id": "TC-01",
+            "endpoint": "/api/posts/:id/view",
+            "method": "POST",
+            "scenario": "访客或已登录用户点击打开动态后累计点击数",
+            "expectedStatus": 200,
+            "assertion": "返回 ok: true 且 viewsCount 递增，后续查询 GET /api/posts/:id 返回一致的 viewsCount"
+          },
+          {
+            "id": "TC-02",
+            "endpoint": "/api/posts/:id/view",
+            "method": "POST",
+            "scenario": "对不存在的动态 ID 上报点击",
+            "expectedStatus": 404,
+            "assertion": "返回 404 错误提示帖子不存在"
+          },
+          {
+            "id": "TC-03",
+            "endpoint": "/api/posts/:id/bookmark",
+            "method": "POST",
+            "scenario": "未登录用户尝试收藏动态",
+            "expectedStatus": 401,
+            "assertion": "返回 401 拒绝操作"
+          },
+          {
+            "id": "TC-04",
+            "endpoint": "/api/posts/:id/bookmark",
+            "method": "POST",
+            "scenario": "已登录用户收藏动态后再次点击取消收藏",
+            "expectedStatus": 200,
+            "assertion": "首次返回 bookmarked: true 且 bookmarksCount 为 1；二次返回 bookmarked: false 且 bookmarksCount 为 0"
+          },
+          {
+            "id": "TC-05",
+            "endpoint": "/api/users/:id/activity?tab=bookmarks",
+            "method": "GET",
+            "scenario": "已登录用户查询本人个人主页收藏动态列表",
+            "expectedStatus": 200,
+            "assertion": "返回 tab: 'bookmarks' 且 items 包含已收藏动态并带 bookmarkedByMe: true"
+          },
+          {
+            "id": "TC-06",
+            "endpoint": "/api/posts/:id/share",
+            "method": "POST",
+            "scenario": "用户或访客触发分享动态",
+            "expectedStatus": 200,
+            "assertion": "返回 ok: true、sharesCount 递增且 sharePath 等于 /posts/:id"
+          },
+          {
+            "id": "TC-07",
+            "endpoint": "/api/discover/topics",
+            "method": "GET",
+            "scenario": "获取右侧导航热门话题列表",
+            "expectedStatus": 200,
+            "assertion": "返回 topics 数组，包含真实发布的动态标签及其 postsCount 与 heatScore"
+          },
+          {
+            "id": "TC-08",
+            "endpoint": "/api/discover/recommended-users",
+            "method": "GET",
+            "scenario": "已登录用户获取右侧推荐关注用户列表",
+            "expectedStatus": 200,
+            "assertion": "返回 users 数组，不包含当前登录用户本人及已关注用户"
+          },
+          {
+            "id": "TC-09",
+            "endpoint": "/api/auth/accounts",
+            "method": "GET",
+            "scenario": "同一浏览器上下文连续验证登录两个账号后查询账号列表",
+            "expectedStatus": 200,
+            "assertion": "accounts 至少包含两个账号且 activeUserId 指向最新登录账号"
+          },
+          {
+            "id": "TC-10",
+            "endpoint": "/api/auth/switch",
+            "method": "POST",
+            "scenario": "在已登录的两个账号之间一键切换",
+            "expectedStatus": 200,
+            "assertion": "返回目标账号信息，后续 GET /api/auth/me 返回切换后的账号"
+          },
+          {
+            "id": "TC-11",
+            "endpoint": "/api/auth/logout",
+            "method": "POST",
+            "scenario": "多账号状态下退出当前账号与退出全部账号",
+            "expectedStatus": 200,
+            "assertion": "退出当前账号后自动切回剩余账号；传入 all: true 后全部注销且 /api/auth/me 返回 authenticated: false"
+          }
+        ],
+        "e2eTestCode": "import { test, expect, type APIRequestContext } from '@playwright/test';\n\nfunction makeEmail(prefix: string): string {\n  const rand = Math.random().toString(36).slice(2, 7);\n  return `${prefix}-${Date.now()}-${rand}@example.com`;\n}\n\nasync function loginUser(\n  request: APIRequestContext,\n  email: string,\n  nickname: string\n): Promise<{ id: string; email: string; nickname: string }> {\n  const sendRes = await request.post('/api/auth/send-code', { data: { email } });\n  expect(sendRes.status()).toBe(200);\n  const sendJson = await sendRes.json();\n  const verifyRes = await request.post('/api/auth/verify-code', {\n    data: { email, code: sendJson.devCode, nickname },\n  });\n  expect(verifyRes.status()).toBe(200);\n  return (await verifyRes.json()).user;\n}\n\ntest.describe.serial('动态改版初版 E2E 校验套件', () => {\n  test('1. 列表形态展示、点击统计、收藏与分享链接直达', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1440, height: 900 });\n    const user = await loginUser(page.request, makeEmail('feed-revamp'), '内容创作者');\n\n    const title1 = `列表动态一-${Date.now()}`;\n    const title2 = `列表动态二-${Date.now()}`;\n    const tag = `热议话题${Date.now().toString().slice(-4)}`;\n\n    const p1 = await (await page.request.post('/api/posts', {\n      data: { title: title1, content: '第一条 X.com 风格动态正文内容', tags: [tag] },\n    })).json();\n    await page.request.post('/api/posts', {\n      data: { title: title2, content: '第二条动态用于校验单列纵向排列', tags: [tag] },\n    });\n    const postId = p1.post.id as string;\n\n    await page.goto('/');\n    const card1 = page.locator('article').filter({ hasText: title1 }).first();\n    const card2 = page.locator('article').filter({ hasText: title2 }).first();\n    await expect(card1).toBeVisible({ timeout: 10000 });\n    await expect(card2).toBeVisible({ timeout: 10000 });\n\n    const box1 = await card1.boundingBox();\n    const box2 = await card2.boundingBox();\n    expect(box1 && box2).toBeTruthy();\n    if (box1 && box2) {\n      expect(Math.abs(box1.x - box2.x)).toBeLessThanOrEqual(24);\n    }\n\n    // 收藏切换\n    const bookmarkBtn = card1.getByRole('button', { name: /收藏/i }).first();\n    await expect(bookmarkBtn).toBeVisible();\n    const bookmarkResp = page.waitForResponse(\n      (r) => r.url().includes(`/api/posts/${postId}/bookmark`) && r.request().method() === 'POST'\n    );\n    await bookmarkBtn.click();\n    expect((await bookmarkResp).status()).toBe(200);\n\n    // 分享计数与直达链接\n    const shareBtn = card1.getByRole('button', { name: /分享/i }).first();\n    await expect(shareBtn).toBeVisible();\n    const shareResp = page.waitForResponse(\n      (r) => r.url().includes(`/api/posts/${postId}/share`) && r.request().method() === 'POST'\n    );\n    await shareBtn.click();\n    expect((await shareResp).status()).toBe(200);\n\n    // 访客通过分享 URL 直达动态详情并累加点击数\n    const anonCtx = await browser.newContext();\n    try {\n      const anonPage = await anonCtx.newPage();\n      await anonPage.goto(`/posts/${postId}`);\n      await expect(anonPage.getByText(title1).first()).toBeVisible({ timeout: 10000 });\n      await expect\n        .poll(async () => (await (await page.request.get(`/api/posts/${postId}`)).json()).post.viewsCount)\n        .toBeGreaterThanOrEqual(1);\n    } finally {\n      await anonCtx.close();\n    }\n\n    // 个人主页收藏列表包含该动态\n    const bmAct = await (await page.request.get(`/api/users/${user.id}/activity?tab=bookmarks`)).json();\n    expect(bmAct.items.some((p: { id: string }) => p.id === postId)).toBe(true);\n  });\n\n  test('2. 右侧热门话题与推荐关注展示及互动', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1440, height: 900 });\n    const ctxCreator = await browser.newContext();\n    try {\n      const creatorNick = `推荐博主${Date.now().toString().slice(-4)}`;\n      await loginUser(ctxCreator.request, makeEmail('rec-creator'), creatorNick);\n      const hotTag = `精选趋势${Date.now().toString().slice(-4)}`;\n      await ctxCreator.request.post('/api/posts', {\n        data: { title: `趋势内容-${Date.now()}`, content: '用于生成热门话题', tags: [hotTag] },\n      });\n\n      await loginUser(page.request, makeEmail('rec-viewer'), '浏览者');\n      await page.goto('/');\n\n      await expect(page.getByText(/热门话题/).first()).toBeVisible({ timeout: 10000 });\n      await expect(page.getByText(/推荐关注/).first()).toBeVisible({ timeout: 10000 });\n      await expect(page.getByText(hotTag).first()).toBeVisible({ timeout: 10000 });\n    } finally {\n      await ctxCreator.close();\n    }\n  });\n\n  test('3. 多账号登录与一键切换', async ({ page }) => {\n    await page.setViewportSize({ width: 1440, height: 900 });\n    const nickA = `主号A${Date.now().toString().slice(-4)}`;\n    const nickB = `副号B${Date.now().toString().slice(-4)}`;\n    const userA = await loginUser(page.request, makeEmail('multi-a'), nickA);\n    const userB = await loginUser(page.request, makeEmail('multi-b'), nickB);\n\n    const accountsJson = await (await page.request.get('/api/auth/accounts')).json();\n    expect(accountsJson.activeUserId).toBe(userB.id);\n    expect(accountsJson.accounts.length).toBeGreaterThanOrEqual(2);\n\n    await page.goto('/');\n    const sidebar = page.locator('aside').first();\n    const trigger = sidebar.getByRole('button', { name: new RegExp(`${nickB}|个人资料|账号`, 'i') }).last();\n    await expect(trigger).toBeVisible({ timeout: 10000 });\n    await trigger.click();\n\n    const switchTarget = page.getByRole('menuitem', { name: new RegExp(nickA) }).or(page.getByRole('button', { name: new RegExp(nickA) })).first();\n    await expect(switchTarget).toBeVisible({ timeout: 10000 });\n    const switchResp = page.waitForResponse(\n      (r) => r.url().includes('/api/auth/switch') && r.request().method() === 'POST'\n    );\n    await switchTarget.click();\n    expect((await switchResp).status()).toBe(200);\n\n    const meAfter = await (await page.request.get('/api/auth/me')).json();\n    expect(meAfter.user.id).toBe(userA.id);\n  });\n});\n",
+        "coverageNotes": [
+          "覆盖主页 X.com 风格单列列表形态的纵向对齐校验、动态点击统计、收藏切换、分享计数与 /posts/:id 访客直达",
+          "覆盖主页右侧热门话题与推荐关注模块渲染及接口基础契约",
+          "覆盖同浏览器多账号登录、账号列表查询与左下角菜单一键切换身份"
+        ]
+      },
+      "qaCritic": {
+        "reviewSummary": "初版 QA Spec 覆盖了三大核心功能的正向主流程，但在安全隔离（多账号越权切换防护、收藏列表 IDOR 隔离、推荐关注邮箱隐私脱敏）、非法输入边界（发现接口分页越界、空 userId 切换、不存在动态的点击/收藏/分享与直达 404 容错）、级联数据一致性（删帖后清理收藏与统计）、并发计数安全（并发点击与高频收藏防负数）、以及三栏布局几何与账号切换状态同步（点赞/收藏状态随身份切换即时更新、单账号退出与全部退出后防旧账号回切）方面存在明显缺口。同时依据历史 D1 迁移故障经验，需确保迁移脚本幂等与无侵入。已将全部 7 项审查发现加固至最终 API 测试清单与盲测 E2E 套件，并全量校验 Playwright 严格模式选择器规范（所有 .or() 均显式附加 .first()）。",
+        "findings": [
+          {
+            "id": "CRIT-01",
+            "category": "security",
+            "severity": "high",
+            "issue": "初版测试未验证多账号切换接口 /api/auth/switch 的越权接管风险（IDOR）：攻击者若携带自身合法会话尝试切换至未在当前浏览器验证过的其他用户 ID，或已退出登录的旧账号 ID，必须被服务端严格拒绝。",
+            "recommendation": "在隔离浏览器上下文创建第三方用户 C，验证当前会话请求 POST /api/auth/switch 传入 userC.id 必须返回 403；并在注销账号 B 后再次尝试切回 B 必须返回 403；同时校验未登录请求返回 401、缺失 userId 返回 400。"
+          },
+          {
+            "id": "CRIT-02",
+            "category": "security",
+            "severity": "high",
+            "issue": "初版测试未覆盖收藏列表隐私隔离与推荐关注隐私脱敏：他人访问 /api/users/:id/activity?tab=bookmarks 可能造成收藏隐私泄露；/api/discover/recommended-users 若直接透传用户表字段可能泄露注册邮箱。",
+            "recommendation": "增加未登录访问他人收藏返回 401、用户 B 访问用户 A 收藏返回 403 的强断言；对 /api/discover/recommended-users 原始响应文本断言严禁包含任意用户邮箱字符串。"
+          },
+          {
+            "id": "CRIT-03",
+            "category": "invalid_input",
+            "severity": "medium",
+            "issue": "初版测试缺少对 /api/discover/topics、/api/discover/recommended-users 非法 limit 参数，以及 /api/posts/:id/bookmark、/api/posts/:id/share 对不存在动态 ID 的异常路径覆盖。",
+            "recommendation": "补充 limit=0、limit=99、limit=abc 返回 400 的参数边界测试，以及对不存在动态 ID 执行 view/bookmark/share 均返回 404 的契约测试；同时测试访问 /posts/non-existent-id 页面无前端未捕获异常且优雅提示不存在。"
+          },
+          {
+            "id": "CRIT-04",
+            "category": "boundary",
+            "severity": "high",
+            "issue": "未验证删除动态后的级联清理边界：若删帖未同步清理 post_bookmarks 与 post_metrics，个人主页收藏列表将残留脏数据或导致页面异常；另需落实 RSI 历史经验（D1 迁移幂等与配置校验）。",
+            "recommendation": "补充「发帖 -> 点击/收藏/分享 -> 删帖 -> 验证收藏列表不再包含该动态且详情接口返回 404」闭环校验；并在技术约束中确保 0004 迁移采用全幂等 CREATE TABLE IF NOT EXISTS 建表，避免 ALTER TABLE 导致 D1 迁移中断。"
+          },
+          {
+            "id": "CRIT-05",
+            "category": "ui_interaction",
+            "severity": "high",
+            "issue": "初版测试仅断言「热门话题」「推荐关注」文本可见，未验证其位于中间动态流的右侧几何位置，也未验证点击热门话题实际过滤动态流、点击推荐关注按钮实际完成关注，以及公开页面仍严禁泄露 /admin 链接。",
+            "recommendation": "在 1440x900 视口下校验三栏相对几何关系（左侧导航在列表左侧、热门话题与推荐关注在列表右侧），实际点击热门话题校验筛选效果与不相关动态隐藏，实际点击推荐关注用户按钮校验 POST /api/users/:id/follow 成功并更新为已关注状态，并保留 /admin 零链接与零 pageerror 审计。"
+          },
+          {
+            "id": "CRIT-06",
+            "category": "concurrency",
+            "severity": "medium",
+            "issue": "高并发场景下，多个访客同时打开同一条动态（并发调用 /view）或快速连点收藏可能导致计数丢失、重复插入报错或出现负数。",
+            "recommendation": "增加并发 Promise.all 调用 POST /api/posts/:id/view 验证计数准确累加无 500 报错，以及连续切换收藏状态确保 bookmarksCount 始终 >= 0 且与 bookmarked 状态严格一致。"
+          },
+          {
+            "id": "CRIT-07",
+            "category": "ui_interaction",
+            "severity": "medium",
+            "issue": "多账号切换后仅验证了 /api/auth/me 变更，未验证前端页面视图状态（如不同账号对同一条动态的收藏状态 bookmarkedByMe、点赞状态 likedByMe 及个人主页收藏页内容）以及「添加其他账号」UI 流程与单账号退出/全部退出状态清理。",
+            "recommendation": "增加账号 A 收藏某动态后切换至账号 B 验证该动态在 B 视角下呈未收藏状态、再切回 A 恢复已收藏状态的端到端校验，并覆盖 UI 内点击「添加其他账号」完成 OTP 登录及退出当前/全部账号闭环。"
+          }
+        ],
+        "finalApiTestChecklist": [
+          {
+            "id": "TC-01",
+            "endpoint": "/api/posts/:id/view",
+            "method": "POST",
+            "scenario": "匿名访客与已登录用户连续及并发上报动态点击统计",
+            "expectedStatus": 200,
+            "assertion": "每次返回 ok: true 且 viewsCount 原子累加无并发 500，GET /api/posts/:id 返回一致点击数"
+          },
+          {
+            "id": "TC-02",
+            "endpoint": "/api/posts/:id/view",
+            "method": "POST",
+            "scenario": "对不存在的动态 ID 上报点击",
+            "expectedStatus": 404,
+            "assertion": "返回 404 错误且不写入孤立统计记录"
+          },
+          {
+            "id": "TC-03",
+            "endpoint": "/api/posts/:id/bookmark",
+            "method": "POST",
+            "scenario": "未登录用户尝试收藏动态",
+            "expectedStatus": 401,
+            "assertion": "返回 401 提示请先登录"
+          },
+          {
+            "id": "TC-04",
+            "endpoint": "/api/posts/:id/bookmark",
+            "method": "POST",
+            "scenario": "已登录用户对不存在的动态 ID 执行收藏",
+            "expectedStatus": 404,
+            "assertion": "返回 404 提示帖子不存在"
+          },
+          {
+            "id": "TC-05",
+            "endpoint": "/api/posts/:id/bookmark",
+            "method": "POST",
+            "scenario": "已登录用户收藏 -> 取消收藏 -> 再次收藏状态切换与计数一致性",
+            "expectedStatus": 200,
+            "assertion": "bookmarked 在 true/false 间准确切换，bookmarksCount 严格同步且永不为负"
+          },
+          {
+            "id": "TC-06",
+            "endpoint": "/api/users/:id/activity?tab=bookmarks",
+            "method": "GET",
+            "scenario": "本人查询收藏动态列表与未登录/跨用户隐私隔离校验",
+            "expectedStatus": 200,
+            "assertion": "本人查询返回 200 且包含已收藏动态；未登录返回 401；其他用户越权查询返回 403"
+          },
+          {
+            "id": "TC-07",
+            "endpoint": "/api/posts/:id/share",
+            "method": "POST",
+            "scenario": "访客或登录用户触发分享及不存在动态 ID 边界校验",
+            "expectedStatus": 200,
+            "assertion": "有效动态返回 200、sharesCount 递增与 sharePath=/posts/:id；不存在动态返回 404"
+          },
+          {
+            "id": "TC-08",
+            "endpoint": "/api/posts/:id",
+            "method": "DELETE",
+            "scenario": "作者删除已被浏览、收藏、分享的动态后验证级联清理",
+            "expectedStatus": 200,
+            "assertion": "删除后 GET /api/posts/:id 返回 404，且原收藏用户的收藏列表中不再出现该动态"
+          },
+          {
+            "id": "TC-09",
+            "endpoint": "/api/discover/topics",
+            "method": "GET",
+            "scenario": "获取热门话题列表与非法 limit 参数校验",
+            "expectedStatus": 200,
+            "assertion": "默认返回 topics 数组并包含真实高互动标签；limit=0 或 limit=99 返回 400"
+          },
+          {
+            "id": "TC-10",
+            "endpoint": "/api/discover/recommended-users",
+            "method": "GET",
+            "scenario": "获取推荐关注列表、排除本人/已关注、严禁泄露邮箱与非法 limit 校验",
+            "expectedStatus": 200,
+            "assertion": "返回 users 数组不含当前用户与已关注用户，原始响应文本不含任何邮箱地址；limit=0 或 limit=99 返回 400"
+          },
+          {
+            "id": "TC-11",
+            "endpoint": "/api/auth/accounts",
+            "method": "GET",
+            "scenario": "多账号登录后查询当前浏览器托管账号列表",
+            "expectedStatus": 200,
+            "assertion": "返回 activeUserId 及所有有效已登录账号摘要，且不泄露任何会话令牌"
+          },
+          {
+            "id": "TC-12",
+            "endpoint": "/api/auth/switch",
+            "method": "POST",
+            "scenario": "切换至已托管账号成功，未登录/空参数/未托管他人账号被严密拦截",
+            "expectedStatus": 200,
+            "assertion": "切换至本浏览器已登录账号返回 200 并更新 /api/auth/me；未登录返回 401；空 userId 返回 400；尝试切换至他人未托管账号返回 403"
+          },
+          {
+            "id": "TC-13",
+            "endpoint": "/api/auth/logout",
+            "method": "POST",
+            "scenario": "多账号状态下退出当前账号自动切回剩余账号、防回切已注销账号及一键退出全部账号",
+            "expectedStatus": 200,
+            "assertion": "退出当前账号后自动切回剩余有效账号且再次切回已退出账号返回 403；传入 all: true 后所有会话失效，/api/auth/me 返回 authenticated: false 且 accounts 为空"
+          }
+        ],
+        "finalE2eTestCode": "import { test, expect, type APIRequestContext } from '@playwright/test';\n\nfunction makeEmail(prefix: string): string {\n  const rand = Math.random().toString(36).slice(2, 7);\n  return `${prefix}-${Date.now()}-${rand}@example.com`;\n}\n\nasync function loginUser(\n  request: APIRequestContext,\n  email: string,\n  nickname: string\n): Promise<{ id: string; email: string; nickname: string }> {\n  const sendRes = await request.post('/api/auth/send-code', { data: { email } });\n  expect(sendRes.status(), 'send-code 应返回 200').toBe(200);\n  const sendJson = await sendRes.json();\n  expect(sendJson.devCode).toMatch(/^\\d{6}$/);\n\n  const verifyRes = await request.post('/api/auth/verify-code', {\n    data: { email, code: sendJson.devCode, nickname },\n  });\n  expect(verifyRes.status(), 'verify-code 应返回 200').toBe(200);\n  const verifyJson = await verifyRes.json();\n  expect(verifyJson.ok).toBe(true);\n  return verifyJson.user;\n}\n\ntest.describe.serial('动态改版（X.com列表流、点击/收藏/分享直达、右侧导航、多账号切换）加固盲测套件', () => {\n  test('1. 主页单列列表形态、点击统计并发累加、收藏隐私隔离、分享 URL 直达与删帖级联清理', async ({ page, browser }) => {\n    const pageErrors: string[] = [];\n    page.on('pageerror', (err) => pageErrors.push(err.message));\n    await page.setViewportSize({ width: 1440, height: 900 });\n\n    const ctxB = await browser.newContext();\n    const anonCtx = await browser.newContext();\n    try {\n      const userA = await loginUser(page.request, makeEmail('feed-a'), '列表作者A');\n      await loginUser(ctxB.request, makeEmail('feed-b'), '旁观读者B');\n\n      // 异常与权限边界校验\n      expect((await anonCtx.request.post('/api/posts/non-existent-id/view')).status()).toBe(404);\n      expect((await anonCtx.request.post('/api/posts/non-existent-id/share')).status()).toBe(404);\n      expect((await anonCtx.request.post('/api/posts/non-existent-id/bookmark')).status()).toBe(401);\n      expect((await page.request.post('/api/posts/non-existent-id/bookmark')).status()).toBe(404);\n      expect((await anonCtx.request.get(`/api/users/${userA.id}/activity?tab=bookmarks`)).status()).toBe(401);\n\n      const tag = `动态改版${Date.now().toString().slice(-4)}`;\n      const title1 = `X风格单列动态一-${Date.now()}`;\n      const content1 = '第一条正文内容，用于校验列表流展示、点击、收藏与分享直达。';\n      const title2 = `X风格单列动态二-${Date.now()}`;\n\n      const p1Res = await page.request.post('/api/posts', {\n        data: { title: title1, content: content1, tags: [tag] },\n      });\n      expect(p1Res.status()).toBe(201);\n      const postId = (await p1Res.json()).post.id as string;\n\n      const p2Res = await page.request.post('/api/posts', {\n        data: { title: title2, content: '第二条动态用于验证纵向单列排列', tags: [tag] },\n      });\n      expect(p2Res.status()).toBe(201);\n\n      // 并发点击累加校验（匿名访客也可正常累加）\n      const concurrentViews = await Promise.all([\n        anonCtx.request.post(`/api/posts/${postId}/view`),\n        anonCtx.request.post(`/api/posts/${postId}/view`),\n        page.request.post(`/api/posts/${postId}/view`),\n      ]);\n      for (const r of concurrentViews) {\n        expect(r.status()).toBe(200);\n      }\n      const afterViewsJson = await (await page.request.get(`/api/posts/${postId}`)).json();\n      expect(afterViewsJson.post.viewsCount, '3次并发点击后 viewsCount 应至少为 3').toBeGreaterThanOrEqual(3);\n\n      // 进入首页验证：无 /admin 链接泄露 + 单列纵向列表几何形态\n      await page.goto('/');\n      await expect(page.locator('a[href=\"/admin\"]')).toHaveCount(0);\n      await expect(page.locator('a[href=\"/admin/\"]')).toHaveCount(0);\n\n      const card1 = page.locator('article').filter({ hasText: title1 }).first();\n      const card2 = page.locator('article').filter({ hasText: title2 }).first();\n      await expect(card1).toBeVisible({ timeout: 10000 });\n      await expect(card2).toBeVisible({ timeout: 10000 });\n\n      const box1 = await card1.boundingBox();\n      const box2 = await card2.boundingBox();\n      expect(box1, '动态卡片一应具备可见尺寸').not.toBeNull();\n      expect(box2, '动态卡片二应具备可见尺寸').not.toBeNull();\n      if (box1 && box2) {\n        expect(Math.abs(box1.x - box2.x), '列表流中两条动态左边界应对齐而非多列瀑布流').toBeLessThanOrEqual(24);\n        const topBox = box1.y < box2.y ? box1 : box2;\n        const bottomBox = box1.y < box2.y ? box2 : box1;\n        expect(bottomBox.y, '动态卡片应纵向依次排布不横向并列').toBeGreaterThanOrEqual(topBox.y + topBox.height - 12);\n      }\n\n      // UI 点击收藏按钮并验证状态与计数持久化\n      const bookmarkBtn = card1.getByRole('button', { name: /收藏/i }).first();\n      await expect(bookmarkBtn).toBeVisible();\n      const bookmarkPromise = page.waitForResponse(\n        (res) => res.url().includes(`/api/posts/${postId}/bookmark`) && res.request().method() === 'POST'\n      );\n      await bookmarkBtn.click();\n      const bookmarkRes = await bookmarkPromise;\n      expect(bookmarkRes.status()).toBe(200);\n      const bookmarkJson = await bookmarkRes.json();\n      expect(bookmarkJson.bookmarked).toBe(true);\n      expect(bookmarkJson.bookmarksCount).toBe(1);\n\n      // 收藏隐私隔离（IDOR 防护）：用户 B 严禁查看用户 A 的收藏列表\n      const crossBookmarks = await ctxB.request.get(`/api/users/${userA.id}/activity?tab=bookmarks`);\n      expect(crossBookmarks.status(), '他人跨用户查询收藏列表必须返回 403').toBe(403);\n\n      // 用户 A 个人主页「收藏」标签页可查看该动态\n      const ownBookmarksJson = await (await page.request.get(`/api/users/${userA.id}/activity?tab=bookmarks`)).json();\n      expect(ownBookmarksJson.items.some((p: { id: string }) => p.id === postId)).toBe(true);\n\n      // UI 点击分享按钮，校验分享接口与直达路径\n      const shareBtn = card1.getByRole('button', { name: /分享/i }).first();\n      await expect(shareBtn).toBeVisible();\n      const sharePromise = page.waitForResponse(\n        (res) => res.url().includes(`/api/posts/${postId}/share`) && res.request().method() === 'POST'\n      );\n      await shareBtn.click();\n      const shareRes = await sharePromise;\n      expect(shareRes.status()).toBe(200);\n      const shareJson = await shareRes.json();\n      expect(shareJson.sharesCount).toBeGreaterThanOrEqual(1);\n      expect(shareJson.sharePath).toBe(`/posts/${postId}`);\n\n      // 匿名访客通过分享 URL /posts/:id 直接跳转并展示动态详情，同时点击数继续递增\n      const viewsBeforeShareJump = afterViewsJson.post.viewsCount as number;\n      const anonPage = await anonCtx.newPage();\n      const anonErrors: string[] = [];\n      anonPage.on('pageerror', (err) => anonErrors.push(err.message));\n      await anonPage.setViewportSize({ width: 1280, height: 800 });\n      await anonPage.goto(`/posts/${postId}`);\n      await expect(anonPage.getByText(title1).first()).toBeVisible({ timeout: 10000 });\n      await expect(anonPage.getByText(content1).first()).toBeVisible({ timeout: 10000 });\n      await expect\n        .poll(async () => (await (await page.request.get(`/api/posts/${postId}`)).json()).post.viewsCount)\n        .toBeGreaterThan(viewsBeforeShareJump);\n\n      // 访问不存在的分享 URL 应优雅展示错误提示且无 JS 崩溃\n      await anonPage.goto('/posts/non-existent-share-id');\n      await expect(anonPage.getByText(/不存在|无法加载|未找到|已删除/i).first()).toBeVisible({ timeout: 10000 });\n      expect(anonErrors, '直达有效及无效分享链接均不应触发前端异常').toEqual([]);\n      await anonPage.close();\n\n      // 进入个人主页 UI 核对「收藏」标签页展示\n      const sidebar = page.locator('aside').first();\n      await sidebar\n        .getByRole('button', { name: /主页/ })\n        .or(sidebar.getByRole('link', { name: /主页/ }))\n        .first()\n        .click();\n      const bookmarksTab = page\n        .getByRole('tab', { name: /收藏/ })\n        .or(page.getByRole('button', { name: /收藏/ }))\n        .first();\n      await expect(bookmarksTab).toBeVisible({ timeout: 10000 });\n      await bookmarksTab.click();\n      await expect(page.getByText(title1).first()).toBeVisible({ timeout: 10000 });\n\n      // 删帖级联清理：删除后收藏列表不再残留且详情返回 404\n      expect((await page.request.delete(`/api/posts/${postId}`)).status()).toBe(200);\n      expect((await page.request.get(`/api/posts/${postId}`)).status()).toBe(404);\n      const bookmarksAfterDel = await (await page.request.get(`/api/users/${userA.id}/activity?tab=bookmarks`)).json();\n      expect(bookmarksAfterDel.items.some((p: { id: string }) => p.id === postId)).toBe(false);\n      expect(pageErrors).toEqual([]);\n    } finally {\n      await ctxB.close();\n      await anonCtx.close();\n    }\n  });\n\n  test('2. 右侧导航（热门话题、推荐关注）接口契约、隐私脱敏、三栏几何布局与交互闭环', async ({ page, browser }) => {\n    const pageErrors: string[] = [];\n    page.on('pageerror', (err) => pageErrors.push(err.message));\n    await page.setViewportSize({ width: 1440, height: 900 });\n\n    const ctxCreator = await browser.newContext();\n    try {\n      const creatorEmail = makeEmail('discover-creator');\n      const creatorNick = `活跃达人${Date.now().toString().slice(-4)}`;\n      const creator = await loginUser(ctxCreator.request, creatorEmail, creatorNick);\n\n      const hotTag = `趋势热词${Date.now().toString().slice(-4)}`;\n      const otherTag = `普通标签${Date.now().toString().slice(-4)}`;\n      const hotPostTitle = `热词精选帖子-${Date.now()}`;\n      const otherPostTitle = `其他分类帖子-${Date.now()}`;\n\n      // 发布多篇带热词标签的动态提升其热度排名\n      for (let i = 0; i < 3; i += 1) {\n        const res = await ctxCreator.request.post('/api/posts', {\n          data: {\n            title: i === 0 ? hotPostTitle : `${hotPostTitle}-${i}`,\n            content: '测试热门话题实时聚合排序', \n            tags: [hotTag],\n          },\n        });\n        expect(res.status()).toBe(201);\n      }\n      await ctxCreator.request.post('/api/posts', {\n        data: { title: otherPostTitle, content: '用于验证点击热门话题筛选隔离', tags: [otherTag] },\n      });\n\n      const viewer = await loginUser(page.request, makeEmail('discover-viewer'), '探索用户');\n\n      // 发现接口参数边界与隐私脱敏审计\n      expect((await page.request.get('/api/discover/topics?limit=0')).status()).toBe(400);\n      expect((await page.request.get('/api/discover/topics?limit=99')).status()).toBe(400);\n      expect((await page.request.get('/api/discover/recommended-users?limit=0')).status()).toBe(400);\n      expect((await page.request.get('/api/discover/recommended-users?limit=99')).status()).toBe(400);\n\n      const topicsJson = await (await page.request.get('/api/discover/topics?limit=10')).json();\n      expect(Array.isArray(topicsJson.topics)).toBe(true);\n      expect(topicsJson.topics.some((t: { tag: string }) => t.tag === hotTag)).toBe(true);\n\n      const recRes = await page.request.get('/api/discover/recommended-users?limit=10');\n      expect(recRes.status()).toBe(200);\n      const recRawText = await recRes.text();\n      expect(recRawText, '推荐关注接口严禁泄露任何用户邮箱').not.toContain(creatorEmail);\n      const recJson = JSON.parse(recRawText);\n      expect(recJson.users.some((u: { id: string }) => u.id === viewer.id), '推荐关注不应包含当前登录用户本人').toBe(false);\n      expect(recJson.users.some((u: { id: string }) => u.id === creator.id)).toBe(true);\n\n      // 浏览器 1440px 宽屏验证三栏几何布局：左导航 < 居中列表 < 右侧发现栏\n      await page.goto('/');\n      const leftSidebar = page.locator('aside').first();\n      const feedArticle = page.locator('article').filter({ hasText: hotPostTitle }).first();\n      const trendingTitle = page.getByText(/热门话题/).first();\n      const recTitle = page.getByText(/推荐关注/).first();\n\n      await expect(leftSidebar).toBeVisible({ timeout: 10000 });\n      await expect(feedArticle).toBeVisible({ timeout: 10000 });\n      await expect(trendingTitle).toBeVisible({ timeout: 10000 });\n      await expect(recTitle).toBeVisible({ timeout: 10000 });\n\n      const leftBox = await leftSidebar.boundingBox();\n      const articleBox = await feedArticle.boundingBox();\n      const trendingBox = await trendingTitle.boundingBox();\n      expect(leftBox && articleBox && trendingBox).toBeTruthy();\n      if (leftBox && articleBox && trendingBox) {\n        expect(leftBox.x + leftBox.width, '左侧导航栏应位于动态列表左侧').toBeLessThanOrEqual(articleBox.x + 24);\n        expect(trendingBox.x, '右侧热门话题模块应位于动态列表右侧').toBeGreaterThanOrEqual(\n          articleBox.x + articleBox.width - 20\n        );\n      }\n\n      // 点击右侧热门话题筛选动态流\n      const rightAside = page.locator('aside').nth(1);\n      const topicBtn = rightAside\n        .getByRole('button', { name: new RegExp(hotTag) })\n        .or(page.getByRole('button', { name: new RegExp(hotTag) }))\n        .first();\n      await expect(topicBtn).toBeVisible({ timeout: 10000 });\n      await topicBtn.click();\n      await expect(page.locator('article').filter({ hasText: hotPostTitle }).first()).toBeVisible({ timeout: 10000 });\n      await expect(page.locator('article').filter({ hasText: otherPostTitle })).toHaveCount(0, { timeout: 10000 });\n\n      // 在右侧推荐关注模块直接点击关注目标博主\n      const recUserRow = rightAside\n        .locator('li, div')\n        .filter({ hasText: creatorNick })\n        .filter({ has: page.getByRole('button', { name: /^关注$/ }) })\n        .last();\n      const followBtn = recUserRow\n        .getByRole('button', { name: /^关注$/ })\n        .or(rightAside.getByRole('button', { name: /^关注$/ }))\n        .first();\n      await expect(followBtn).toBeVisible({ timeout: 10000 });\n      const followResp = page.waitForResponse(\n        (r) => r.url().includes('/follow') && r.request().method() === 'POST'\n      );\n      await followBtn.click();\n      expect((await followResp).status()).toBe(200);\n      await expect(rightAside.getByRole('button', { name: /已关注/ }).first()).toBeVisible({ timeout: 10000 });\n      expect(pageErrors).toEqual([]);\n    } finally {\n      await ctxCreator.close();\n    }\n  });\n\n  test('3. 多账号安全切换、防越权接管、UI 身份状态同步、添加账号与分级退出闭环', async ({ page, browser }) => {\n    const pageErrors: string[] = [];\n    page.on('pageerror', (err) => pageErrors.push(err.message));\n    await page.setViewportSize({ width: 1440, height: 900 });\n\n    const ctxOther = await browser.newContext();\n    const anonCtx = await browser.newContext();\n    try {\n      // 未登录切换账号必须返回 401\n      expect((await anonCtx.request.post('/api/auth/switch', { data: { userId: 'any-id' } })).status()).toBe(401);\n\n      // 独立浏览器上下文中的第三方账号 C（从未在 page 上下文登录）\n      const userC = await loginUser(ctxOther.request, makeEmail('multi-victim-c'), '外部账号C');\n\n      const nickA = `多账号甲${Date.now().toString().slice(-4)}`;\n      const nickB = `多账号乙${Date.now().toString().slice(-4)}`;\n      const userA = await loginUser(page.request, makeEmail('multi-a'), nickA);\n\n      // 账号 A 发布并收藏一篇动态，用于验证切换账号后前端收藏态同步\n      const sharedTitle = `身份态同步验证帖-${Date.now()}`;\n      const postId = (\n        await (\n          await page.request.post('/api/posts', {\n            data: { title: sharedTitle, content: '仅账号A收藏，切换至账号B应显示未收藏' },\n          })\n        ).json()\n      ).post.id as string;\n      expect((await page.request.post(`/api/posts/${postId}/bookmark`)).status()).toBe(200);\n\n      // 在同一浏览器上下文登录第二个账号 B\n      const userB = await loginUser(page.request, makeEmail('multi-b'), nickB);\n\n      // 参数边界与安全隔离（防跨用户越权接管）：空 userId 返回 400，未托管的外部账号 C 返回 403\n      expect((await page.request.post('/api/auth/switch', { data: { userId: '' } })).status()).toBe(400);\n      expect(\n        (await page.request.post('/api/auth/switch', { data: { userId: userC.id } })).status(),\n        '严禁切换至未在当前浏览器验证过的外部账号'\n      ).toBe(403);\n\n      const accListJson = await (await page.request.get('/api/auth/accounts')).json();\n      expect(accListJson.activeUserId).toBe(userB.id);\n      expect(accListJson.accounts.some((a: { id: string }) => a.id === userA.id)).toBe(true);\n      expect(accListJson.accounts.some((a: { id: string }) => a.id === userB.id)).toBe(true);\n\n      // 账号 B 视角下该动态未收藏\n      const postAsB = await (await page.request.get(`/api/posts/${postId}`)).json();\n      expect(postAsB.post.bookmarkedByMe).toBe(false);\n\n      // 浏览器 UI 验证：当前为账号 B，打开左下角账号菜单一键切换至账号 A\n      await page.goto('/');\n      const sidebar = page.locator('aside').first();\n      const triggerB = sidebar\n        .getByRole('button', { name: new RegExp(`${nickB}|个人资料|账号`, 'i') })\n        .last();\n      await expect(triggerB).toBeVisible({ timeout: 10000 });\n      await triggerB.click();\n\n      const switchToA = page\n        .getByRole('menuitem', { name: new RegExp(nickA) })\n        .or(page.getByRole('button', { name: new RegExp(nickA) }))\n        .first();\n      await expect(switchToA).toBeVisible({ timeout: 10000 });\n\n      const switchPromise = page.waitForResponse(\n        (r) => r.url().includes('/api/auth/switch') && r.request().method() === 'POST'\n      );\n      await switchToA.click();\n      expect((await switchPromise).status()).toBe(200);\n\n      // 验证激活身份已变为账号 A，且接口与页面数据均已同步为 A 视角\n      const meAsA = await (await page.request.get('/api/auth/me')).json();\n      expect(meAsA.user.id).toBe(userA.id);\n      const postAsA = await (await page.request.get(`/api/posts/${postId}`)).json();\n      expect(postAsA.post.bookmarkedByMe).toBe(true);\n      await expect(sidebar.getByText(nickA).first()).toBeVisible({ timeout: 10000 });\n\n      // 通过左下角账号菜单「添加其他账号」UI 流程再新增第三个账号 D\n      const triggerA = sidebar\n        .getByRole('button', { name: new RegExp(`${nickA}|个人资料|账号`, 'i') })\n        .last();\n      await triggerA.click();\n      const addAccountBtn = page\n        .getByRole('menuitem', { name: /添加.*账号/i })\n        .or(page.getByRole('button', { name: /添加.*账号/i }))\n        .first();\n      await expect(addAccountBtn).toBeVisible({ timeout: 10000 });\n      await addAccountBtn.click();\n\n      const emailD = makeEmail('multi-d');\n      const nickD = `新加丙${Date.now().toString().slice(-4)}`;\n      const emailInput = page\n        .getByPlaceholder(/邮箱|email/i)\n        .or(page.locator('input[type=\"email\"]'))\n        .first();\n      await expect(emailInput).toBeVisible({ timeout: 10000 });\n      await emailInput.fill(emailD);\n\n      const sendDPromise = page.waitForResponse(\n        (r) => r.url().includes('/api/auth/send-code') && r.request().method() === 'POST'\n      );\n      await page.getByRole('button', { name: /获取验证码|发送验证码/i }).first().click();\n      const sendDJson = await (await sendDPromise).json();\n      expect(sendDJson.devCode).toMatch(/^\\d{6}$/);\n\n      await page\n        .getByPlaceholder(/验证码|code/i)\n        .or(page.locator('input[inputmode=\"numeric\"]'))\n        .first()\n        .fill(sendDJson.devCode);\n      const nickInput = page.getByPlaceholder(/昵称/i).first();\n      if (await nickInput.isVisible().catch(() => false)) {\n        await nickInput.fill(nickD);\n      }\n      const verifyDPromise = page.waitForResponse(\n        (r) => r.url().includes('/api/auth/verify-code') && r.request().method() === 'POST'\n      );\n      await page\n        .getByRole('button', { name: /验证并登录|确认登录|登录/i })\n        .filter({ hasNotText: /获取验证码|发送验证码/i })\n        .first()\n        .click();\n      expect((await verifyDPromise).status()).toBe(200);\n\n      const meAsD = await (await page.request.get('/api/auth/me')).json();\n      expect(meAsD.user.email).toBe(emailD);\n      const userDId = meAsD.user.id as string;\n\n      // 退出当前账号 D -> 自动切回剩余账号，且严禁再次切回已注销的账号 D\n      const logoutOneRes = await page.request.post('/api/auth/logout', { data: {} });\n      expect(logoutOneRes.status()).toBe(200);\n      const meAfterOne = await (await page.request.get('/api/auth/me')).json();\n      expect(meAfterOne.authenticated).toBe(true);\n      expect(meAfterOne.user.id).not.toBe(userDId);\n\n      const switchRevokedRes = await page.request.post('/api/auth/switch', { data: { userId: userDId } });\n      expect(switchRevokedRes.status(), '已退出注销的账号严禁再次切回').toBe(403);\n\n      // 一键退出全部账号 -> 所有托管账号清空，恢复未登录态\n      const logoutAllRes = await page.request.post('/api/auth/logout', { data: { all: true } });\n      expect(logoutAllRes.status()).toBe(200);\n      const meAfterAll = await (await page.request.get('/api/auth/me')).json();\n      expect(meAfterAll.authenticated).toBe(false);\n      const accAfterAll = await (await page.request.get('/api/auth/accounts')).json();\n      expect(accAfterAll.accounts).toEqual([]);\n      expect(pageErrors).toEqual([]);\n    } finally {\n      await ctxOther.close();\n      await anonCtx.close();\n    }\n  });\n});\n"
+      },
+      "planTokenUsage": {
+        "inputTokens": 63031,
+        "outputTokens": 24512,
+        "totalTokens": 87543,
+        "source": "estimated",
+        "model": "gemini-4-neon-high"
+      },
+      "status": "analyzed",
+      "checkedCriteriaIds": []
+    }
   },
   {
     "id": "job-af152d25",
