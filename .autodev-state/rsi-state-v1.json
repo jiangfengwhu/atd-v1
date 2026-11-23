@@ -278,7 +278,34 @@
       "relatedRunId": "run-7026568c",
       "branch": "autodev/feat-20261123-025859",
       "occurredAt": "2026-11-23T03:12:21.033Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "build_typecheck",
+        "rootCauseSummary": "模块导入路径错误，项目重构导致 src/lib/iterationContext 文件被迁移或删除，但 server/cloudflareDeployService.ts 中的引用未同步更新。",
+        "shouldCodifyAsRule": true,
+        "decisionRationale": "Decision 门控放行立即生效（通用性 92% · 泛化评分 2.32/3.0）：高危系统性工程防线，直接注入下游 Prompt。 文件路径变更导致的构建失败是常见的工程规范问题，通过在代码提交前强制检查跨目录引用完整性，可有效规避此类低级编译错误。",
+        "confidence": 0.92,
+        "suggestedRule": {
+          "title": "模块依赖路径一致性检查",
+          "targetStage": "coding",
+          "severity": "critical",
+          "promptDirective": "在修改代码目录结构后，必须执行全局依赖扫描，确保所有相对路径（特别是从 server 目录引用 src 目录的资源）保持同步更新，并运行静态分析工具检测悬空引用。",
+          "dedupeKey": "module-path-dependency-integrity"
+        },
+        "decisionGate": {
+          "model": "gemini-decision-1",
+          "generalizableProb": 0.9248,
+          "duplicateProb": 0.0237,
+          "generalityScore": 2.316,
+          "chosenAction": "create_critical_active",
+          "actionConfidence": 0.7624,
+          "evaluatedAt": "2026-11-23T03:12:31.031Z"
+        },
+        "appliedOutcome": "active_created",
+        "analyzedAt": "2026-11-23T03:12:31.031Z",
+        "model": "gemini-3.1-flash-lite + gemini-decision-1",
+        "generatedRuleId": "rsi-192e5828"
+      }
     },
     {
       "id": "inc-2dcaf204",
@@ -390,6 +417,23 @@
     }
   ],
   "rules": [
+    {
+      "id": "rsi-192e5828",
+      "dedupeKey": "module-path-dependency-integrity",
+      "title": "模块依赖路径一致性检查",
+      "targetStage": "coding",
+      "severity": "critical",
+      "status": "active",
+      "promptDirective": "在修改代码目录结构后，必须执行全局依赖扫描，确保所有相对路径（特别是从 server 目录引用 src 目录的资源）保持同步更新，并运行静态分析工具检测悬空引用。",
+      "rootCauseCategory": "build_typecheck",
+      "sourceIncidentIds": [
+        "inc-69efde60"
+      ],
+      "hitCount": 1,
+      "appliedCount": 0,
+      "createdAt": "2026-11-23T03:12:31.331Z",
+      "updatedAt": "2026-11-23T03:12:31.331Z"
+    },
     {
       "id": "rsi-619c6524",
       "dedupeKey": "cloudflare-d1-idempotent-migrations",
