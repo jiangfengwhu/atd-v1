@@ -488,7 +488,17 @@
       "initializedEmptyRepo": false
     },
     "approvalNote": "验收通过",
-    "approvedAt": "2026-11-23T03:11:48.982Z"
+    "approvedAt": "2026-11-23T03:11:48.982Z",
+    "mergedRelease": {
+      "mergedAt": "2026-11-23T03:11:55.330Z",
+      "mergeCommitSha": "fbdd308810e6769e9df3178f5f0c5c42c2a491d1",
+      "baseBranch": "main",
+      "prNumber": 11,
+      "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/11",
+      "commitUrl": "https://github.com/jiangfengwhu/atd-v1/commit/fbdd308810e6769e9df3178f5f0c5c42c2a491d1",
+      "mergeMethod": "squash",
+      "branchDeleted": true
+    }
   },
   {
     "id": "run-96e1a2ad",

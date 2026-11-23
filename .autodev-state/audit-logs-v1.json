@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-6826ed25",
+    "timestamp": "2026-11-23T03:11:56.682Z",
+    "category": "approval",
+    "action": "release_approved",
+    "label": "验收通过并批准上线",
+    "actor": "验收审批人",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-7026568c",
+    "prdTitle": "接入通知",
+    "branch": "autodev/feat-20261123-025859",
+    "prNumber": 11,
+    "status": "success",
+    "detail": "验收通过并合入 main（Commit fbdd308）（生产自动部署异常：Cannot find module '/workspace/src/lib/iterationContext' imported from /workspace/server/cloudflareDeployService.ts）"
+  },
+  {
     "id": "aud-80ed160a",
     "timestamp": "2026-11-23T02:59:21.505Z",
     "category": "execution",
