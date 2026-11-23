@@ -1,0 +1,237 @@
+{
+  "ambiguities": [
+    {
+      "id": "AMB-1",
+      "severity": "medium",
+      "title": "动态点击统计的计数口径（累计点击与去重规则）",
+      "detail": "PRD 提出添加动态点击统计，但未明确同一用户多次打开同一条动态是每次打开均累计（PV 口径），还是按用户/浏览器在时间窗口内去重（UV 口径）。",
+      "clarificationSuggestion": "建议首期采用原子累加 PV 口径：每次用户点击进入动态详情或通过分享链接直接访问该动态时计数加一，并在前端避免开发模式下单次打开重复上报；后续如有防刷诉求再补充时间窗口去重。"
+    },
+    {
+      "id": "AMB-2",
+      "severity": "medium",
+      "title": "收藏列表的查看入口与隐私可见范围",
+      "detail": "PRD 要求增加收藏功能，未说明用户收藏后的内容在何处集中查看，以及他人访问某用户主页时是否可以查看其收藏列表。",
+      "clarificationSuggestion": "建议参照 X.com 习惯：在个人主页新增「收藏」标签页集中展示已收藏动态，且收藏列表仅账号本人可见，防止泄露用户个人偏好隐私。"
+    },
+    {
+      "id": "AMB-3",
+      "severity": "low",
+      "title": "右侧热门话题与推荐关注的排序规则与冷启动兜底",
+      "detail": "PRD 要求主页右侧增加类似 X.com 的热门话题与推荐关注模块，未约定热度计算权重及社区内容较少时的冷启动展示策略。",
+      "clarificationSuggestion": "建议热门话题优先基于真实动态标签的发帖数与互动量（点赞、评论、点击）加权排序，标签不足时以社区预设推荐话题补齐；推荐关注排除当前登录用户本人及已关注对象，按粉丝数与活跃发帖数降序推荐。"
+    },
+    {
+      "id": "AMB-4",
+      "severity": "medium",
+      "title": "多账号切换的并发账号上限与退出登录行为",
+      "detail": "PRD 要求支持多账号切换，未明确同一浏览器允许同时保持登录的最大账号数，以及多账号登录状态下点击退出登录是仅退出当前账号还是退出全部账号。",
+      "clarificationSuggestion": "建议同一浏览器最多托管 5 个已验证账号会话；单账号登录时直接展示「退出登录」，多账号登录时提供「退出当前账号」（自动切换至剩余已登录账号）与「退出全部账号」两个选项。"
+    }
+  ],
+  "architectureSummary": "在现有 Cloudflare Workers + Hono + D1 + Durable Objects + React/Vite 轻图文社区架构上进行严格增量演进，完全保留既有 0001~0003 迁移、通知中心、私信实时推送、图片裁剪及隐藏 /admin 管理后台。\n1. 数据层：新增幂等迁移 migrations/0004_feed_revamp_bookmarks_accounts.sql，通过独立 post_metrics 表（存储 views_count、bookmarks_count、shares_count）与 post_bookmarks 表实现零侵入扩展，避免对既有 posts 表执行非幂等 ALTER TABLE；并在用户删帖与后台删帖事务中级联清理关联统计与收藏记录。\n2. 业务接口层：扩展 src/routes/posts.ts 序列化输出及新增点击（POST /api/posts/:id/view）、收藏切换（POST /api/posts/:id/bookmark）、分享记录（POST /api/posts/:id/share）接口；扩展 src/routes/users.ts 支持本人专属收藏列表（tab=bookmarks）；新增 src/routes/discover.ts 提供基于 D1 json_each 实时聚合的热门话题（GET /api/discover/topics）与推荐关注（GET /api/discover/recommended-users）；扩展 src/routes/auth.ts 与 src/lib/cookies.ts，采用纯 HttpOnly 多账号会话托管 Cookie（session_vault，上限 5 个已验证会话令牌，绝不向前端脚本暴露凭证）实现账号列表查询（GET /api/auth/accounts）、安全无感切换（POST /api/auth/switch）与分级退出（POST /api/auth/logout）。\n3. 前端与路由层：将 CommunityPage.tsx 升级为 X.com 风格三栏布局（左侧主导航 <aside> + 居中单列动态信息流 <main> + 右侧发现导航 <aside>），严格保持左侧导航与主内容区紧凑间距以兼容既往布局契约；重构 PostCard.tsx 为单列时间线形态并内置评论/点赞/收藏/点击数/分享互动栏；新增 /posts/:id 前端直达路由与 PostDetailDialog 联动，支持分享链接直接打开目标动态并记录点击；左下角账号菜单集成多账号列表、即时切换、添加其他账号（复用 AuthDialog OTP 流程）与账号切换时自动断开重连 WebSocket（UserRealtimeHub）及全视图状态刷新。",
+  "techDecisions": [
+    "遵循 Cloudflare D1 迁移幂等与原子性规范：保留 0001~0003 既有迁移不变，0004 迁移仅使用 CREATE TABLE IF NOT EXISTS 与 CREATE INDEX IF NOT EXISTS 新建 post_metrics 和 post_bookmarks 表，避免 ALTER TABLE 重复列风险；部署前需确认 wrangler.toml 的 database_id 绑定配置及 CI 环境中 CLOUDFLARE_API_TOKEN、CLOUDFLARE_ACCOUNT_ID 凭证完整有效。",
+    "多账号切换采用全服务端 HttpOnly Cookie 托管方案（session_token 标记当前激活会话 + session_vault 托管最多 5 个已验证会话令牌），严禁在 localStorage 持久化凭证；切换接口强制校验目标 userId 归属当前浏览器有效托管会话，杜绝跨账号越权接管。",
+    "账号切换时主动调用 realtimeClient.disconnect() 后重新握手 /api/ws，确保 Durable Object UserRealtimeHub 立即切换至目标账号通道，并同步刷新动态流 likedByMe/bookmarkedByMe、未读通知私信数与右侧推荐关注列表。",
+    "动态详情直达 URL 采用 /posts/:id 路径，利用 wrangler.toml 既有的 single-page-application 回退机制直接加载应用并弹出 PostDetailDialog，既实现分享 URL 直达又保持既往点击卡片弹出双栏详情弹窗的交互与几何一致性。",
+    "三栏布局保持左侧导航为 DOM 中第一个 <aside>、居中动态流为 <main>、右侧热门话题与推荐关注为 <main> 之后的第二个 <aside>（lg 宽屏展示），确保既有左栏与主区紧凑间距不被破坏且小屏无横向溢出。",
+    "点击统计采用显式 POST /api/posts/:id/view 原子自增，保持 GET /api/posts/:id 纯只读无副作用；前端在单次打开动态详情或直达 /posts/:id 时防抖上报一次，避免 React 严格模式重复计数。"
+  ],
+  "apiContracts": [
+    {
+      "id": "API-1",
+      "method": "POST",
+      "path": "/api/posts/:id/view",
+      "summary": "记录动态点击/浏览次数（支持访客与登录用户，原子累加 views_count）",
+      "requestSchema": "{}",
+      "responseSchema": "{ ok: true, viewsCount: number }",
+      "errorCodes": [
+        "404"
+      ]
+    },
+    {
+      "id": "API-2",
+      "method": "POST",
+      "path": "/api/posts/:id/bookmark",
+      "summary": "切换当前登录用户对指定动态的收藏/取消收藏状态并同步更新收藏计数",
+      "requestSchema": "{}",
+      "responseSchema": "{ ok: true, bookmarked: boolean, bookmarksCount: number }",
+      "errorCodes": [
+        "401",
+        "404"
+      ]
+    },
+    {
+      "id": "API-3",
+      "method": "POST",
+      "path": "/api/posts/:id/share",
+      "summary": "记录动态分享次数并返回可直达的站内分享路径（支持访客与登录用户）",
+      "requestSchema": "{}",
+      "responseSchema": "{ ok: true, sharesCount: number, sharePath: string }",
+      "errorCodes": [
+        "404"
+      ]
+    },
+    {
+      "id": "API-4",
+      "method": "GET",
+      "path": "/api/posts/:id",
+      "summary": "获取单条动态详情及评论树（增量扩展返回点击数、收藏数、分享数及当前用户收藏态；GET /api/posts 列表同结构扩展）",
+      "requestSchema": "Path param: id (string)",
+      "responseSchema": "{ post: { id, title, content, imageUrl, tags, likesCount, commentsCount, viewsCount, bookmarksCount, sharesCount, likedByMe, bookmarkedByMe, author, createdAt }, comments: CommentItem[] }",
+      "errorCodes": [
+        "404"
+      ]
+    },
+    {
+      "id": "API-5",
+      "method": "GET",
+      "path": "/api/users/:id/activity",
+      "summary": "个人主页活动记录增量支持 tab=bookmarks 查询收藏动态列表（收藏列表仅本人有权读取）",
+      "requestSchema": "Query: tab=posts|likes|comments|replies|bookmarks, limit?: 1..50, offset?: >=0",
+      "responseSchema": "{ tab: string, items: PostItem[] | CommentActivityItem[] | ReplyActivityItem[], total: number }",
+      "errorCodes": [
+        "400",
+        "401",
+        "403",
+        "404"
+      ]
+    },
+    {
+      "id": "API-6",
+      "method": "GET",
+      "path": "/api/discover/topics",
+      "summary": "获取右侧导航热门话题列表（按真实动态标签发帖数与互动热度加权排序，冷启动补齐预设话题）",
+      "requestSchema": "Query: limit?: integer (1..12, default 6)",
+      "responseSchema": "{ topics: Array<{ tag: string, postsCount: number, heatScore: number }> }",
+      "errorCodes": [
+        "400"
+      ]
+    },
+    {
+      "id": "API-7",
+      "method": "GET",
+      "path": "/api/discover/recommended-users",
+      "summary": "获取右侧导航推荐关注创作者列表（排除当前用户本人与已关注对象，严禁返回用户邮箱）",
+      "requestSchema": "Query: limit?: integer (1..10, default 5)",
+      "responseSchema": "{ users: Array<{ id: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string, followersCount: number, postsCount: number, isFollowing: boolean }> }",
+      "errorCodes": [
+        "400"
+      ]
+    },
+    {
+      "id": "API-8",
+      "method": "GET",
+      "path": "/api/auth/accounts",
+      "summary": "获取当前浏览器多账号托管列表中全部有效已登录账号及当前激活账号 ID",
+      "requestSchema": "Cookie: session_token, session_vault (HttpOnly)",
+      "responseSchema": "{ activeUserId: string | null, accounts: Array<{ id: string, email: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string, createdAt: string, isActive: boolean }> }",
+      "errorCodes": []
+    },
+    {
+      "id": "API-9",
+      "method": "POST",
+      "path": "/api/auth/switch",
+      "summary": "将当前激活登录态切换为本浏览器已验证托管的其他账号",
+      "requestSchema": "{ userId: string }",
+      "responseSchema": "{ ok: true, user: AuthUser, accounts: AccountSummary[] }",
+      "errorCodes": [
+        "400",
+        "401",
+        "403"
+      ]
+    },
+    {
+      "id": "API-10",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "summary": "扩展退出登录：支持退出当前账号（若仍有其他已登录账号则自动切换至下一个有效账号）、移除指定托管账号或一键退出全部账号",
+      "requestSchema": "{ userId?: string, all?: boolean } (optional body)",
+      "responseSchema": "{ ok: true, activeUser: AuthUser | null, accounts: AccountSummary[] }",
+      "errorCodes": [
+        "403"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-01",
+      "title": "新增动态统计与收藏增量数据库迁移",
+      "module": "database",
+      "description": "创建幂等、原子的增量迁移文件 migrations/0004_feed_revamp_bookmarks_accounts.sql（不改动 0001~0003 既有迁移）：使用 CREATE TABLE IF NOT EXISTS 建立 post_metrics（post_id 主键、views_count、bookmarks_count、shares_count、updated_at）与 post_bookmarks（post_id 与 user_id 联合主键、created_at）及相关查询索引。同步核验 wrangler.toml 的 D1 database_id 绑定规范与本地/CI 迁移执行流程（wrangler d1 migrations apply DB --local 及部署工作流 CLOUDFLARE_API_TOKEN 校验），确保新旧数据平滑兼容且可重复安全执行。",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "社区升级后，原有历史动态、评论、点赞、关注、私信与通知数据完整保留，不会丢失或损坏",
+        "任意历史动态与新发布动态默认具备点击数、收藏数与分享数统计能力，且初始数值准确显示为零",
+        "用户收藏或浏览动态后刷新页面或重新打开站点，相关统计数据与收藏记录保持持久不丢失"
+      ],
+      "estimatedComplexity": "S"
+    },
+    {
+      "id": "T-02",
+      "title": "实现动态点击统计、收藏、分享与本人收藏列表后端能力",
+      "module": "backend",
+      "description": "增量扩展 src/routes/posts.ts：更新 PostRow 与 serializePost，在 GET /api/posts、POST /api/posts 与 GET /api/posts/:id 中左连接 post_metrics 与 post_bookmarks 返回 viewsCount、bookmarksCount、sharesCount、bookmarkedByMe；新增 POST /api/posts/:id/view（访客/登录均可原子自增点击数）、POST /api/posts/:id/bookmark（需登录，事务式防并发切换收藏状态并维护计数）、POST /api/posts/:id/share（访客/登录均可累加分享数并返回 sharePath: /posts/:id）。在 src/routes/posts.ts（DELETE /:id）与 src/routes/admin.ts（DELETE /posts/:id）删帖批处理中同步清理 post_bookmarks 与 post_metrics。扩展 src/routes/users.ts：GET /:id 对本人返回 bookmarksCount，GET /:id/activity 新增 tab=bookmarks 仅允许账号本人访问（未登录返回 401，跨用户访问返回 403）。",
+      "dependsOn": [
+        "T-01"
+      ],
+      "acceptanceCriteria": [
+        "用户或未登录访客每次打开动态详情后，该动态的点击次数准确加一并实时同步展示",
+        "已登录用户可以对任意动态点击收藏与取消收藏，收藏计数随之加一或减一，未登录用户尝试收藏时会收到登录引导",
+        "用户或未登录访客触发分享操作后，该动态的分享次数准确加一并生成可直接访问该动态的专属分享链接",
+        "已登录用户可在自己的个人主页查看按收藏时间倒序排列的全部收藏动态，其他用户无法查看或窃取他人的隐私收藏列表",
+        "当作者或管理员删除某条动态后，该动态不再出现在任何用户的收藏列表中，访问其分享链接也会友好提示内容不存在"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-03",
+      "title": "实现右侧发现导航后端接口（热门话题与推荐关注）",
+      "module": "backend",
+      "description": "新建 src/routes/discover.ts 并在 src/index.ts 挂载至 /api/discover：实现 GET /api/discover/topics（校验 limit 范围 1..12，利用 D1 json_each(p.tags_json) 结合 post_metrics 统计各话题发帖量与互动热度并排序，社区冷启动标签不足时用预设精选话题兜底补齐）；实现 GET /api/discover/recommended-users（校验 limit 范围 1..10，排除当前登录用户自身及已关注用户，按粉丝数与发帖数降序返回推荐创作者公开信息，严格剔除 email 字段保护隐私）。",
+      "dependsOn": [
+        "T-01"
+      ],
+      "acceptanceCriteria": [
+        "首页右侧的热门话题榜单能够根据社区真实发布的话题标签与互动热度自动聚合排序，新发布带有热门标签的动态可即时反映在榜单中",
+        "首页右侧的推荐关注榜单会优先展示社区内活跃创作者的昵称、头像、简介与粉丝情况，不会向用户推荐自己或已经关注过的人",
+        "推荐关注列表展示的所有用户信息仅包含公开资料，严禁泄露任何用户的注册邮箱等隐私信息"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-04",
+      "title": "实现多账号安全会话托管与切换后端能力",
+      "module": "backend",
+      "description": "扩展 src/lib/cookies.ts 新增 USER_SESSION_VAULT_COOKIE（session_vault，HttpOnly、SameSite=Lax）与多令牌解析/序列化辅助函数；扩展 src/routes/auth.ts：1) verify-code 登录成功后在保留其他已登录账号会话的前提下将新令牌写入 session_vault（同用户自动去重，单浏览器上限 5 个账号）并置为当前 session_token；2) 新增 GET /api/auth/accounts 返回当前浏览器全部有效托管账号与 activeUserId；3) 新增 POST /api/auth/switch 校验目标 userId 必须归属当前浏览器有效托管会话（未登录返回 401，未托管账号返回 403，非法参数返回 400）后切换 session_token；4) 增强 POST /api/auth/logout，支持空请求体退出当前账号（有剩余有效账号时自动切回，无剩余时清空所有 Cookie，完全兼容单账号退出行为）以及 { all: true } 一次性退出并注销全部托管账号。",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "用户在同一浏览器内可以依次验证并同时保持多个社区账号处于已登录状态，最多支持五个账号共存",
+        "用户在已登录的多个账号之间一键切换时，无需重复输入邮箱验证码即可立即以目标账号身份发帖、点赞、收藏、关注与收发私信",
+        "任何用户无法在未经邮箱验证的情况下冒充或切换到他人的账号，已退出的账号也无法被再次切回",
+        "多账号状态下用户可选择仅退出当前账号并自动切回其余已登录账号，或选择一键退出全部账号恢复访客状态；单账号退出体验与之前保持一致"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-05",
+      "title": "重构 X.com 风格动态列表流、右侧导航、分享直达与多账号切换前端界面",
+      "module": "frontend",
+      "description": "1) 更新 client/src/lib/api.ts 补全动态统计/收藏/分享、发现接口、个人收藏标签及多账号切换 API 封装；2) 重构 client/src/pages/CommunityPage.tsx 为 X.com 风格三栏布局（保留左侧导航为首个 <aside> 且与居中 <main> 保持紧凑间距，动态流右侧在 lg 及以上宽屏渲染发现导航 <aside> 展示「热门话题」与「推荐关注」卡片，支持点击话题筛选动态与直接一键关注/取消关注推荐用户）；3) 重构 client/src/components/PostCard.tsx 与主页信息流容器，从瀑布流改为类似 X.com 的单列纵向列表卡片形态，底部操作栏提供评论、点赞、收藏、点击统计与分享按钮（分享支持复制直达链接并弹出清晰提示）；4) 支持 /posts/:id 分享链接直达路由与 history 同步，在 PostDetailDialog.tsx 中集成点击上报、收藏与分享操作，同时保持桌面端双栏详情弹窗与移动端适配；5) 在 ProfileView.tsx 为本人主页新增「收藏」标签页并同步采用清晰列表展示；6) 升级左下角账号菜单及移动端入口，展示已登录账号列表、当前账号标识、一键切换、「添加其他账号」（复用 AuthDialog）、「退出登录/退出当前账号」与「退出全部账号」，切换账号时主动断开重连 realtimeClient 并刷新全站状态。",
+      "dependsOn": [
+        "T-02",
+        "T-03",
+        "T-04"
+      ],
+      "acceptanceCriteria": [
+        "用户打开社区首页时，中间主区域以类似 X.com 的单列纵向列表形式展示社区动态，每条动态清晰呈现作者信息、正文、配图、话题标签以及评论数、点赞数、收藏数、点击数和分享按钮",
+        "用户点击列表中的任意动态即可打开详情查看完整内容与评论，同时该动态的点击次数即时增加；在列表或详情中点击收藏按钮可即时切换收藏状态，在个人主页的收藏标签页可随时回看已收藏内容",
+        "用户点击动态上的分享按钮后，页面提示已复制分享链接且分享数增加；将分享链接发送给他人或在新窗口直接打开后，页面自动跳转并展示该条动态的完整详情，若动态不存在则友好提示并返回首页",
+        "用户在电脑宽屏浏览首页时，页面右侧展示热门话题与推荐关注模块；点击任意热门话题可快速筛选该话题下的动态，点击推荐用户旁的关注按钮可直接完成关注，点击用户名可进入其个人主页",
+        "用户点击左下角个人账号区域可查看当前已登录的所有账号列表，点击添加其他账号可登录新账号，点击列表中的其他账号可一键无感切换身份，切换后昵称头像、点赞收藏状态、通知私信未读数及实时消息通道立即同步为目标账号"
+      ],
+      "estimatedComplexity": "L"
+    }
+  ]
+}
