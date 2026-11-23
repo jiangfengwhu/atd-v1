@@ -1,0 +1,130 @@
+{
+  "reviewSummary": "初版 QA Spec 仅覆盖了通知和详情页的基础正向路径，在以下关键维度存在明显盲区：1）缺少 WebSocket 未认证拦截（401）、非升级请求拦截（426）与跨站 Origin 劫持防护（403）校验；2）缺少通知跨用户越权已读隔离（IDOR）与自发操作免打扰边界校验；3）缺少通知筛选非法参数、分页越界、空已读体与删帖后通知清理校验；4）缺少量化验证宽屏下左侧导航栏与中心内容区紧凑间距、Instagram 左右双栏详情几何坐标、以及静置期间零 HTTP 轮询网络审计。现已在最终清单与盲测 E2E 套件中全面加固，并严格确保全部组合定位器追加 .first() 与 D1 迁移幂等合规。",
+  "findings": [
+    {
+      "id": "CRIT-01",
+      "category": "security",
+      "severity": "high",
+      "issue": "WebSocket 端点 /api/ws 缺少未登录拒绝、非升级请求拦截及跨站 WebSocket 劫持（CSWSH）安全测试",
+      "recommendation": "补充未登录请求 /api/ws 返回 401、携带伪造跨站 Origin 返回 403、已登录但不带 Upgrade: websocket 头返回 426 的自动化校验，确保实时通道零未授权暴露。"
+    },
+    {
+      "id": "CRIT-02",
+      "category": "security",
+      "severity": "high",
+      "issue": "通知已读接口与列表接口未验证跨用户权限隔离（IDOR）",
+      "recommendation": "引入第三用户上下文 C，校验 C 既无法在通知列表中看到 A 的通知，也无法通过 POST /api/notifications/read 传入 A 的通知 ID 篡改 A 的未读状态。"
+    },
+    {
+      "id": "CRIT-03",
+      "category": "boundary",
+      "severity": "medium",
+      "issue": "缺少本人点赞/评论免自发通知、取消点赞/关注去重清理以及删帖后关联通知清理的边界覆盖",
+      "recommendation": "增加作者本人点赞与评论自身帖子后未读数保持为 0 的断言，增加删帖后查询通知接口仍返回 200 且不残留失效关联记录的验证。"
+    },
+    {
+      "id": "CRIT-04",
+      "category": "invalid_input",
+      "severity": "medium",
+      "issue": "通知查询与已读接口缺少非法枚举值、越界分页及空请求体校验",
+      "recommendation": "补充 GET /api/notifications?type=invalid、limit=0/100、offset=-1 以及 POST /api/notifications/read 传空对象 {} 或空数组 { ids: [] } 均返回 400 的测试项。"
+    },
+    {
+      "id": "CRIT-05",
+      "category": "ui_interaction",
+      "severity": "high",
+      "issue": "初版 E2E 未量化校验宽屏导航栏与中心流紧凑间距、Instagram 左右详情几何结构以及“零轮询”核心验收目标",
+      "recommendation": "在 1440x900 视口下验证 aside 与 main 水平间距紧凑（<= 140px）；在 1280x800 视口下验证详情弹窗内左侧图片坐标严格位于右侧评论输入区左侧；挂载网络请求监听器在静置 7 秒窗口内断言对 /api/messages/ 与 /api/notifications 的轮询请求数为 0，并校验 390x844 移动端适配。"
+    },
+    {
+      "id": "CRIT-06",
+      "category": "concurrency",
+      "severity": "medium",
+      "issue": "双端实时推送存在 WebSocket 握手未完成即触发事件的竞态风险，且需确保增量 D1 迁移幂等与全量定位器防严格模式冲突",
+      "recommendation": "在触发跨用户点赞/评论/关注/私信前通过 waitForEvent('websocket') 确保 /api/ws 握手完成，随后在不刷新页面前提下验证前端实时更新；严格检查所有 .or() 链尾部追加 .first()；在部署前按 RSI D1 规范核验 database_id、幂等脚本与 CI 凭据。"
+    }
+  ],
+  "finalApiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/api/notifications",
+      "method": "GET",
+      "scenario": "未登录访问通知列表、未读数汇总与标记已读接口",
+      "expectedStatus": 401,
+      "assertion": "三个通知端点在无有效会话 Cookie 时均返回 401"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/api/notifications",
+      "method": "GET",
+      "scenario": "传入非法 type=invalid、limit=0、limit=100、offset=-1 参数",
+      "expectedStatus": 400,
+      "assertion": "全部非法筛选或分页参数均被 400 拒绝"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/notifications/read",
+      "method": "POST",
+      "scenario": "传入空对象 {} 或空数组 { ids: [] } 标记已读",
+      "expectedStatus": 400,
+      "assertion": "返回 400 参数错误提示"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/api/notifications",
+      "method": "GET",
+      "scenario": "作者本人点赞并评论自己的帖子后查询通知",
+      "expectedStatus": 200,
+      "assertion": "不产生自发通知，notifications 不含本人操作且 unreadCount 为 0"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/notifications",
+      "method": "GET",
+      "scenario": "用户 B 关注用户 A、点赞并评论用户 A 帖子后，用户 A 分别按 all/comment/like/follow 查询",
+      "expectedStatus": 200,
+      "assertion": "三类通知均准确落库并返回完整 actor/post/contentPreview 信息，分类筛选结果严格匹配对应类型"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/api/notifications/read",
+      "method": "POST",
+      "scenario": "跨用户越权隔离：用户 C 尝试标记用户 A 的通知 ID 为已读",
+      "expectedStatus": 200,
+      "assertion": "仅允许更新本人名下通知，用户 A 的对应通知仍保持未读状态且 unreadCount 不受影响"
+    },
+    {
+      "id": "TC-07",
+      "endpoint": "/api/notifications/read",
+      "method": "POST",
+      "scenario": "用户 A 先单条标记已读，再调用 { all: true } 全部标为已读",
+      "expectedStatus": 200,
+      "assertion": "单条已读后 unreadCount 减 1，全部已读后 unreadCount 归零且 /api/notifications/unread-count 一致"
+    },
+    {
+      "id": "TC-08",
+      "endpoint": "/api/posts/:id",
+      "method": "DELETE",
+      "scenario": "作者删除已产生点赞和评论通知的帖子后重新查询通知",
+      "expectedStatus": 200,
+      "assertion": "删帖成功且关联失效通知被清理，GET /api/notifications 正常返回 200 无脏引用"
+    },
+    {
+      "id": "TC-09",
+      "endpoint": "/api/ws",
+      "method": "GET",
+      "scenario": "WebSocket 握手安全边界：未登录 401、跨站 Origin 403、已登录缺少 Upgrade 头 426",
+      "expectedStatus": 401,
+      "assertion": "严格按 401 -> 403 -> 426 顺序拦截非法握手请求，合法浏览器升级返回 101"
+    },
+    {
+      "id": "TC-10",
+      "endpoint": "/api/messages/with/:peerId/read",
+      "method": "POST",
+      "scenario": "标记指定好友会话私信已读（含未登录 401、自己 400、不存在用户 404、正常 200）",
+      "expectedStatus": 200,
+      "assertion": "权限与边界校验完备，正常调用后 totalUnread 立即清零"
+    }
+  ],
+  "finalE2eTestCode": "import { test, expect, type APIRequestContext } from '@playwright/test';\n\nconst PNG_32X32 = Buffer.from(\n  'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKklEQVR4nGP4Yh9HU8QwasGoBaMWjFowasGoBaMWjFowasGoBaMWDBULAN4gRFtH0KHXAAAAAElFTkSuQmCC',\n  'base64'\n);\n\nfunction makeEmail(prefix: string): string {\n  const rand = Math.random().toString(36).slice(2, 7);\n  return `${prefix}-${Date.now()}-${rand}@example.com`;\n}\n\nasync function loginUser(\n  request: APIRequestContext,\n  email: string,\n  nickname: string\n): Promise<{ id: string; email: string; nickname: string }> {\n  const sendRes = await request.post('/api/auth/send-code', { data: { email } });\n  expect(sendRes.status(), 'send-code 应返回 200').toBe(200);\n  const sendJson = await sendRes.json();\n  expect(sendJson.devCode).toMatch(/^\\d{6}$/);\n\n  const verifyRes = await request.post('/api/auth/verify-code', {\n    data: { email, code: sendJson.devCode, nickname },\n  });\n  expect(verifyRes.status(), 'verify-code 应返回 200').toBe(200);\n  const verifyJson = await verifyRes.json();\n  expect(verifyJson.ok).toBe(true);\n  return verifyJson.user;\n}\n\ntest.describe.serial('通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件', () => {\n  test('1. 宽屏左侧导航栏改版、居中紧凑间距几何审计与通知入口验证', async ({ page }) => {\n    const pageErrors: string[] = [];\n    page.on('pageerror', (err) => pageErrors.push(err.message));\n    await page.setViewportSize({ width: 1440, height: 900 });\n\n    const healthRes = await page.request.get('/api/health');\n    expect(healthRes.status()).toBe(200);\n    expect((await healthRes.json()).ok).toBe(true);\n\n    const nick = `宽屏体验官${Date.now().toString().slice(-4)}`;\n    await loginUser(page.request, makeEmail('layout-nav'), nick);\n\n    await page.goto('/');\n    await expect(page.locator('body')).toBeVisible();\n    // 守护隐藏管理路由：公开社区禁止任何 /admin 链接\n    await expect(page.locator('a[href=\"/admin\"]')).toHaveCount(0);\n    await expect(page.locator('a[href=\"/admin/\"]')).toHaveCount(0);\n\n    const sidebar = page.locator('aside').first();\n    const mainArea = page.locator('main').first();\n    await expect(sidebar).toBeVisible({ timeout: 10000 });\n    await expect(mainArea).toBeVisible({ timeout: 10000 });\n\n    const sidebarBox = await sidebar.boundingBox();\n    const mainBox = await mainArea.boundingBox();\n    expect(sidebarBox, '左侧导航栏应具备可见几何尺寸').not.toBeNull();\n    expect(mainBox, '主内容区应具备可见几何尺寸').not.toBeNull();\n    if (sidebarBox && mainBox) {\n      expect(sidebarBox.x).toBeLessThan(mainBox.x);\n      const horizontalGap = mainBox.x - (sidebarBox.x + sidebarBox.width);\n      expect(horizontalGap, '左侧导航栏与中心动态区应紧邻不重叠').toBeGreaterThanOrEqual(-12);\n      expect(horizontalGap, '1440px宽屏下左侧导航栏与主内容区间距应紧凑自然(<=140px)').toBeLessThanOrEqual(140);\n    }\n\n    // 验证主导航包含 动态、通知、私信、主页 四项入口\n    const feedNav = sidebar\n      .getByRole('button', { name: /动态/ })\n      .or(sidebar.getByRole('link', { name: /动态/ }))\n      .first();\n    const notifNav = sidebar\n      .getByRole('button', { name: /通知/ })\n      .or(sidebar.getByRole('link', { name: /通知/ }))\n      .first();\n    const dmNav = sidebar\n      .getByRole('button', { name: /私信/ })\n      .or(sidebar.getByRole('link', { name: /私信/ }))\n      .first();\n    const homeNav = sidebar\n      .getByRole('button', { name: /主页/ })\n      .or(sidebar.getByRole('link', { name: /主页/ }))\n      .first();\n\n    await expect(feedNav).toBeVisible();\n    await expect(notifNav).toBeVisible();\n    await expect(dmNav).toBeVisible();\n    await expect(homeNav).toBeVisible();\n\n    await notifNav.click();\n    await expect(mainArea).toBeVisible();\n    await feedNav.click();\n    expect(pageErrors, '导航改版与切换过程不应存在前端未捕获异常').toEqual([]);\n  });\n\n  test('2. 通知模块全链路 API 契约、防自发、参数边界、跨用户隔离与删帖清理', async ({ page, browser }) => {\n    const ctxB = await browser.newContext();\n    const ctxC = await browser.newContext();\n    const anonCtx = await browser.newContext();\n    try {\n      // 未登录访问通知与汇总未读接口必须返回 401\n      expect((await anonCtx.request.get('/api/notifications')).status()).toBe(401);\n      expect((await anonCtx.request.get('/api/notifications/unread-count')).status()).toBe(401);\n      expect((await anonCtx.request.post('/api/notifications/read', { data: { all: true } })).status()).toBe(401);\n\n      const userA = await loginUser(page.request, makeEmail('notif-a'), '创作者小光');\n      const userB = await loginUser(ctxB.request, makeEmail('notif-b'), '互动好友小雨');\n      await loginUser(ctxC.request, makeEmail('notif-c'), '无关旁观者小风');\n\n      // 非法参数与空请求体边界校验\n      expect((await page.request.get('/api/notifications?type=invalid')).status()).toBe(400);\n      expect((await page.request.get('/api/notifications?limit=0')).status()).toBe(400);\n      expect((await page.request.get('/api/notifications?limit=100')).status()).toBe(400);\n      expect((await page.request.get('/api/notifications?offset=-1')).status()).toBe(400);\n      expect((await page.request.post('/api/notifications/read', { data: {} })).status()).toBe(400);\n      expect((await page.request.post('/api/notifications/read', { data: { ids: [] } })).status()).toBe(400);\n\n      // 用户 A 发布一篇帖子，并对自己帖子点赞和评论 -> 不应产生任何自发通知\n      const postTitle = `通知校验图文-${Date.now()}`;\n      const postRes = await page.request.post('/api/posts', {\n        data: { title: postTitle, content: '测试评论、点赞与关注通知闭环' },\n      });\n      expect(postRes.status()).toBe(201);\n      const postId = (await postRes.json()).post.id;\n\n      expect((await page.request.post(`/api/posts/${postId}/like`)).status()).toBe(200);\n      expect(\n        (await page.request.post(`/api/posts/${postId}/comments`, { data: { content: '作者自评' } })).status()\n      ).toBe(201);\n\n      const selfNotifJson = await (await page.request.get('/api/notifications')).json();\n      expect(selfNotifJson.unreadCount, '本人点赞与评论自身帖子不得生成自发通知').toBe(0);\n      expect(selfNotifJson.notifications.length).toBe(0);\n\n      // 用户 B 对用户 A 执行：关注、点赞、评论\n      expect((await ctxB.request.post(`/api/users/${userA.id}/follow`)).status()).toBe(200);\n      expect((await ctxB.request.post(`/api/posts/${postId}/like`)).status()).toBe(200);\n      const bComment = `来自好友的精彩评论-${Date.now()}`;\n      const bCommentRes = await ctxB.request.post(`/api/posts/${postId}/comments`, {\n        data: { content: bComment },\n      });\n      expect(bCommentRes.status()).toBe(201);\n\n      // 验证全部通知列表包含 comment、like、follow 三类且未读数 >= 3\n      const allNotifRes = await page.request.get('/api/notifications?type=all');\n      expect(allNotifRes.status()).toBe(200);\n      const allNotif = await allNotifRes.json();\n      expect(allNotif.unreadCount).toBeGreaterThanOrEqual(3);\n      const types = new Set(allNotif.notifications.map((n: { type: string }) => n.type));\n      expect(types.has('comment')).toBe(true);\n      expect(types.has('like')).toBe(true);\n      expect(types.has('follow')).toBe(true);\n\n      // 验证按分类筛选准确返回对应类型\n      for (const filterType of ['comment', 'like', 'follow'] as const) {\n        const filteredRes = await page.request.get(`/api/notifications?type=${filterType}`);\n        expect(filteredRes.status()).toBe(200);\n        const filtered = await filteredRes.json();\n        expect(filtered.notifications.length).toBeGreaterThanOrEqual(1);\n        expect(\n          filtered.notifications.every((n: { type: string }) => n.type === filterType),\n          `type=${filterType} 筛选结果不得混入其他类型`\n        ).toBe(true);\n      }\n\n      // 汇总未读计数校验\n      const unreadSummary = await (await page.request.get('/api/notifications/unread-count')).json();\n      expect(unreadSummary.notificationsUnread).toBe(allNotif.unreadCount);\n\n      // 跨用户安全隔离（IDOR 防护）：用户 C 不可读取且不可标记用户 A 的通知为已读\n      const notifC = await (await ctxC.request.get('/api/notifications')).json();\n      expect(JSON.stringify(notifC)).not.toContain(bComment);\n      const firstNotifIdA = allNotif.notifications[0].id as string;\n      await ctxC.request.post('/api/notifications/read', { data: { ids: [firstNotifIdA] } });\n      const afterIdorAttempt = await (await page.request.get('/api/notifications')).json();\n      const targetStillUnread = afterIdorAttempt.notifications.find(\n        (n: { id: string; isRead: boolean }) => n.id === firstNotifIdA\n      );\n      expect(targetStillUnread?.isRead, '他人越权标记已读不得影响目标用户通知状态').toBe(false);\n\n      // 用户 A 单条标为已读 -> 再一键全部标为已读\n      const readOneRes = await page.request.post('/api/notifications/read', {\n        data: { ids: [firstNotifIdA] },\n      });\n      expect(readOneRes.status()).toBe(200);\n      const readOneJson = await readOneRes.json();\n      expect(readOneJson.unreadCount).toBe(allNotif.unreadCount - 1);\n\n      const readAllRes = await page.request.post('/api/notifications/read', { data: { all: true } });\n      expect(readAllRes.status()).toBe(200);\n      expect((await readAllRes.json()).unreadCount).toBe(0);\n\n      // 删帖后关联通知应被清理且列表查询正常\n      expect((await page.request.delete(`/api/posts/${postId}`)).status()).toBe(200);\n      const afterDeleteNotifRes = await page.request.get('/api/notifications');\n      expect(afterDeleteNotifRes.status()).toBe(200);\n      const afterDeleteNotif = await afterDeleteNotifRes.json();\n      expect(\n        afterDeleteNotif.notifications.some((n: { post?: { id: string } | null }) => n.post?.id === postId),\n        '删除帖子后不应残留指向已删除帖子的通知'\n      ).toBe(false);\n    } finally {\n      await ctxB.close();\n      await ctxC.close();\n      await anonCtx.close();\n    }\n  });\n\n  test('3. WebSocket 握手安全边界、通知实时推送与零 HTTP 轮询网络审计', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1280, height: 800 });\n    const ctxB = await browser.newContext();\n    const anonCtx = await browser.newContext();\n    try {\n      // 未登录请求 /api/ws 必须返回 401\n      const anonWsRes = await anonCtx.request.get('/api/ws');\n      expect(anonWsRes.status(), '未登录访问 /api/ws 必须返回 401').toBe(401);\n\n      const userA = await loginUser(page.request, makeEmail('ws-notif-a'), '实时接收者A');\n      await loginUser(ctxB.request, makeEmail('ws-notif-b'), '实时触发者B');\n\n      // 已登录但未携带 Upgrade: websocket 头应返回 426（或 400）\n      const nonUpgradeRes = await page.request.get('/api/ws');\n      expect([400, 426]).toContain(nonUpgradeRes.status());\n\n      // 伪造跨站 Origin 尝试握手应被 403（或 426）拒绝\n      const crossOriginRes = await page.request.get('/api/ws', {\n        headers: { Origin: 'https://evil-attacker.example' },\n      });\n      expect([403, 426]).toContain(crossOriginRes.status());\n\n      const postRes = await page.request.post('/api/posts', {\n        data: { title: `WS推送测试帖-${Date.now()}`, content: '验证无需轮询实时推送' },\n      });\n      const postId = (await postRes.json()).post.id;\n\n      // 在加载页面前监听浏览器建立的 /api/ws 连接\n      const wsPromise = page.waitForEvent('websocket', (ws) => ws.url().includes('/api/ws'));\n      await page.goto('/');\n      const ws = await wsPromise;\n      expect(ws.url()).toContain('/api/ws');\n\n      // 首屏初始化稳定后，开启 7 秒静置期网络审计（超过旧版 5 秒轮询周期），断言零轮询\n      await page.waitForTimeout(1500);\n      const polledUrls: string[] = [];\n      const onRequest = (req: { url: () => string; method: () => string }) => {\n        const u = req.url();\n        if (\n          req.method() === 'GET' &&\n          (u.includes('/api/messages/') || u.includes('/api/notifications'))\n        ) {\n          polledUrls.push(u);\n        }\n      };\n      page.on('request', onRequest);\n      await page.waitForTimeout(7000);\n      page.off('request', onRequest);\n      expect(polledUrls, '静置期间严禁对通知或私信接口发起 HTTP 轮询').toEqual([]);\n\n      // 进入通知页，在不刷新页面的前提下由用户 B 触发新评论与新关注，断言页面实时渲染\n      const sidebar = page.locator('aside').first();\n      const notifNav = sidebar\n        .getByRole('button', { name: /通知/ })\n        .or(sidebar.getByRole('link', { name: /通知/ }))\n        .first();\n      await notifNav.click();\n\n      const liveComment = `WS实时评论推送-${Date.now()}`;\n      expect((await ctxB.request.post(`/api/users/${userA.id}/follow`)).status()).toBe(200);\n      expect(\n        (await ctxB.request.post(`/api/posts/${postId}/comments`, { data: { content: liveComment } })).status()\n      ).toBe(201);\n\n      // 严禁 reload：直接断言新通知通过 WebSocket 实时呈现在页面上\n      await expect(page.getByText(liveComment).first()).toBeVisible({ timeout: 10000 });\n      await expect(page.getByText('实时触发者B').first()).toBeVisible({ timeout: 10000 });\n\n      // 点击一键全部标为已读并验证生效\n      const markAllBtn = page.getByRole('button', { name: /全部标为已读|全部已读|清空未读/i }).first();\n      if (await markAllBtn.isVisible().catch(() => false)) {\n        await markAllBtn.click();\n        await expect\n          .poll(async () => (await (await page.request.get('/api/notifications/unread-count')).json()).notificationsUnread)\n          .toBe(0);\n      }\n    } finally {\n      await ctxB.close();\n      await anonCtx.close();\n    }\n  });\n\n  test('4. 私信 WebSocket 实时收发、已读接口校验与聊天窗零轮询审计', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1280, height: 800 });\n    const ctxB = await browser.newContext();\n    const anonCtx = await browser.newContext();\n    try {\n      const userA = await loginUser(page.request, makeEmail('ws-dm-a'), '私信接收方A');\n      const userB = await loginUser(ctxB.request, makeEmail('ws-dm-b'), '私信发送方B');\n\n      // 校验新增单会话已读接口边界\n      expect((await anonCtx.request.post(`/api/messages/with/${userB.id}/read`)).status()).toBe(401);\n      expect((await page.request.post(`/api/messages/with/${userA.id}/read`)).status()).toBe(400);\n      expect((await page.request.post('/api/messages/with/non-existent-peer/read')).status()).toBe(404);\n\n      // 先建立一条初始私信，使会话出现在列表中\n      const firstMsg = `开场问候-${Date.now()}`;\n      expect(\n        (await ctxB.request.post(`/api/messages/with/${userA.id}`, { data: { content: firstMsg } })).status()\n      ).toBe(201);\n\n      const wsPromise = page.waitForEvent('websocket', (ws) => ws.url().includes('/api/ws'));\n      await page.goto('/');\n      await wsPromise;\n\n      const sidebar = page.locator('aside').first();\n      const dmNav = sidebar\n        .getByRole('button', { name: /私信/ })\n        .or(sidebar.getByRole('link', { name: /私信/ }))\n        .first();\n      await dmNav.click();\n\n      const peerItem = page.getByText(userB.nickname).first();\n      await expect(peerItem).toBeVisible({ timeout: 10000 });\n      await peerItem.click();\n      await expect(page.getByText(firstMsg).first()).toBeVisible({ timeout: 10000 });\n\n      // 聊天窗打开稳定后审计 7 秒内零 HTTP 轮询请求\n      await page.waitForTimeout(1500);\n      const dmPolled: string[] = [];\n      const onDmReq = (req: { url: () => string; method: () => string }) => {\n        if (req.method() === 'GET' && req.url().includes('/api/messages/')) {\n          dmPolled.push(req.url());\n        }\n      };\n      page.on('request', onDmReq);\n      await page.waitForTimeout(7000);\n      page.off('request', onDmReq);\n      expect(dmPolled, '私信聊天窗口静置期间严禁发生 HTTP 轮询').toEqual([]);\n\n      // 用户 B 再次发送一条新私信，用户 A 页面不刷新直接通过 WebSocket 实时收到并渲染\n      const liveDm = `WebSocket秒达私信-${Date.now()}`;\n      expect(\n        (await ctxB.request.post(`/api/messages/with/${userA.id}`, { data: { content: liveDm } })).status()\n      ).toBe(201);\n      await expect(page.getByText(liveDm).first()).toBeVisible({ timeout: 10000 });\n    } finally {\n      await ctxB.close();\n      await anonCtx.close();\n    }\n  });\n\n  test('5. 动态详情页 Instagram 风格左右双栏几何结构、互动闭环与移动端适配', async ({ page }) => {\n    await page.setViewportSize({ width: 1280, height: 800 });\n    await loginUser(page.request, makeEmail('ig-detail'), '视觉摄影师');\n\n    const uploadRes = await page.request.post('/api/uploads', {\n      multipart: {\n        file: { name: 'ig-photo.png', mimeType: 'image/png', buffer: PNG_32X32 },\n      },\n    });\n    expect(uploadRes.status()).toBe(201);\n    const { url: imageUrl } = await uploadRes.json();\n\n    const postTitle = `Instagram双栏美学-${Date.now()}`;\n    const postContent = '桌面端左侧沉浸式展示图片，右侧独立滚动正文与评论，底部固定互动输入栏。';\n    const createRes = await page.request.post('/api/posts', {\n      data: { title: postTitle, content: postContent, imageUrl, tags: ['摄影美学'] },\n    });\n    expect(createRes.status()).toBe(201);\n\n    await page.goto('/');\n    await expect(page.getByText(postTitle).first()).toBeVisible({ timeout: 10000 });\n    await page.getByText(postTitle).first().click();\n\n    const dialog = page.getByRole('dialog').first();\n    await expect(dialog).toBeVisible({ timeout: 10000 });\n    await expect(dialog.getByText(postTitle).first()).toBeVisible();\n    await expect(dialog.getByText(postContent).first()).toBeVisible();\n\n    // 几何验证：桌面端详情弹窗为宽幅左右双栏结构（图片在左，评论输入互动区在右）\n    const dialogImg = dialog\n      .locator(`img[src=\"${imageUrl}\"]`)\n      .or(dialog.getByRole('img', { name: postTitle }))\n      .first();\n    const commentInput = dialog\n      .getByPlaceholder(/评论|说点什么|共鸣|留言/i)\n      .or(dialog.locator('input[type=\"text\"], input:not([type]), textarea'))\n      .first();\n\n    await expect(dialogImg).toBeVisible({ timeout: 10000 });\n    await expect(commentInput).toBeVisible({ timeout: 10000 });\n\n    const dialogBox = await dialog.boundingBox();\n    const imgBox = await dialogImg.boundingBox();\n    const inputBox = await commentInput.boundingBox();\n    expect(dialogBox).not.toBeNull();\n    expect(imgBox).not.toBeNull();\n    expect(inputBox).not.toBeNull();\n    if (dialogBox && imgBox && inputBox) {\n      expect(dialogBox.width, '桌面端双栏详情弹窗应具备充足宽度(>=700px)').toBeGreaterThanOrEqual(700);\n      expect(imgBox.x + imgBox.width, '左侧图片区应严格位于右侧评论互动区左侧').toBeLessThanOrEqual(\n        inputBox.x + 24\n      );\n    }\n\n    // 在右侧互动区发表评论并验证实时上屏\n    const detailComment = `双栏弹窗评论体验真棒-${Date.now()}`;\n    await commentInput.fill(detailComment);\n    const commentPostPromise = page.waitForResponse(\n      (res) => res.url().includes('/comments') && res.request().method() === 'POST'\n    );\n    const sendBtn = dialog.getByRole('button', { name: /发送|发布/i }).first();\n    await sendBtn.click();\n    expect((await commentPostPromise).status()).toBe(201);\n    await expect(dialog.getByText(detailComment).first()).toBeVisible({ timeout: 10000 });\n\n    // 关闭弹窗后切换移动端视口，验证通知底部导航与详情弹窗无溢出适配\n    await page.keyboard.press('Escape');\n    await expect(dialog).toBeHidden({ timeout: 5000 });\n\n    await page.setViewportSize({ width: 390, height: 844 });\n    const mobileNav = page.getByRole('navigation', { name: /移动端导航/i }).or(page.locator('nav').last()).first();\n    await expect(mobileNav.getByText(/通知/).first()).toBeVisible({ timeout: 10000 });\n\n    await page.getByText(postTitle).first().click();\n    const mobileDialog = page.getByRole('dialog').first();\n    await expect(mobileDialog).toBeVisible({ timeout: 10000 });\n    const mobileDialogBox = await mobileDialog.boundingBox();\n    expect(mobileDialogBox).not.toBeNull();\n    if (mobileDialogBox) {\n      expect(mobileDialogBox.width, '移动端详情弹窗不得超出屏幕宽度').toBeLessThanOrEqual(390);\n    }\n  });\n});\n"
+}
