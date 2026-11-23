@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-a0fb8e93",
+    "timestamp": "2026-11-23T16:16:40.301Z",
+    "category": "planning",
+    "action": "draft_pr_created",
+    "label": "创建规格 Draft PR",
+    "actor": "飞书机器人",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-9b961baa",
+    "prdTitle": "动态改版",
+    "branch": "autodev/feat-20261123-161632",
+    "prNumber": 12,
+    "status": "success",
+    "detail": "通过飞书卡片创建 Draft PR #12（分支 autodev/feat-20261123-161632）"
+  },
+  {
     "id": "aud-c9e83a5e",
     "timestamp": "2026-11-23T16:07:01.062Z",
     "category": "planning",

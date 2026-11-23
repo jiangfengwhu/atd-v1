@@ -598,9 +598,10 @@
         "inc-0db76386"
       ],
       "hitCount": 3,
-      "appliedCount": 0,
+      "appliedCount": 1,
       "createdAt": "2026-11-23T04:05:44.249Z",
-      "updatedAt": "2026-11-23T04:11:11.149Z"
+      "updatedAt": "2026-11-23T04:11:11.149Z",
+      "lastAppliedAt": "2026-11-23T16:16:39.725Z"
     },
     {
       "id": "rsi-192e5828",
@@ -616,9 +617,10 @@
         "inc-d243c87f"
       ],
       "hitCount": 2,
-      "appliedCount": 0,
+      "appliedCount": 1,
       "createdAt": "2026-11-23T03:12:31.331Z",
-      "updatedAt": "2026-11-23T03:12:46.931Z"
+      "updatedAt": "2026-11-23T03:12:46.931Z",
+      "lastAppliedAt": "2026-11-23T16:16:39.725Z"
     },
     {
       "id": "rsi-619c6524",
