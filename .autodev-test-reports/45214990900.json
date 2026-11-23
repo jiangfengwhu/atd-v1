@@ -1,0 +1,165 @@
+{
+  "runId": "run-9b961baa",
+  "actionsRunId": 45214990900,
+  "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45214990900",
+  "workflowName": "AutoDev AGY Coding Runner",
+  "branch": "autodev/feat-20261123-161632",
+  "prNumber": 12,
+  "commitSha": "a0af602",
+  "model": "gemini-4-hydrogen-high",
+  "kind": "e2e",
+  "status": "passed",
+  "total": 19,
+  "passed": 19,
+  "failed": 0,
+  "skipped": 0,
+  "durationMs": 49638,
+  "executedAt": "2026-11-23T16:29:20.313Z",
+  "summary": "自动化 E2E 验收（gemini-4-hydrogen-high / auto）：19 通过 / 0 失败 / 0 跳过",
+  "cases": [
+    {
+      "id": "check-type",
+      "title": "TypeScript / Lint 静态检查 (typecheck)",
+      "status": "passed",
+      "durationMs": 4370
+    },
+    {
+      "id": "check-build",
+      "title": "生产构建检查 (npm run build)",
+      "status": "passed",
+      "durationMs": 2957
+    },
+    {
+      "id": "pw-2",
+      "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 1. 宽屏左侧导航栏改版、居中紧凑间距几何审计与通知入口验证",
+      "file": "run-7026568c.spec.ts",
+      "status": "passed",
+      "durationMs": 718
+    },
+    {
+      "id": "pw-3",
+      "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 2. 通知模块全链路 API 契约、防自发、参数边界、跨用户隔离与删帖清理",
+      "file": "run-7026568c.spec.ts",
+      "status": "passed",
+      "durationMs": 726
+    },
+    {
+      "id": "pw-4",
+      "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 3. WebSocket 握手安全边界、通知实时推送与零 HTTP 轮询网络审计",
+      "file": "run-7026568c.spec.ts",
+      "status": "passed",
+      "durationMs": 9238
+    },
+    {
+      "id": "pw-5",
+      "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 4. 私信 WebSocket 实时收发、已读接口校验与聊天窗零轮询审计",
+      "file": "run-7026568c.spec.ts",
+      "status": "passed",
+      "durationMs": 9258
+    },
+    {
+      "id": "pw-6",
+      "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 5. 动态详情页 Instagram 风格左右双栏几何结构、互动闭环与移动端适配",
+      "file": "run-7026568c.spec.ts",
+      "status": "passed",
+      "durationMs": 1317
+    },
+    {
+      "id": "pw-7",
+      "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 1. 健康检查、左右分栏几何结构、左侧导航项与底部个人资料退出登录",
+      "file": "run-96e1a2ad.spec.ts",
+      "status": "passed",
+      "durationMs": 1032
+    },
+    {
+      "id": "pw-8",
+      "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 2. 个人主页资料修改、安全边界、关注粉丝与评论二级回复闭环",
+      "file": "run-96e1a2ad.spec.ts",
+      "status": "passed",
+      "durationMs": 1172
+    },
+    {
+      "id": "pw-9",
+      "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 3. 私信权限隔离、边界校验、未读已读回执与 UI 聊天交互",
+      "file": "run-96e1a2ad.spec.ts",
+      "status": "passed",
+      "durationMs": 997
+    },
+    {
+      "id": "pw-10",
+      "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 4. 发布图文集成图片裁剪编辑（比例/旋转/确认裁剪）与持久化发布",
+      "file": "run-96e1a2ad.spec.ts",
+      "status": "passed",
+      "durationMs": 1966
+    },
+    {
+      "id": "pw-11",
+      "title": "run-9b961baa.spec.ts › 动态改版（X.com列表流、点击/收藏/分享直达、右侧导航、多账号切换）加固盲测套件 › 1. 主页单列列表形态、点击统计并发累加、收藏隐私隔离、分享 URL 直达与删帖级联清理",
+      "file": "run-9b961baa.spec.ts",
+      "status": "passed",
+      "durationMs": 1808
+    },
+    {
+      "id": "pw-12",
+      "title": "run-9b961baa.spec.ts › 动态改版（X.com列表流、点击/收藏/分享直达、右侧导航、多账号切换）加固盲测套件 › 2. 右侧导航（热门话题、推荐关注）接口契约、隐私脱敏、三栏几何布局与交互闭环",
+      "file": "run-9b961baa.spec.ts",
+      "status": "passed",
+      "durationMs": 942
+    },
+    {
+      "id": "pw-13",
+      "title": "run-9b961baa.spec.ts › 动态改版（X.com列表流、点击/收藏/分享直达、右侧导航、多账号切换）加固盲测套件 › 3. 多账号安全切换、防越权接管、UI 身份状态同步、添加账号与分级退出闭环",
+      "file": "run-9b961baa.spec.ts",
+      "status": "passed",
+      "durationMs": 1747
+    },
+    {
+      "id": "pw-14",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 1. 健康检查、首页渲染与隐藏路由 /admin 入口审计",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 351
+    },
+    {
+      "id": "pw-15",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 2. 邮箱验证码登录安全边界（非法邮箱、冷却、错误码、UI 登录与防重放）",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 980
+    },
+    {
+      "id": "pw-16",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 3. 图文发布、图片上传、搜索、点赞、评论与持久化闭环",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 1228
+    },
+    {
+      "id": "pw-17",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 4. 未登录拦截与跨用户越权删帖权限隔离",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 214
+    },
+    {
+      "id": "pw-18",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 5. 隐藏路由 /admin 全流程：鉴权、Resend 密钥脱敏配置、改密与状态回滚",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 997
+    }
+  ],
+  "rawLogExcerpt": "es transformed.\nrendering chunks...\ncomputing gzip size...\n\u001b[2m../dist/client/\u001b[22m\u001b[32mindex.html                 \u001b[39m\u001b[1m\u001b[2m  0.80 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   0.49 kB\u001b[22m\n\u001b[2m../dist/client/\u001b[22m\u001b[2massets/\u001b[22m\u001b[35mindex-BHG4NGOV.css  \u001b[39m\u001b[1m\u001b[2m 43.59 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   7.78 kB\u001b[22m\n\u001b[2m../dist/client/\u001b[22m\u001b[2massets/\u001b[22m\u001b[36mindex-CerHvCkp.js   \u001b[39m\u001b[1m\u001b[2m394.97 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip: 117.42 kB\u001b[22m\n\u001b[32m✓ built in 2.62s\u001b[39m\n=== Playwright E2E Verification ===\n             }\n                      ],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"01d4578ad868b07aa3f6-8a3412c5cb2f93344308\",\n              \"file\": \"run-f8b35bdc.spec.ts\",\n              \"line\": 278,\n              \"column\": 3\n            },\n            {\n              \"title\": \"5. 隐藏路由 /admin 全流程：鉴权、Resend 密钥脱敏配置、改密与状态回滚\",\n              \"ok\": true,\n              \"tags\": [],\n              \"tests\": [\n                {\n                  \"timeout\": 45000,\n                  \"annotations\": [\n                    {\n                      \"type\": \"serial\",\n                      \"location\": {\n                        \"file\": \"/data/home/actions-runner-2/_work/atd-v1/atd-v1/tests/e2e/run-f8b35bdc.spec.ts\",\n                        \"line\": 43,\n                        \"column\": 15\n                      }\n                    }\n                  ],\n                  \"expectedStatus\": \"passed\",\n                  \"projectId\": \"\",\n                  \"projectName\": \"\",\n                  \"results\": [\n                    {\n                      \"workerIndex\": 0,\n                      \"parallelIndex\": 0,\n                      \"status\": \"passed\",\n                      \"duration\": 997,\n                      \"errors\": [],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-23T16:29:19.120Z\",\n                      \"annotations\": [\n                        {\n                          \"type\": \"serial\",\n                          \"location\": {\n                            \"file\": \"/data/home/actions-runner-2/_work/atd-v1/atd-v1/tests/e2e/run-f8b35bdc.spec.ts\",\n                            \"line\": 43,\n                            \"column\": 15\n                          }\n                        }\n                      ],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"01d4578ad868b07aa3f6-8288628163285f09aee9\",\n              \"file\": \"run-f8b35bdc.spec.ts\",\n              \"line\": 319,\n              \"column\": 3\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"errors\": [],\n  \"stats\": {\n    \"startTime\": \"2026-11-23T16:28:38.603Z\",\n    \"duration\": 41672.73,\n    \"expected\": 17,\n    \"skipped\": 0,\n    \"unexpected\": 0,\n    \"flaky\": 0\n  }\n}\n",
+  "agySessionId": "b37d4cb2-2a0c-479b-a172-446aeebec799",
+  "agySessionReused": false,
+  "agyExitCode": 0,
+  "repairRounds": 0,
+  "codingFinalOutput": "Running `typecheck`, `build`, and applying the local D1 migration `0004_feed_revamp_bookmarks_accounts.sql`...\nRunning the full Playwright E2E suite (17 tests across all specs). Waiting for completion...\nFixed the SQLite `json_each` type check (`je.type = 'text'`) in `src/routes/discover.ts` and launched `typecheck`, `build`, and `tests/e2e/run-9b961baa.spec.ts`. Waiting for results...\nRunning `typecheck`, `build`, and the full Playwright E2E suite (all 17 tests)...\nImplemented the feed revamp, discover sidebar, post metrics/bookmarks/sharing with direct `/posts/:id` URLs, and multi-account session vault & switching according to [docs/prd.md](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/docs/prd.md) and [docs/spec.json](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/docs/spec.json).\n\n### Summary of Changes\n\n1. **Idempotent D1 Migration (`T-01`)**\n   - Added [0004_feed_revamp_bookmarks_accounts.sql](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/migrations/0004_feed_revamp_bookmarks_accounts.sql) with `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` for `post_metrics` (`views_count`, `bookmarks_count`, `shares_count`) and `post_bookmarks` (`post_id`, `user_id`), preserving existing `0001`–`0003` migrations.\n\n2. **Post Metrics, Bookmarks, Share & Privacy Isolation (`T-02`)**\n   - Extended [posts.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/routes/posts.ts) (`serializePost`, `GET /api/posts`, `POST /api/posts`, `GET /api/posts/:id`) with `viewsCount`, `bookmarksCount`, `sharesCount`, and `bookmarkedByMe`.\n   - Added `POST /api/posts/:id/view`, `POST /api/posts/:id/bookmark`, and `POST /api/posts/:id/share`.\n   - Updated post deletion cascades in [posts.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/routes/posts.ts) and [admin.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/routes/admin.ts) to delete related `post_bookmarks` and `post_metrics` rows.\n   - Extended [users.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/routes/users.ts) with `bookmarksCount` on `GET /api/users/:id` (self only) and `tab=bookmarks` on `GET /api/users/:id/activity` (returning `401` when unauthenticated and `403` for cross-user access).\n\n3. **Right Discover Sidebar Endpoints (`T-03`)**\n   - Created [discover.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/routes/discover.ts) and mounted `/api/discover` in [index.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/index.ts):\n     - `GET /api/discover/topics`: aggregates post tags via `json_each(p.tags_json)` weighted by post/engagement metrics, padded with preset fallback topics when fewer than `limit` (`1..12`, default `6`).\n     - `GET /api/discover/recommended-users`: ranks creators by followers/posts excluding the current user and already-followed users, omitting `email` (`limit` `1..10`, default `5`).\n\n4. **Multi-Account HttpOnly Session Vault (`T-04`)**\n   - Extended [cookies.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/lib/cookies.ts) with `USER_SESSION_VAULT_COOKIE` (`session_vault`, max `5` sessions) and vault parsing/serialization helpers.\n   - Updated [auth.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/routes/auth.ts) so `POST /api/auth/verify-code` retains up to 5 verified sessions in `session_vault`; added `GET /api/auth/accounts` and `POST /api/auth/switch` (strictly validating vault membership and returning `401`/`400`/`403` on invalid attempts); enhanced `POST /api/auth/logout` to support single-account logout (falling back to remaining accounts) and `{ all: true }`.\n\n5. **Frontend X.com Three-Column Layout, Share Route & Multi-Account UI (`T-05`)**\n   - Updated [api.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/lib/api.ts) with the new types and API methods.\n   - Rebuilt [PostCard.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/components/PostCard.tsx) as a single-column timeline card with comment, like, bookmark, view count, and share actions.\n   - Created [DiscoverSidebar.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/components/DiscoverSidebar.tsx) rendering `热门话题` and `推荐关注` on `lg+` screens.\n   - Updated [PostDetailDialog.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/components/PostDetailDialog.tsx) to report views once per open, support bookmark/share actions, and show a friendly not-found prompt with return button.\n   - Updated [ProfileView.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/components/ProfileView.tsx) with a self-only `收藏` tab and single-column post list layout.\n   - Updated [AuthDialog.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/components/AuthDialog.tsx) and [CommunityPage.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/pages/CommunityPage.tsx) for `/posts/:id` routing, three-column layout, multi-account popover menu (`切换账号`, `添加其他账号`, `退出当前账号`/`退出全部账号`), and WebSocket (`realtimeClient`) reconnect + full state sync on account change.\n   - Refined heading locators in [run-9b961baa.spec.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/tests/e2e/run-9b961baa.spec.ts#L243-L244) from `page.getByText(...)` to `page.getByRole('heading', ...)` so post body text containing `热门话题` does not shadow the right sidebar heading.\n\n### Verification & Git Status\n- `npm run typecheck` (`tsc --noEmit`): passed.\n- `npm run build` (`vite build`): passed.\n- `npx wrangler d1 migrations apply DB --local`: all 4 migrations applied cleanly.\n- `npx playwright test`: `17 passed (49.7s)` across all E2E suites (`run-7026568c.spec.ts`, `run-96e1a2ad.spec.ts`, `run-9b961baa.spec.ts`, `run-f8b35bdc.spec.ts`).\n- Committed (`a0af602`) and pushed to `origin/autodev/feat-20261123-161632`; `git status` reports a clean working tree.",
+  "tokenUsage": {
+    "inputTokens": 327160,
+    "outputTokens": 82054,
+    "totalTokens": 409214,
+    "source": "reported",
+    "model": "gemini-4-hydrogen-high"
+  }
+}
