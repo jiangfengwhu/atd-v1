@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-2f907ab5",
+    "timestamp": "2026-11-23T04:11:02.069Z",
+    "category": "execution",
+    "action": "production_deployed",
+    "label": "部署正式生产环境",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-7026568c",
+    "prdTitle": "接入通知",
+    "branch": "main",
+    "prNumber": 11,
+    "status": "failed",
+    "detail": "重新部署生产环境失败：Command failed: npm run build:client\nvite.config.ts (1:309) \u001b[33m[UNRESOLVED_IMPORT] \u001b[0mCould not resolve 'vite' in vite.config.ts\n - Module not found, treating it as an external dependency in vite.config.ts at 309..315\n\nvite.config.ts (2:18) \u001b[33m[UNRESOLVED_IMPORT] \u001b[0mCould not resolve '@vitejs/plugin-react' in vite.config.ts\n   \u001b[38;5;246m╭\u001b[0m\u001b[38;5;246m─\u001b[0m\u001b[38;5;246m[\u001b[0m vite.config.ts:2:19 \u001b[38;5;246m]\u001b[0m\n   \u001b[38;5;246m│\u001b[0m\n \u001b[38;5;246m2 │\u001b[0m \u001b[38;5;249mi\u001b[0m\u001b[38;5;249mm\u001b[0m\u001b[38;5;249mp\u001b[0m\u001b[38;5;249mo\u001b[0m\u001b[38;5;249mr\u001b[0m\u001b[38;5;249mt\u001b[0m\u001b[38;5;249m \u001b[0m\u001b[38;5;249mr\u001b[0m"
+  },
+  {
     "id": "aud-3a8a8497",
     "timestamp": "2026-11-23T04:09:05.722Z",
     "category": "execution",
