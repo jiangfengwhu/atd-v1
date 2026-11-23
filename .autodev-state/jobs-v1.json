@@ -1,5 +1,126 @@
 [
   {
+    "id": "job-af152d25",
+    "createdAt": "2026-11-23T02:43:19.344Z",
+    "updatedAt": "2026-11-23T02:43:25.030Z",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "defaultBranch": "main",
+    "prdTitle": "接入通知",
+    "prdContent": "1. 左侧导航栏太呆板了，而且和中心的动态相隔很远，有点突兀，你看看主流社交平台怎么做的，抄一下\n2. 添加通知模块：\n  - 评论通知\n  - 点赞通知\n  - 新增关注通知\n3. 动态详情页改版：做成左右结构的，具体可以参考instagram那种\n4. 通知和私信使用websocket，减小worker请求次数，避免轮询",
+    "executionMode": "vps_agy",
+    "planMode": "unified_single_turn",
+    "agyModel": "gemini-4-neon-high",
+    "agyMode": "auto",
+    "status": "running",
+    "steps": [
+      {
+        "id": "architect",
+        "label": "01. Architect Agent",
+        "roleTitle": "读取仓库真实代码 · 增量架构 · 任务树",
+        "status": "running",
+        "startedAt": "2026-11-23T02:43:19.350Z",
+        "message": "已入队，等待 Instabox AGY Runner 检出最新代码并启动单对话联合规划…"
+      },
+      {
+        "id": "qa_spec",
+        "label": "02. QA Spec Agent",
+        "roleTitle": "结合现有路由与历史测试 · Playwright 初版",
+        "status": "idle"
+      },
+      {
+        "id": "qa_critic",
+        "label": "03. QA Critic Agent",
+        "roleTitle": "边界异常评审 · 锁定独立只读回归测试集",
+        "status": "idle"
+      }
+    ],
+    "repoContext": {
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "branch": "main",
+      "headSha": "5e8fc05637ab9c81ead57581604c529ab856b16e",
+      "fetchedAt": "2026-11-23T02:43:19.359Z",
+      "isEmptyRepo": false,
+      "totalFiles": 56,
+      "fileTree": [
+        ".github/workflows/autodev-agy.yml",
+        ".github/workflows/autodev-deploy-cf.yml",
+        ".github/workflows/autodev-plan.yml",
+        ".gitignore",
+        "README.md",
+        "client/index.html",
+        "client/src/App.tsx",
+        "client/src/components/AuthDialog.tsx",
+        "client/src/components/AvatarBadge.tsx",
+        "client/src/components/ComposeDialog.tsx",
+        "client/src/components/ImageCropDialog.tsx",
+        "client/src/components/MessagesView.tsx",
+        "client/src/components/PostCard.tsx",
+        "client/src/components/PostDetailDialog.tsx",
+        "client/src/components/ProfileDialog.tsx",
+        "client/src/components/ProfileView.tsx",
+        "client/src/components/ui/button.tsx",
+        "client/src/components/ui/dialog.tsx",
+        "client/src/components/ui/input.tsx",
+        "client/src/index.css",
+        "client/src/lib/api.ts",
+        "client/src/lib/image-crop.ts",
+        "client/src/lib/utils.ts",
+        "client/src/main.tsx",
+        "client/src/pages/AdminPage.tsx",
+        "client/src/pages/CommunityPage.tsx",
+        "docs/iterations/run-96e1a2ad-prd.md",
+        "docs/iterations/run-96e1a2ad-spec.json",
+        "docs/iterations/run-f8b35bdc-prd.md",
+        "docs/iterations/run-f8b35bdc-spec.json",
+        "docs/prd.md",
+        "docs/spec.json",
+        "migrations/0001_init.sql",
+        "migrations/0002_social_profile_dm.sql",
+        "package.json",
+        "playwright.config.ts",
+        "postcss.config.js",
+        "src/index.ts",
+        "src/lib/admin-config.ts",
+        "src/lib/cookies.ts",
+        "src/lib/crypto.ts",
+        "src/lib/validation.ts",
+        "src/routes/admin.ts",
+        "src/routes/auth.ts",
+        "src/routes/messages.ts",
+        "src/routes/posts.ts",
+        "src/routes/uploads.ts",
+        "src/routes/users.ts",
+        "src/types.ts",
+        "tailwind.config.js",
+        "tests/e2e/run-96e1a2ad.spec.ts",
+        "tests/e2e/run-f8b35bdc.spec.ts",
+        "tsconfig.json",
+        "vite.config.ts",
+        "wrangler.toml"
+      ],
+      "packageJsonSnippet": "{\n  \"name\": \"atd-v1-community\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"dev\": \"npm run build:client && wrangler dev --port 8787 --ip 127.0.0.1\",\n    \"dev:client\": \"vite\",\n    \"build:client\": \"vite build\",\n    \"build\": \"vite build\",\n    \"typecheck\": \"tsc --noEmit\",\n    \"db:migrate:local\": \"wrangler d1 migrations apply DB --local\",\n    \"test:e2e\": \"playwright test\"\n  },\n  \"dependencies\": {\n    \"@radix-ui/react-dialog\": \"^1.1.6\",\n    \"@radix-ui/react-slot\": \"^1.1.2\",\n    \"@radix-ui/react-tabs\": \"^1.1.3\",\n    \"class-variance-authority\": \"^0.7.1\",\n    \"clsx\": \"^2.1.1\",\n    \"hono\": \"^4.7.4\",\n    \"lucide-react\": \"^0.475.0\",\n    \"react\": \"^18.3.1\",\n    \"react-dom\": \"^18.3.1\",\n    \"react-easy-crop\": \"^6.2.5\",\n    \"tailwind-merge\": \"^3.0.2\"\n  },\n  \"devDependencies\": {\n    \"@cloudflare/workers-types\": \"^5.20261119.1\",\n    \"@playwright/test\": \"^1.50.1\",\n    \"@types/react\": \"^18.3.18\",\n    \"@types/react-dom\": \"^18.3.5\",\n    \"@vitejs/plugin-react\": \"^4.3.4\",\n    \"autoprefixer\": \"^10.4.20\",\n    \"postcss\": \"^8.5.1\",\n    \"tailwindcss\": \"^3.4.17\",\n    \"typescript\": \"^5.7.3\",\n    \"vite\": \"^6.1.0\",\n    \"wrangler\": \"^4.16.0\"\n  }\n}\n",
+      "wranglerConfigSnippet": "name = \"atd-v1-community\"\nmain = \"src/index.ts\"\ncompatibility_date = \"2025-02-04\"\n\n[assets]\ndirectory = \"dist/client\"\nbinding = \"ASSETS\"\nnot_found_handling = \"single-page-application\"\nrun_worker_first = [\"/api/*\"]\n\n[[d1_databases]]\nbinding = \"DB\"\ndatabase_name = \"atd-v1-community-db\"\ndatabase_id = \"00000000-0000-0000-0000-000000000000\"\nmigrations_dir = \"migrations\"\n",
+      "existingMigrations": [
+        {
+          "path": "migrations/0001_init.sql",
+          "snippet": "-- Idempotent initial schema for atd-v1 community\n\nCREATE TABLE IF NOT EXISTS users (\n  id TEXT PRIMARY KEY,\n  email TEXT NOT NULL UNIQUE,\n  nickname TEXT NOT NULL,\n  avatar_seed TEXT NOT NULL,\n  created_at TEXT NOT NULL,\n  updated_at TEXT NOT NULL\n);\n\nCREATE TABLE IF NOT EXISTS email_otps (\n  id TEXT PRIMARY KEY,\n  email TEXT NOT NULL,\n  code_hash TEXT NOT NULL,\n  attempts INTEGER NOT NULL DEFAULT 0,\n  consumed INTEGER NOT NULL DEFAULT 0,\n  expires_at TEXT NOT NULL,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_email_otps_lookup\n  ON email_otps (email, consumed, created_at DESC);\n\nCREATE TABLE IF NOT EXISTS sessions (\n  id TEXT PRIMARY KEY,\n  user_id TEXT NOT NULL,\n  token_hash TEXT NOT NULL UNIQUE,\n  expires_at TEXT NOT NULL,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_sessions_token_hash\n  ON sessions (token_hash);\n\nCREATE INDEX IF NOT EXISTS idx_sessions_user_id\n  ON sessions (user_id);\n\nCREATE TABLE IF NOT EXISTS admin_config (\n  id INTEGER PRIMARY KEY CHECK (id = 1),\n  password_hash TEXT NOT NULL,\n  is_default_password INTEGER NOT NULL DEFAULT 1,\n  resend_api_key TEXT NOT NULL DEFAULT '',\n  resend_from_email TEXT NOT NULL DEFAULT 'onboarding@resend.dev',\n  site_name TEXT NOT NULL DEFAULT '拾光集 · 轻图文社区',\n  failed_attempts INTEGER NOT NULL DEFAULT 0,\n  locked_until TEXT,\n  updated_at TEXT NOT NULL\n);\n\nCREATE TABLE IF NOT EXISTS admin_sessions (\n  id TEXT PRIMARY KEY,\n  token_hash TEXT NOT NULL UNIQUE,\n  expires_at TEXT NOT NULL,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_admin_sessions_token_hash\n  ON admin_sessions (token_hash);\n\nCREATE TABLE IF NOT EXISTS posts (\n  id TEXT PRIMARY KEY,\n  author_id TEXT NOT NULL,\n  title TEXT NOT NULL,\n  content TEXT NOT NULL,\n  image_url TEXT NOT NULL DEFAULT '',\n  tags_json TEXT\n... (已截断)"
+        },
+        {
+          "path": "migrations/0002_social_profile_dm.sql",
+          "snippet": "-- Incremental idempotent schema for social profile, follows, comment replies, and direct messages\n\nCREATE TABLE IF NOT EXISTS user_profiles (\n  user_id TEXT PRIMARY KEY,\n  avatar_url TEXT NOT NULL DEFAULT '',\n  bio TEXT NOT NULL DEFAULT '',\n  updated_at TEXT NOT NULL\n);\n\nCREATE TABLE IF NOT EXISTS user_follows (\n  follower_id TEXT NOT NULL,\n  following_id TEXT NOT NULL,\n  created_at TEXT NOT NULL,\n  PRIMARY KEY (follower_id, following_id)\n);\n\nCREATE INDEX IF NOT EXISTS idx_user_follows_follower\n  ON user_follows (follower_id, created_at DESC);\n\nCREATE INDEX IF NOT EXISTS idx_user_follows_following\n  ON user_follows (following_id, created_at DESC);\n\nCREATE TABLE IF NOT EXISTS comment_replies (\n  id TEXT PRIMARY KEY,\n  comment_id TEXT NOT NULL,\n  post_id TEXT NOT NULL,\n  author_id TEXT NOT NULL,\n  reply_to_user_id TEXT,\n  content TEXT NOT NULL,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_comment_replies_comment\n  ON comment_replies (comment_id, created_at ASC);\n\nCREATE INDEX IF NOT EXISTS idx_comment_replies_post\n  ON comment_replies (post_id, created_at ASC);\n\nCREATE INDEX IF NOT EXISTS idx_comment_replies_author\n  ON comment_replies (author_id, created_at DESC);\n\nCREATE TABLE IF NOT EXISTS direct_messages (\n  id TEXT PRIMARY KEY,\n  conversation_key TEXT NOT NULL,\n  sender_id TEXT NOT NULL,\n  receiver_id TEXT NOT NULL,\n  content TEXT NOT NULL,\n  is_read INTEGER NOT NULL DEFAULT 0,\n  created_at TEXT NOT NULL\n);\n\nCREATE INDEX IF NOT EXISTS idx_dm_conv_created\n  ON direct_messages (conversation_key, created_at ASC);\n\nCREATE INDEX IF NOT EXISTS idx_dm_receiver_read\n  ON direct_messages (receiver_id, is_read, sender_id, created_at DESC);\n\nCREATE INDEX IF NOT EXISTS idx_dm_sender_created\n  ON direct_messages (sender_id, created_at DESC);\n"
+        }
+      ],
+      "existingE2eTests": [
+        "tests/e2e/run-96e1a2ad.spec.ts",
+        "tests/e2e/run-f8b35bdc.spec.ts"
+      ],
+      "previousSpecSummary": "{\n  \"schemaVersion\": \"1.1\",\n  \"generatedBy\": \"AutoDev Studio\",\n  \"runId\": \"run-96e1a2ad\",\n  \"createdAt\": \"2026-11-22T12:35:02.093Z\",\n  \"repository\": \"jiangfengwhu/atd-v1\",\n  \"baseBranch\": \"main\",\n  \"baseCommitSha\": \"2a03951ec121e44e47b75618f0abafd3a3a6ee85\",\n  \"e2eTestPath\": \"tests/e2e/run-96e1a2ad.spec.ts\",\n  \"e2eVaultPath\": \".autodev-e2e-vault/run-96e1a2ad/e2e.spec.ts\",\n  \"blindE2eVerification\": false,\n  \"archivedSpecPath\": \"docs/iterations/run-96e1a2ad-spec.json\",\n  \"prdTitle\": \"初期迭代-个人主页等\",\n  \"architecture\": {\n    \"summary\": \"基于现有 Cloudflare Workers + Hono + D1 + React 18/Vite/Tailwind CSS 架构执行增量演进，保留全部既有认证、帖子、图片上传及 /admin 隐藏后台模块与已生效迁移 migrations/0001_init.sql。数据层新增严格幂等且原子化的迁移文件 migrations/0002_social_profile_dm.sql（仅使用 CREATE TABLE IF NOT EXISTS 与 CREATE INDEX IF NOT EXISTS，零 ALTER TABLE 风险，部署前依据 D1 迁移规范核验 wrangler.toml 的 database_id 与 CI 环境变量 CLOUDFLARE_API_TOKEN），扩展 user_profiles、user_follows、comment_replies、direct_messages 四张表与查询索引。后端新增 src/routes/users.ts（个人主页聚合统计、关注/取消关注、关注与粉"
+    },
+    "planChannelBranch": "autodev-plan-channel",
+    "planActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45101819121",
+    "planActionsRunId": 45101819121
+  },
+  {
     "id": "job-42d4ded8",
     "createdAt": "2026-11-22T12:27:49.231Z",
     "updatedAt": "2026-11-22T12:35:02.096Z",
