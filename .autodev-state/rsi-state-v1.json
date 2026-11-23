@@ -268,6 +268,19 @@
   ],
   "incidents": [
     {
+      "id": "inc-d243c87f",
+      "sourceRefKey": "deploy-preview:autodev/feat-20261123-025859:1795403558375",
+      "source": "deploy_error",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "title": "Cloudflare 预览部署失败（autodev/feat-20261123-025859）",
+      "errorSummary": "Cannot find module '/workspace/src/lib/iterationContext' imported from /workspace/server/cloudflareDeployService.ts",
+      "rawEvidence": "Cannot find module '/workspace/src/lib/iterationContext' imported from /workspace/server/cloudflareDeployService.ts",
+      "relatedRunId": "run-7026568c",
+      "branch": "autodev/feat-20261123-025859",
+      "occurredAt": "2026-11-23T03:12:38.375Z",
+      "analysisStatus": "analyzing"
+    },
+    {
       "id": "inc-69efde60",
       "sourceRefKey": "deploy-preview:autodev/feat-20261123-025859:1795403541033",
       "source": "deploy_error",
