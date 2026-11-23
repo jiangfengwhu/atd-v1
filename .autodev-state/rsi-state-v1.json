@@ -278,7 +278,36 @@
       "relatedRunId": "run-7026568c",
       "branch": "autodev/feat-20261123-025859",
       "occurredAt": "2026-11-23T03:12:38.375Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "build_typecheck",
+        "rootCauseSummary": "server/cloudflareDeployService.ts 引用了不存在或路径失效的模块 /workspace/src/lib/iterationContext，导致部署阶段模块解析失败。",
+        "shouldCodifyAsRule": true,
+        "decisionRationale": "Decision 门控判定与现有规则语义重叠（重复度 99%），执行合并强化而非新增条目。 跨目录模块引用失效属于可复用的工程规范问题，强化静态路径核验与构建检查可避免同类部署报错。",
+        "confidence": 0.98,
+        "suggestedRule": {
+          "title": "模块依赖路径一致性检查",
+          "targetStage": "coding",
+          "severity": "critical",
+          "promptDirective": "在修改代码目录或跨目录引用（如 server 引用 src）时，必须核实目标模块文件存在并运行类型检查与构建，避免部署期出现模块找不到错误。",
+          "dedupeKey": "module-path-dependency-integrity"
+        },
+        "decisionGate": {
+          "model": "gemini-decision-1",
+          "generalizableProb": 0.7844,
+          "duplicateProb": 0.99,
+          "generalityScore": 2.469,
+          "chosenAction": "merge_existing",
+          "actionConfidence": 0.9848,
+          "matchedRuleId": "rsi-192e5828",
+          "matchedRuleConfidence": 0.9825,
+          "evaluatedAt": "2026-11-23T03:12:46.930Z"
+        },
+        "appliedOutcome": "merged",
+        "mergedIntoRuleId": "rsi-192e5828",
+        "analyzedAt": "2026-11-23T03:12:46.931Z",
+        "model": "gemini-4-hydrogen + gemini-decision-1"
+      }
     },
     {
       "id": "inc-69efde60",
@@ -440,12 +469,13 @@
       "promptDirective": "在修改代码目录结构后，必须执行全局依赖扫描，确保所有相对路径（特别是从 server 目录引用 src 目录的资源）保持同步更新，并运行静态分析工具检测悬空引用。",
       "rootCauseCategory": "build_typecheck",
       "sourceIncidentIds": [
-        "inc-69efde60"
+        "inc-69efde60",
+        "inc-d243c87f"
       ],
-      "hitCount": 1,
+      "hitCount": 2,
       "appliedCount": 0,
       "createdAt": "2026-11-23T03:12:31.331Z",
-      "updatedAt": "2026-11-23T03:12:31.331Z"
+      "updatedAt": "2026-11-23T03:12:46.931Z"
     },
     {
       "id": "rsi-619c6524",
