@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-a6979b42",
+    "timestamp": "2026-11-23T16:41:47.636Z",
+    "category": "approval",
+    "action": "release_approved",
+    "label": "验收通过并批准上线",
+    "actor": "验收审批人",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-9b961baa",
+    "prdTitle": "动态改版",
+    "branch": "autodev/feat-20261123-161632",
+    "prNumber": 12,
+    "status": "success",
+    "detail": "验收通过并合入 main（Commit 1382237）（生产自动部署异常：Command failed: npm install --include=dev --no-audit --no-fund\nnpm warn config production Use `--omit=dev` instead.\nnpm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead）"
+  },
+  {
     "id": "aud-de1662ea",
     "timestamp": "2026-11-23T16:18:23.904Z",
     "category": "execution",
