@@ -2,6 +2,10 @@ import { Hono } from 'hono';
 import type { AppEnv } from '../types';
 import { getSessionUser } from './auth';
 import { serializePost, type PostRow } from './posts';
+import {
+  clearUnreadFollowNotification,
+  createOrUpdateNotification,
+} from '../lib/notifications';
 
 interface UserProfileRow {
   id: string;
@@ -163,18 +167,32 @@ userRoutes.post('/:id/follow', async (c) => {
 
   let following = false;
   if (existing) {
-    await c.env.DB.prepare(
+    const delRes = await c.env.DB.prepare(
       'DELETE FROM user_follows WHERE follower_id = ? AND following_id = ?'
     )
       .bind(sessionUser.id, targetId)
       .run();
+    if (delRes.meta.changes && delRes.meta.changes > 0) {
+      await clearUnreadFollowNotification(c.env, {
+        recipientId: targetId,
+        actorId: sessionUser.id,
+      });
+    }
     following = false;
   } else {
-    await c.env.DB.prepare(
+    const insRes = await c.env.DB.prepare(
       'INSERT OR IGNORE INTO user_follows (follower_id, following_id, created_at) VALUES (?, ?, ?)'
     )
       .bind(sessionUser.id, targetId, new Date().toISOString())
       .run();
+    if (insRes.meta.changes && insRes.meta.changes > 0) {
+      await createOrUpdateNotification(c.env, {
+        recipientId: targetId,
+        actorId: sessionUser.id,
+        type: 'follow',
+        contentPreview: '关注了你',
+      });
+    }
     following = true;
   }
 

@@ -1,4 +1,4 @@
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, DurableObjectNamespace } from '@cloudflare/workers-types';
 
 export interface AssetsFetcher {
   fetch(input: Request | URL | string): Promise<Response>;
@@ -6,6 +6,7 @@ export interface AssetsFetcher {
 
 export interface Bindings {
   DB: D1Database;
+  USER_REALTIME?: DurableObjectNamespace;
   ASSETS?: AssetsFetcher;
   RESEND_API_KEY?: string;
   RESEND_FROM_EMAIL?: string;

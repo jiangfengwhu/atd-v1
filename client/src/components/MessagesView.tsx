@@ -7,6 +7,7 @@ import {
   type DirectMessageItem,
   type UserProfile,
 } from '@/lib/api';
+import { realtimeClient } from '@/lib/realtime';
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -106,8 +107,6 @@ export function MessagesView({
 
   React.useEffect(() => {
     loadConversations(false);
-    const timer = window.setInterval(() => loadConversations(true), 15000);
-    return () => window.clearInterval(timer);
   }, [loadConversations]);
 
   React.useEffect(() => {
@@ -117,9 +116,93 @@ export function MessagesView({
       return;
     }
     loadThread(activePeerId, false);
-    const timer = window.setInterval(() => loadThread(activePeerId, true), 5000);
-    return () => window.clearInterval(timer);
   }, [activePeerId, loadThread]);
+
+  React.useEffect(() => {
+    return realtimeClient.subscribe((event) => {
+      if (event.type === 'dm:new') {
+        const msg = event.message;
+        const peerId =
+          msg.senderId === currentUser.id ? event.receiverId : msg.senderId;
+        const isIncoming = msg.senderId === peerId;
+        const isViewingThread = activePeerId === peerId;
+
+        if (isViewingThread) {
+          setMessages((prev) =>
+            prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]
+          );
+          if (isIncoming) {
+            api.markConversationRead(peerId).catch(() => {});
+          }
+        }
+
+        let foundPeer = false;
+        setConversations((prev) => {
+          const idx = prev.findIndex((c) => c.peer.id === peerId);
+          if (idx === -1) {
+            if (isIncoming && event.sender) {
+              foundPeer = true;
+              return [
+                {
+                  peer: event.sender,
+                  lastMessage: {
+                    id: msg.id,
+                    senderId: msg.senderId,
+                    content: msg.content,
+                    createdAt: msg.createdAt,
+                  },
+                  unreadCount: isViewingThread ? 0 : 1,
+                },
+                ...prev,
+              ];
+            }
+            return prev;
+          }
+          foundPeer = true;
+          const existing = prev[idx];
+          const updatedItem: ConversationItem = {
+            ...existing,
+            lastMessage: {
+              id: msg.id,
+              senderId: msg.senderId,
+              content: msg.content,
+              createdAt: msg.createdAt,
+            },
+            unreadCount:
+              isIncoming && !isViewingThread
+                ? existing.unreadCount + 1
+                : isViewingThread
+                  ? 0
+                  : existing.unreadCount,
+          };
+          const rest = prev.filter((c) => c.peer.id !== peerId);
+          return [updatedItem, ...rest];
+        });
+
+        if (!foundPeer && !isIncoming) {
+          loadConversations(true);
+        }
+
+        if (!(isIncoming && isViewingThread)) {
+          onUnreadUpdated(event.totalUnread);
+        }
+      } else if (event.type === 'dm:read') {
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.peer.id === event.peerId ? { ...conv, unreadCount: 0 } : conv
+          )
+        );
+        if (activePeerId === event.peerId) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.senderId === currentUser.id ? { ...m, isRead: true } : m
+            )
+          );
+        }
+        onUnreadUpdated(event.totalUnread);
+      }
+    });
+  }, [activePeerId, currentUser.id, loadConversations, onUnreadUpdated]);
 
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

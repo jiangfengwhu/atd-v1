@@ -3,6 +3,12 @@ import type { AppEnv } from '../types';
 import { getSessionUser } from './auth';
 import { ensureAdminConfig } from '../lib/admin-config';
 import { escapeSqlLike, isValidImageUrl, sanitizeTags } from '../lib/validation';
+import {
+  clearUnreadLikeNotification,
+  createOrUpdateNotification,
+  getUnreadNotificationRecipientsForPost,
+  pushNotificationReadSyncForUsers,
+} from '../lib/notifications';
 
 export interface PostRow {
   id: string;
@@ -367,12 +373,19 @@ postRoutes.delete('/:id', async (c) => {
     return c.json({ error: '无权删除他人发布的帖子' }, 403);
   }
 
+  const affectedRecipients = await getUnreadNotificationRecipientsForPost(c.env.DB, postId);
+
   await c.env.DB.batch([
+    c.env.DB.prepare('DELETE FROM notifications WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_likes WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM comment_replies WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM comments WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM posts WHERE id = ?').bind(postId),
   ]);
+
+  if (affectedRecipients.length > 0) {
+    await pushNotificationReadSyncForUsers(c.env, affectedRecipients);
+  }
 
   return c.json({ ok: true });
 });
@@ -384,9 +397,9 @@ postRoutes.post('/:id/like', async (c) => {
   }
 
   const postId = c.req.param('id');
-  const post = await c.env.DB.prepare('SELECT id FROM posts WHERE id = ? LIMIT 1')
+  const post = await c.env.DB.prepare('SELECT id, author_id, title FROM posts WHERE id = ? LIMIT 1')
     .bind(postId)
-    .first<{ id: string }>();
+    .first<{ id: string; author_id: string; title: string }>();
 
   if (!post) {
     return c.json({ error: '帖子不存在' }, 404);
@@ -411,6 +424,11 @@ postRoutes.post('/:id/like', async (c) => {
       )
         .bind(postId)
         .run();
+      await clearUnreadLikeNotification(c.env, {
+        recipientId: post.author_id,
+        actorId: user.id,
+        postId,
+      });
     }
     liked = false;
   } else {
@@ -423,6 +441,13 @@ postRoutes.post('/:id/like', async (c) => {
       await c.env.DB.prepare('UPDATE posts SET likes_count = likes_count + 1 WHERE id = ?')
         .bind(postId)
         .run();
+      await createOrUpdateNotification(c.env, {
+        recipientId: post.author_id,
+        actorId: user.id,
+        type: 'like',
+        postId,
+        contentPreview: post.title,
+      });
     }
     liked = true;
   }
@@ -445,9 +470,9 @@ postRoutes.post('/:id/comments', async (c) => {
   }
 
   const postId = c.req.param('id');
-  const post = await c.env.DB.prepare('SELECT id FROM posts WHERE id = ? LIMIT 1')
+  const post = await c.env.DB.prepare('SELECT id, author_id, title FROM posts WHERE id = ? LIMIT 1')
     .bind(postId)
-    .first<{ id: string }>();
+    .first<{ id: string; author_id: string; title: string }>();
 
   if (!post) {
     return c.json({ error: '帖子不存在' }, 404);
@@ -470,6 +495,15 @@ postRoutes.post('/:id/comments', async (c) => {
       postId
     ),
   ]);
+
+  await createOrUpdateNotification(c.env, {
+    recipientId: post.author_id,
+    actorId: user.id,
+    type: 'comment',
+    postId,
+    commentId,
+    contentPreview: content,
+  });
 
   return c.json(
     {
@@ -502,13 +536,16 @@ postRoutes.post('/:id/comments/:commentId/replies', async (c) => {
   const commentId = c.req.param('commentId');
 
   // Verify the comment exists and belongs to the specified post
-  const parentComment = await c.env.DB.prepare(
-    'SELECT id, author_id FROM comments WHERE id = ? AND post_id = ? LIMIT 1'
-  )
-    .bind(commentId, postId)
-    .first<{ id: string; author_id: string }>();
+  const [post, parentComment] = await Promise.all([
+    c.env.DB.prepare('SELECT id, author_id FROM posts WHERE id = ? LIMIT 1')
+      .bind(postId)
+      .first<{ id: string; author_id: string }>(),
+    c.env.DB.prepare('SELECT id, author_id FROM comments WHERE id = ? AND post_id = ? LIMIT 1')
+      .bind(commentId, postId)
+      .first<{ id: string; author_id: string }>(),
+  ]);
 
-  if (!parentComment) {
+  if (!post || !parentComment) {
     return c.json({ error: '帖子或评论不存在' }, 404);
   }
 
@@ -548,6 +585,25 @@ postRoutes.post('/:id/comments/:commentId/replies', async (c) => {
       postId
     ),
   ]);
+
+  const recipientIds = new Set<string>();
+  if (replyToUser?.id) recipientIds.add(replyToUser.id);
+  recipientIds.add(parentComment.author_id);
+  recipientIds.add(post.author_id);
+  recipientIds.delete(user.id);
+
+  await Promise.all(
+    Array.from(recipientIds).map((recipientId) =>
+      createOrUpdateNotification(c.env, {
+        recipientId,
+        actorId: user.id,
+        type: 'comment',
+        postId,
+        commentId,
+        contentPreview: content,
+      })
+    )
+  );
 
   return c.json(
     {
