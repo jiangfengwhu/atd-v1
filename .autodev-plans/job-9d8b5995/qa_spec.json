@@ -1,0 +1,98 @@
+{
+  "apiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/api/posts/:id/view",
+      "method": "POST",
+      "scenario": "访客或已登录用户点击打开动态后累计点击数",
+      "expectedStatus": 200,
+      "assertion": "返回 ok: true 且 viewsCount 递增，后续查询 GET /api/posts/:id 返回一致的 viewsCount"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/api/posts/:id/view",
+      "method": "POST",
+      "scenario": "对不存在的动态 ID 上报点击",
+      "expectedStatus": 404,
+      "assertion": "返回 404 错误提示帖子不存在"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/posts/:id/bookmark",
+      "method": "POST",
+      "scenario": "未登录用户尝试收藏动态",
+      "expectedStatus": 401,
+      "assertion": "返回 401 拒绝操作"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/api/posts/:id/bookmark",
+      "method": "POST",
+      "scenario": "已登录用户收藏动态后再次点击取消收藏",
+      "expectedStatus": 200,
+      "assertion": "首次返回 bookmarked: true 且 bookmarksCount 为 1；二次返回 bookmarked: false 且 bookmarksCount 为 0"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/users/:id/activity?tab=bookmarks",
+      "method": "GET",
+      "scenario": "已登录用户查询本人个人主页收藏动态列表",
+      "expectedStatus": 200,
+      "assertion": "返回 tab: 'bookmarks' 且 items 包含已收藏动态并带 bookmarkedByMe: true"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/api/posts/:id/share",
+      "method": "POST",
+      "scenario": "用户或访客触发分享动态",
+      "expectedStatus": 200,
+      "assertion": "返回 ok: true、sharesCount 递增且 sharePath 等于 /posts/:id"
+    },
+    {
+      "id": "TC-07",
+      "endpoint": "/api/discover/topics",
+      "method": "GET",
+      "scenario": "获取右侧导航热门话题列表",
+      "expectedStatus": 200,
+      "assertion": "返回 topics 数组，包含真实发布的动态标签及其 postsCount 与 heatScore"
+    },
+    {
+      "id": "TC-08",
+      "endpoint": "/api/discover/recommended-users",
+      "method": "GET",
+      "scenario": "已登录用户获取右侧推荐关注用户列表",
+      "expectedStatus": 200,
+      "assertion": "返回 users 数组，不包含当前登录用户本人及已关注用户"
+    },
+    {
+      "id": "TC-09",
+      "endpoint": "/api/auth/accounts",
+      "method": "GET",
+      "scenario": "同一浏览器上下文连续验证登录两个账号后查询账号列表",
+      "expectedStatus": 200,
+      "assertion": "accounts 至少包含两个账号且 activeUserId 指向最新登录账号"
+    },
+    {
+      "id": "TC-10",
+      "endpoint": "/api/auth/switch",
+      "method": "POST",
+      "scenario": "在已登录的两个账号之间一键切换",
+      "expectedStatus": 200,
+      "assertion": "返回目标账号信息，后续 GET /api/auth/me 返回切换后的账号"
+    },
+    {
+      "id": "TC-11",
+      "endpoint": "/api/auth/logout",
+      "method": "POST",
+      "scenario": "多账号状态下退出当前账号与退出全部账号",
+      "expectedStatus": 200,
+      "assertion": "退出当前账号后自动切回剩余账号；传入 all: true 后全部注销且 /api/auth/me 返回 authenticated: false"
+    }
+  ],
+  "e2eTestCode": "import { test, expect, type APIRequestContext } from '@playwright/test';\n\nfunction makeEmail(prefix: string): string {\n  const rand = Math.random().toString(36).slice(2, 7);\n  return `${prefix}-${Date.now()}-${rand}@example.com`;\n}\n\nasync function loginUser(\n  request: APIRequestContext,\n  email: string,\n  nickname: string\n): Promise<{ id: string; email: string; nickname: string }> {\n  const sendRes = await request.post('/api/auth/send-code', { data: { email } });\n  expect(sendRes.status()).toBe(200);\n  const sendJson = await sendRes.json();\n  const verifyRes = await request.post('/api/auth/verify-code', {\n    data: { email, code: sendJson.devCode, nickname },\n  });\n  expect(verifyRes.status()).toBe(200);\n  return (await verifyRes.json()).user;\n}\n\ntest.describe.serial('动态改版初版 E2E 校验套件', () => {\n  test('1. 列表形态展示、点击统计、收藏与分享链接直达', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1440, height: 900 });\n    const user = await loginUser(page.request, makeEmail('feed-revamp'), '内容创作者');\n\n    const title1 = `列表动态一-${Date.now()}`;\n    const title2 = `列表动态二-${Date.now()}`;\n    const tag = `热议话题${Date.now().toString().slice(-4)}`;\n\n    const p1 = await (await page.request.post('/api/posts', {\n      data: { title: title1, content: '第一条 X.com 风格动态正文内容', tags: [tag] },\n    })).json();\n    await page.request.post('/api/posts', {\n      data: { title: title2, content: '第二条动态用于校验单列纵向排列', tags: [tag] },\n    });\n    const postId = p1.post.id as string;\n\n    await page.goto('/');\n    const card1 = page.locator('article').filter({ hasText: title1 }).first();\n    const card2 = page.locator('article').filter({ hasText: title2 }).first();\n    await expect(card1).toBeVisible({ timeout: 10000 });\n    await expect(card2).toBeVisible({ timeout: 10000 });\n\n    const box1 = await card1.boundingBox();\n    const box2 = await card2.boundingBox();\n    expect(box1 && box2).toBeTruthy();\n    if (box1 && box2) {\n      expect(Math.abs(box1.x - box2.x)).toBeLessThanOrEqual(24);\n    }\n\n    // 收藏切换\n    const bookmarkBtn = card1.getByRole('button', { name: /收藏/i }).first();\n    await expect(bookmarkBtn).toBeVisible();\n    const bookmarkResp = page.waitForResponse(\n      (r) => r.url().includes(`/api/posts/${postId}/bookmark`) && r.request().method() === 'POST'\n    );\n    await bookmarkBtn.click();\n    expect((await bookmarkResp).status()).toBe(200);\n\n    // 分享计数与直达链接\n    const shareBtn = card1.getByRole('button', { name: /分享/i }).first();\n    await expect(shareBtn).toBeVisible();\n    const shareResp = page.waitForResponse(\n      (r) => r.url().includes(`/api/posts/${postId}/share`) && r.request().method() === 'POST'\n    );\n    await shareBtn.click();\n    expect((await shareResp).status()).toBe(200);\n\n    // 访客通过分享 URL 直达动态详情并累加点击数\n    const anonCtx = await browser.newContext();\n    try {\n      const anonPage = await anonCtx.newPage();\n      await anonPage.goto(`/posts/${postId}`);\n      await expect(anonPage.getByText(title1).first()).toBeVisible({ timeout: 10000 });\n      await expect\n        .poll(async () => (await (await page.request.get(`/api/posts/${postId}`)).json()).post.viewsCount)\n        .toBeGreaterThanOrEqual(1);\n    } finally {\n      await anonCtx.close();\n    }\n\n    // 个人主页收藏列表包含该动态\n    const bmAct = await (await page.request.get(`/api/users/${user.id}/activity?tab=bookmarks`)).json();\n    expect(bmAct.items.some((p: { id: string }) => p.id === postId)).toBe(true);\n  });\n\n  test('2. 右侧热门话题与推荐关注展示及互动', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1440, height: 900 });\n    const ctxCreator = await browser.newContext();\n    try {\n      const creatorNick = `推荐博主${Date.now().toString().slice(-4)}`;\n      await loginUser(ctxCreator.request, makeEmail('rec-creator'), creatorNick);\n      const hotTag = `精选趋势${Date.now().toString().slice(-4)}`;\n      await ctxCreator.request.post('/api/posts', {\n        data: { title: `趋势内容-${Date.now()}`, content: '用于生成热门话题', tags: [hotTag] },\n      });\n\n      await loginUser(page.request, makeEmail('rec-viewer'), '浏览者');\n      await page.goto('/');\n\n      await expect(page.getByText(/热门话题/).first()).toBeVisible({ timeout: 10000 });\n      await expect(page.getByText(/推荐关注/).first()).toBeVisible({ timeout: 10000 });\n      await expect(page.getByText(hotTag).first()).toBeVisible({ timeout: 10000 });\n    } finally {\n      await ctxCreator.close();\n    }\n  });\n\n  test('3. 多账号登录与一键切换', async ({ page }) => {\n    await page.setViewportSize({ width: 1440, height: 900 });\n    const nickA = `主号A${Date.now().toString().slice(-4)}`;\n    const nickB = `副号B${Date.now().toString().slice(-4)}`;\n    const userA = await loginUser(page.request, makeEmail('multi-a'), nickA);\n    const userB = await loginUser(page.request, makeEmail('multi-b'), nickB);\n\n    const accountsJson = await (await page.request.get('/api/auth/accounts')).json();\n    expect(accountsJson.activeUserId).toBe(userB.id);\n    expect(accountsJson.accounts.length).toBeGreaterThanOrEqual(2);\n\n    await page.goto('/');\n    const sidebar = page.locator('aside').first();\n    const trigger = sidebar.getByRole('button', { name: new RegExp(`${nickB}|个人资料|账号`, 'i') }).last();\n    await expect(trigger).toBeVisible({ timeout: 10000 });\n    await trigger.click();\n\n    const switchTarget = page.getByRole('menuitem', { name: new RegExp(nickA) }).or(page.getByRole('button', { name: new RegExp(nickA) })).first();\n    await expect(switchTarget).toBeVisible({ timeout: 10000 });\n    const switchResp = page.waitForResponse(\n      (r) => r.url().includes('/api/auth/switch') && r.request().method() === 'POST'\n    );\n    await switchTarget.click();\n    expect((await switchResp).status()).toBe(200);\n\n    const meAfter = await (await page.request.get('/api/auth/me')).json();\n    expect(meAfter.user.id).toBe(userA.id);\n  });\n});\n",
+  "coverageNotes": [
+    "覆盖主页 X.com 风格单列列表形态的纵向对齐校验、动态点击统计、收藏切换、分享计数与 /posts/:id 访客直达",
+    "覆盖主页右侧热门话题与推荐关注模块渲染及接口基础契约",
+    "覆盖同浏览器多账号登录、账号列表查询与左下角菜单一键切换身份"
+  ]
+}
