@@ -1,0 +1,16 @@
+{
+  "jobId": "job-af152d25",
+  "repoFullName": "jiangfengwhu/atd-v1",
+  "baseBranch": "main",
+  "prdTitle": "接入通知",
+  "prdContent": "1. 左侧导航栏太呆板了，而且和中心的动态相隔很远，有点突兀，你看看主流社交平台怎么做的，抄一下\n2. 添加通知模块：\n  - 评论通知\n  - 点赞通知\n  - 新增关注通知\n3. 动态详情页改版：做成左右结构的，具体可以参考instagram那种\n4. 通知和私信使用websocket，减小worker请求次数，避免轮询",
+  "effectiveTechStack": "React + Vite + TypeScript (Cloudflare Workers Static Assets) + Hono API on Cloudflare Workers + Cloudflare D1 (SQLite) + Cloudflare KV",
+  "isDefaultCloudflare": true,
+  "agyModel": "gemini-4-neon-high",
+  "createdAt": "2026-11-23T02:43:19.344Z",
+  "rsiSystemPrompts": {
+    "architect": "",
+    "qa_spec": "",
+    "qa_critic": "=== RSI 系统自进化强约束规则 (QA Critic 边界评审 · 已自动注入 1 条历史经验) ===\n以下规则均由系统经 Decision 门控筛选并从历史真实故障中提炼，本轮必须严格遵守以避免重复踩坑：\n1. [CRITICAL] (环境与网络异常 · 触发 2 次) Cloudflare D1 迁移规范：在执行 Cloudflare Workers D1 迁移前，必须先验证：1. wrangler.toml 中 database_id 已正确配置；2. 迁移脚本应保持原子性且具备幂等性；3. CI 环境环境变量已包含有效的 CLOUDFLARE_API_TOKEN 及对应的账户…"
+  }
+}
