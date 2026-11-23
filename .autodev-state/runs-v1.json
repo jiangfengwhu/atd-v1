@@ -1,7 +1,7 @@
 [
   {
-    "id": "run-7ba89e02",
-    "createdAt": "2026-11-23T02:49:36.696Z",
+    "id": "run-7026568c",
+    "createdAt": "2026-11-23T02:49:36.437Z",
     "repoFullName": "jiangfengwhu/atd-v1",
     "defaultBranch": "main",
     "prdTitle": "接入通知",
@@ -466,8 +466,27 @@
       "source": "estimated",
       "model": "gemini-4-neon-high"
     },
-    "status": "analyzed",
-    "checkedCriteriaIds": []
+    "status": "pr_created",
+    "checkedCriteriaIds": [],
+    "draftPr": {
+      "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/11",
+      "prNumber": 11,
+      "branchName": "autodev/feat-20261123-025859",
+      "baseBranch": "main",
+      "commitSha": "4e0900a9611274bba40b42b97f37d35800807c8a",
+      "filesCommitted": [
+        "docs/spec.json",
+        "docs/iterations/run-7026568c-spec.json",
+        "docs/prd.md",
+        "docs/iterations/run-7026568c-prd.md",
+        "tests/e2e/run-7026568c.spec.ts"
+      ],
+      "e2eTestPath": "tests/e2e/run-7026568c.spec.ts",
+      "e2eVaultPath": ".autodev-e2e-vault/run-7026568c/e2e.spec.ts",
+      "archivedSpecPath": "docs/iterations/run-7026568c-spec.json",
+      "createdAt": "2026-11-23T02:59:04.043Z",
+      "initializedEmptyRepo": false
+    }
   },
   {
     "id": "run-96e1a2ad",
