@@ -1,0 +1,144 @@
+{
+  "runId": "run-7026568c",
+  "actionsRunId": 45103281434,
+  "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45103281434",
+  "workflowName": "AutoDev AGY Coding Runner",
+  "branch": "autodev/feat-20261123-025859",
+  "prNumber": 11,
+  "commitSha": "e0c8237",
+  "model": "gemini-4-hydrogen-high",
+  "kind": "e2e",
+  "status": "passed",
+  "total": 16,
+  "passed": 16,
+  "failed": 0,
+  "skipped": 0,
+  "durationMs": 37650,
+  "executedAt": "2026-11-23T03:07:17.613Z",
+  "summary": "自动化 E2E 验收（gemini-4-hydrogen-high / auto）：16 通过 / 0 失败 / 0 跳过",
+  "cases": [
+    {
+      "id": "check-type",
+      "title": "TypeScript / Lint 静态检查 (typecheck)",
+      "status": "passed",
+      "durationMs": 3576
+    },
+    {
+      "id": "check-build",
+      "title": "生产构建检查 (npm run build)",
+      "status": "passed",
+      "durationMs": 2430
+    },
+    {
+      "id": "pw-2",
+      "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 1. 宽屏左侧导航栏改版、居中紧凑间距几何审计与通知入口验证",
+      "file": "run-7026568c.spec.ts",
+      "status": "passed",
+      "durationMs": 471
+    },
+    {
+      "id": "pw-3",
+      "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 2. 通知模块全链路 API 契约、防自发、参数边界、跨用户隔离与删帖清理",
+      "file": "run-7026568c.spec.ts",
+      "status": "passed",
+      "durationMs": 423
+    },
+    {
+      "id": "pw-4",
+      "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 3. WebSocket 握手安全边界、通知实时推送与零 HTTP 轮询网络审计",
+      "file": "run-7026568c.spec.ts",
+      "status": "passed",
+      "durationMs": 8998
+    },
+    {
+      "id": "pw-5",
+      "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 4. 私信 WebSocket 实时收发、已读接口校验与聊天窗零轮询审计",
+      "file": "run-7026568c.spec.ts",
+      "status": "passed",
+      "durationMs": 9057
+    },
+    {
+      "id": "pw-6",
+      "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 5. 动态详情页 Instagram 风格左右双栏几何结构、互动闭环与移动端适配",
+      "file": "run-7026568c.spec.ts",
+      "status": "passed",
+      "durationMs": 759
+    },
+    {
+      "id": "pw-7",
+      "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 1. 健康检查、左右分栏几何结构、左侧导航项与底部个人资料退出登录",
+      "file": "run-96e1a2ad.spec.ts",
+      "status": "passed",
+      "durationMs": 681
+    },
+    {
+      "id": "pw-8",
+      "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 2. 个人主页资料修改、安全边界、关注粉丝与评论二级回复闭环",
+      "file": "run-96e1a2ad.spec.ts",
+      "status": "passed",
+      "durationMs": 869
+    },
+    {
+      "id": "pw-9",
+      "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 3. 私信权限隔离、边界校验、未读已读回执与 UI 聊天交互",
+      "file": "run-96e1a2ad.spec.ts",
+      "status": "passed",
+      "durationMs": 698
+    },
+    {
+      "id": "pw-10",
+      "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 4. 发布图文集成图片裁剪编辑（比例/旋转/确认裁剪）与持久化发布",
+      "file": "run-96e1a2ad.spec.ts",
+      "status": "passed",
+      "durationMs": 1053
+    },
+    {
+      "id": "pw-11",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 1. 健康检查、首页渲染与隐藏路由 /admin 入口审计",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 194
+    },
+    {
+      "id": "pw-12",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 2. 邮箱验证码登录安全边界（非法邮箱、冷却、错误码、UI 登录与防重放）",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 533
+    },
+    {
+      "id": "pw-13",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 3. 图文发布、图片上传、搜索、点赞、评论与持久化闭环",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 641
+    },
+    {
+      "id": "pw-14",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 4. 未登录拦截与跨用户越权删帖权限隔离",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 114
+    },
+    {
+      "id": "pw-15",
+      "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 5. 隐藏路由 /admin 全流程：鉴权、Resend 密钥脱敏配置、改密与状态回滚",
+      "file": "run-f8b35bdc.spec.ts",
+      "status": "passed",
+      "durationMs": 627
+    }
+  ],
+  "rawLogExcerpt": "es transformed.\nrendering chunks...\ncomputing gzip size...\n\u001b[2m../dist/client/\u001b[22m\u001b[32mindex.html                 \u001b[39m\u001b[1m\u001b[2m  0.80 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   0.49 kB\u001b[22m\n\u001b[2m../dist/client/\u001b[22m\u001b[2massets/\u001b[22m\u001b[35mindex-8SrD-bO3.css  \u001b[39m\u001b[1m\u001b[2m 41.33 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   7.44 kB\u001b[22m\n\u001b[2m../dist/client/\u001b[22m\u001b[2massets/\u001b[22m\u001b[36mindex-BYzBwN8Z.js   \u001b[39m\u001b[1m\u001b[2m377.04 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip: 113.05 kB\u001b[22m\n\u001b[32m✓ built in 2.15s\u001b[39m\n=== Playwright E2E Verification ===\n            }\n                      ],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"01d4578ad868b07aa3f6-8a3412c5cb2f93344308\",\n              \"file\": \"run-f8b35bdc.spec.ts\",\n              \"line\": 278,\n              \"column\": 3\n            },\n            {\n              \"title\": \"5. 隐藏路由 /admin 全流程：鉴权、Resend 密钥脱敏配置、改密与状态回滚\",\n              \"ok\": true,\n              \"tags\": [],\n              \"tests\": [\n                {\n                  \"timeout\": 45000,\n                  \"annotations\": [\n                    {\n                      \"type\": \"serial\",\n                      \"location\": {\n                        \"file\": \"/data/home/actions-runner-2/_work/atd-v1/atd-v1/tests/e2e/run-f8b35bdc.spec.ts\",\n                        \"line\": 43,\n                        \"column\": 15\n                      }\n                    }\n                  ],\n                  \"expectedStatus\": \"passed\",\n                  \"projectId\": \"\",\n                  \"projectName\": \"\",\n                  \"results\": [\n                    {\n                      \"workerIndex\": 0,\n                      \"parallelIndex\": 0,\n                      \"status\": \"passed\",\n                      \"duration\": 627,\n                      \"errors\": [],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-23T03:07:16.855Z\",\n                      \"annotations\": [\n                        {\n                          \"type\": \"serial\",\n                          \"location\": {\n                            \"file\": \"/data/home/actions-runner-2/_work/atd-v1/atd-v1/tests/e2e/run-f8b35bdc.spec.ts\",\n                            \"line\": 43,\n                            \"column\": 15\n                          }\n                        }\n                      ],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"01d4578ad868b07aa3f6-8288628163285f09aee9\",\n              \"file\": \"run-f8b35bdc.spec.ts\",\n              \"line\": 319,\n              \"column\": 3\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"errors\": [],\n  \"stats\": {\n    \"startTime\": \"2026-11-23T03:06:46.578Z\",\n    \"duration\": 31005.624,\n    \"expected\": 14,\n    \"skipped\": 0,\n    \"unexpected\": 0,\n    \"flaky\": 0\n  }\n}\n",
+  "agySessionId": "270050fa-5757-4dc7-aa11-b3afdce6777f",
+  "agySessionReused": false,
+  "agyExitCode": 0,
+  "repairRounds": 0,
+  "codingFinalOutput": "正在运行全量 Playwright 端到端测试套件（涵盖新增的 `run-7026568c.spec.ts` 以及回归测试 `run-96e1a2ad.spec.ts` 和 `run-f8b35bdc.spec.ts`），等待测试执行完成。\n已完成本次迭代全部开发任务并通过全量静态检查与端到端测试验证，代码已提交并推送至 `autodev/feat-20261123-025859`。\n\n### 实现概览\n\n1. **通知系统与增量 D1 迁移（T-01）**\n   - 新增幂等迁移 [0003_notifications.sql](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/migrations/0003_notifications.sql)，创建 `notifications` 表及相关查询/去重索引（保留 `0001_init.sql` 与 `0002_social_profile_dm.sql` 不变）。\n   - 新增 [src/lib/notifications.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/lib/notifications.ts) 与 [src/routes/notifications.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/routes/notifications.ts)，实现 `GET /api/notifications`（支持 `all/comment/like/follow` 筛选与分页参数校验）、`GET /api/notifications/unread-count`、`POST /api/notifications/read`（严格限制 `recipient_id = user.id` 防止跨用户越权）。\n   - 在 [src/routes/posts.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/routes/posts.ts)、[src/routes/users.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/routes/users.ts) 与 [src/routes/admin.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/routes/admin.ts) 接入点赞、评论、二级回复、关注通知生成（含本人操作排除与未读去重）及取消点赞/取关/删帖清理。\n\n2. **Durable Objects WebSocket Hibernation 实时推送中枢（T-02）**\n   - 更新 [wrangler.toml](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/wrangler.toml)（新增 `USER_REALTIME` 绑定与 `new_sqlite_classes = [\"UserRealtimeHub\"]`）、[src/types.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/types.ts) 与 [vite.config.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/vite.config.ts)（开启 `ws: true`）。\n   - 新增 [src/realtime/user-hub.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/realtime/user-hub.ts)（`UserRealtimeHub`，使用 `acceptWebSocket` 与 `setWebSocketAutoResponse('ping', 'pong')`）及 [src/lib/realtime.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/lib/realtime.ts)（`pushUserEvent`）。\n   - 在 [src/index.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/index.ts) 导出 `UserRealtimeHub`、挂载 `/api/notifications` 并实现 `GET /api/ws`（按未登录 401 -> 跨站 Origin 403 -> 非 Upgrade 头 426 顺序校验）；在 [src/routes/messages.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/src/routes/messages.ts) 新增 `POST /api/messages/with/:peerId/read` 并接入 `dm:new` / `dm:read` 实时广播。\n\n3. **桌面居中紧凑导航栏改版与通知中心（T-03 / T-04）**\n   - 重构 [CommunityPage.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/pages/CommunityPage.tsx)：采用 `max-w-[1320px] mx-auto` 居中紧凑布局，升级左侧胶囊风格导航栏（动态、通知、私信、主页 + 圆角发布图文按钮 + 底部个人资料触发菜单），同步完善移动端底部导航与 `/notifications` 路由，彻底移除全部 `setInterval` 轮询。\n   - 新增 [client/src/lib/realtime.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/lib/realtime.ts) 与 [NotificationsView.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/components/NotificationsView.tsx)，扩展 [client/src/lib/api.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/lib/api.ts)，并改造 [MessagesView.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/components/MessagesView.tsx) 为纯 WebSocket 实时事件驱动。\n\n4. **动态详情弹窗 Instagram 风格左右双栏改版（T-05）**\n   - 重构 [PostDetailDialog.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/components/PostDetailDialog.tsx)：桌面端（`>=768px`）左侧约 58% 展示图片或纯文字渐变封面卡，右侧约 42% 为顶部固定作者栏、中部独立滚动正文与嵌套评论区、底部固定点赞及评论输入栏；移动端平滑折叠为上下结构。\n\n### 验证结果\n- **静态检查与构建**：`npx tsc --noEmit` 与 `npm run build` 均退出码 0；本地 D1 迁移 `0001_init.sql`、`0002_social_profile_dm.sql`、`0003_notifications.sql` 全部应用成功。\n- **Playwright E2E 测试**：运行 `npx playwright test`（覆盖 [run-7026568c.spec.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/tests/e2e/run-7026568c.spec.ts)、[run-96e1a2ad.spec.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/tests/e2e/run-96e1a2ad.spec.ts)、[run-f8b35bdc.spec.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/tests/e2e/run-f8b35bdc.spec.ts)），**14 passed (33.3s)**。\n- **Git 提交与推送**：已提交至 `e0c8237` 并成功推送至 `origin/autodev/feat-20261123-025859`，`git status` 工作区干净。",
+  "tokenUsage": {
+    "inputTokens": 242724,
+    "outputTokens": 67046,
+    "totalTokens": 309770,
+    "source": "reported",
+    "model": "gemini-4-hydrogen-high"
+  }
+}
