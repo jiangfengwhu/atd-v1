@@ -1,28 +1,45 @@
 {
   "jobId": "job-af152d25",
-  "status": "running",
+  "status": "completed",
   "mode": "unified_single_turn",
-  "updatedAt": "2026-11-23T02:43:39.406Z",
+  "updatedAt": "2026-11-23T02:49:32.231Z",
   "headSha": "5e8fc05637ab9c81ead57581604c529ab856b16e",
   "actionsRunId": 45101819121,
   "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45101819121",
   "model": "gemini-4-neon-high",
   "steps": {
     "architect": {
-      "status": "running",
+      "status": "completed",
       "startedAt": "2026-11-23T02:43:39.406Z",
-      "message": "单对话联合规划中：正在阅读代码库并一次性生成架构方案、API 契约与原子任务树…"
+      "completedAt": "2026-11-23T02:49:32.230Z",
+      "durationMs": 352824,
+      "message": "单对话完成 · 识别 4 项歧义、5 项增量任务"
     },
     "qa_spec": {
-      "status": "running",
+      "status": "completed",
       "startedAt": "2026-11-23T02:43:39.406Z",
-      "message": "同会话同步产出接口测试清单与初版 Playwright E2E 脚本…"
+      "completedAt": "2026-11-23T02:49:32.230Z",
+      "durationMs": 352824,
+      "message": "单对话完成 · 生成 6 条接口用例与初版 E2E 测试"
     },
     "qa_critic": {
-      "status": "running",
+      "status": "completed",
       "startedAt": "2026-11-23T02:43:39.406Z",
-      "message": "同会话完成盲测安全评审并输出终版加固 E2E 套件…"
+      "completedAt": "2026-11-23T02:49:32.230Z",
+      "durationMs": 352824,
+      "message": "单对话完成 · 提出 6 项加固意见并锁定盲测 E2E 测试集"
     }
   },
-  "outputFiles": {}
+  "outputFiles": {
+    "architect": ".autodev-plans/job-af152d25/architect.json",
+    "qa_spec": ".autodev-plans/job-af152d25/qa_spec.json",
+    "qa_critic": ".autodev-plans/job-af152d25/qa_critic.json"
+  },
+  "tokenUsage": {
+    "inputTokens": 58452,
+    "outputTokens": 22732,
+    "totalTokens": 81184,
+    "source": "estimated",
+    "model": "gemini-4-neon-high"
+  }
 }
