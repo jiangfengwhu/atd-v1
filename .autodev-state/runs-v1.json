@@ -498,6 +498,17 @@
       "commitUrl": "https://github.com/jiangfengwhu/atd-v1/commit/fbdd308810e6769e9df3178f5f0c5c42c2a491d1",
       "mergeMethod": "squash",
       "branchDeleted": true
+    },
+    "productionDeployment": {
+      "url": "https://atd-v1-community.809740942.workers.dev",
+      "workerName": "atd-v1-community",
+      "branchName": "main",
+      "deployedAt": "2026-11-23T08:44:30.856Z",
+      "d1DatabaseName": "atd-v1-community-db",
+      "d1DatabaseId": "fdb9e0e4-8a23-499c-b197-17508ab0b87e",
+      "migrationsApplied": true,
+      "commitSha": "9dfb05c",
+      "isIsolatedPreview": false
     }
   },
   {

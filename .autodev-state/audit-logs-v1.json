@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-399f5f99",
+    "timestamp": "2026-11-23T08:44:34.606Z",
+    "category": "execution",
+    "action": "production_deployed",
+    "label": "部署正式生产环境",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-7026568c",
+    "prdTitle": "接入通知",
+    "branch": "main",
+    "prNumber": 11,
+    "status": "success",
+    "detail": "部署正式生产环境 Worker atd-v1-community（https://atd-v1-community.809740942.workers.dev）"
+  },
+  {
     "id": "aud-2f907ab5",
     "timestamp": "2026-11-23T04:11:02.069Z",
     "category": "execution",
