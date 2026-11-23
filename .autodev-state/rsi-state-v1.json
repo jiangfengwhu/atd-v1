@@ -268,6 +268,19 @@
   ],
   "incidents": [
     {
+      "id": "inc-24c19fc8",
+      "sourceRefKey": "deploy-production:main:1795406945722",
+      "source": "deploy_error",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "title": "Cloudflare 生产部署失败（main）",
+      "errorSummary": "Command failed: npm run build:client\nvite.config.ts (1:309) \u001b[33m[UNRESOLVED_IMPORT] \u001b[0mCould not resolve 'vite' in vite.config.ts\n - Module not found, treating it as an external dependency in vite.config.ts at 309..315\n\nvite.config.ts (2:18) \u001b[33m[UNRESOLVED_IMPORT] \u001b[0mCould not resolve '@vitejs/plugin-react' in vite.config.ts\n   \u001b[38;5;246m╭\u001b[0m\u001b[38;5;246m─\u001b[0m\u001b[38;5;246m[\u001b[0m vite.config.ts:2:19 \u001b[38;5;246m]\u001b[0m\n   \u001b[38;5;246m│\u001b[0m\n \u001b[38;5;246m2 │\u001b[0m \u001b[38;5;249mi\u001b[0m\u001b[38;5;249mm\u001b[0m\u001b[38;5;249mp\u001b[0m\u001b[38;5;249mo\u001b[0m\u001b[38;5;249mr\u001b[0m\u001b[38;5;249mt\u001b[0m\u001b[38;5;249m \u001b[0m\u001b[38;5;249mr\u001b[0m\u001b[38;5;249m",
+      "rawEvidence": "Command failed: npm run build:client\nvite.config.ts (1:309) \u001b[33m[UNRESOLVED_IMPORT] \u001b[0mCould not resolve 'vite' in vite.config.ts\n - Module not found, treating it as an external dependency in vite.config.ts at 309..315\n\nvite.config.ts (2:18) \u001b[33m[UNRESOLVED_IMPORT] \u001b[0mCould not resolve '@vitejs/plugin-react' in vite.config.ts\n   \u001b[38;5;246m╭\u001b[0m\u001b[38;5;246m─\u001b[0m\u001b[38;5;246m[\u001b[0m vite.config.ts:2:19 \u001b[38;5;246m]\u001b[0m\n   \u001b[38;5;246m│\u001b[0m\n \u001b[38;5;246m2 │\u001b[0m \u001b[38;5;249mi\u001b[0m\u001b[38;5;249mm\u001b[0m\u001b[38;5;249mp\u001b[0m\u001b[38;5;249mo\u001b[0m\u001b[38;5;249mr\u001b[0m\u001b[38;5;249mt\u001b[0m\u001b[38;5;249m \u001b[0m\u001b[38;5;249mr\u001b[0m\u001b[38;5;249me\u001b[0m\u001b[38;5;249ma\u001b[0m\u001b[38;5;249mc\u001b[0m\u001b[38;5;249mt\u001b[0m\u001b[38;5;249m \u001b[0m\u001b[38;5;249mf\u001b[0m\u001b[38;5;249mr\u001b[0m\u001b[38;5;249mo\u001b[0m\u001b[38;5;249mm\u001b[0m\u001b[38;5;249m \u001b[0m'@vitejs/plugin-react'\u001b[38;5;249m;\u001b[0m\n \u001b[38;5;240m  │\u001b[0m                   ───────────┬──────────  \n \u001b[38;5;240m  │\u001b[0m                              ╰──────────── Module not found, treating it as an external dependency\n\u001b[38;5;246m───╯\u001b[0m\n\n\u001b[31mfailed to load config from /tmp/autodev-cf-preview-rFg8Iu/src/vite.config.ts\u001b[39m\n\u001b[31merror during build:\nError [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /tmp/autodev-cf-preview-rFg8Iu/src/node_modules/.vite-temp/vite.config.ts.timestamp-1795406945528-0b1890febed4f.mjs\n    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:314:9)\n    at packageResolve (node:internal/modules/esm/resolve:772:81)\n    at moduleResolve (node:internal/modules/esm/resolve:859:18)\n    at defaultResolve (node:internal/modules/esm/resolve:989:11)\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:747:20)\n    at ModuleLoader.resolve (node:internal/modules/esm/loader:724:38)\n    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:320:38)\n    at ModuleJob._link (node:internal/modules/esm/module_job:182:49) {\n  code: 'ERR_MODULE_NOT_FOUND'\n}\u001b[39m\n",
+      "relatedRunId": "run-7026568c",
+      "branch": "main",
+      "occurredAt": "2026-11-23T04:09:05.723Z",
+      "analysisStatus": "analyzing"
+    },
+    {
       "id": "inc-ff64add6",
       "sourceRefKey": "deploy-production:main:1795406730109",
       "source": "deploy_error",
