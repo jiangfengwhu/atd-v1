@@ -60,14 +60,14 @@ jobs:
         shell: bash
         run: |
           if [ -f "package-lock.json" ]; then
-            npm ci || (rm -rf package-lock.json node_modules && npm install)
+            NODE_ENV=development npm ci --include=dev --no-audit --no-fund || (rm -rf package-lock.json node_modules && NODE_ENV=development npm install --include=dev --no-audit --no-fund)
           elif [ -f "package.json" ]; then
-            npm install
+            NODE_ENV=development npm install --include=dev --no-audit --no-fund
           fi
           if [ -f "package.json" ] && node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts['build:client'] ? 0 : 1)"; then
-            npm run build:client
+            NODE_ENV=production npm run build:client
           elif [ -f "package.json" ] && node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.build ? 0 : 1)"; then
-            npm run build
+            NODE_ENV=production npm run build
           fi
 
       - name: Provision D1 Database (if placeholder) & Apply Remote Migrations
