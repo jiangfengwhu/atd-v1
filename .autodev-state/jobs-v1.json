@@ -2,7 +2,7 @@
   {
     "id": "job-9d8b5995",
     "createdAt": "2026-11-23T16:07:01.042Z",
-    "updatedAt": "2026-11-23T16:07:02.055Z",
+    "updatedAt": "2026-11-23T16:07:09.799Z",
     "repoFullName": "jiangfengwhu/atd-v1",
     "defaultBranch": "main",
     "prdTitle": "动态改版",
@@ -19,7 +19,7 @@
         "roleTitle": "读取仓库真实代码 · 增量架构 · 任务树",
         "status": "running",
         "startedAt": "2026-11-23T16:07:01.052Z",
-        "message": "正在向 Instabox AGY Runner 派发单对话联合规划任务（gemini-4-neon-high）…"
+        "message": "已入队，等待 Instabox AGY Runner 检出最新代码并启动单对话联合规划…"
       },
       {
         "id": "qa_spec",
@@ -130,7 +130,10 @@
         "tests/e2e/run-f8b35bdc.spec.ts"
       ],
       "previousSpecSummary": "{\n  \"schemaVersion\": \"1.1\",\n  \"generatedBy\": \"AutoDev Studio\",\n  \"runId\": \"run-7026568c\",\n  \"createdAt\": \"2026-11-23T02:49:36.437Z\",\n  \"repository\": \"jiangfengwhu/atd-v1\",\n  \"baseBranch\": \"main\",\n  \"baseCommitSha\": \"5e8fc05637ab9c81ead57581604c529ab856b16e\",\n  \"e2eTestPath\": \"tests/e2e/run-7026568c.spec.ts\",\n  \"e2eVaultPath\": \".autodev-e2e-vault/run-7026568c/e2e.spec.ts\",\n  \"blindE2eVerification\": false,\n  \"archivedSpecPath\": \"docs/iterations/run-7026568c-spec.json\",\n  \"prdTitle\": \"接入通知\",\n  \"architecture\": {\n    \"summary\": \"在现有 Cloudflare Workers + Hono + D1 + React/Vite 架构上执行纯增量演进：1）新增幂等 D1 迁移 migrations/0003_notifications.sql 建立 notifications 表与查询索引，新增 /api/notifications 路由并在点赞、评论、二级回复、关注及删帖链路接入通知生成（含自发排除与未读去重）与清理；2）引入基于 Cloudflare Durable Objects WebSocket Hibernation API 的 UserRealtimeHub（按用户 ID 分片、支持 ping/pong 自动休眠响应与多端广播），通过 /api/ws 提供经 HttpOnly 会话 Cookie 鉴权与 Origin 校验的实时通道，写入仍走现有可靠 REST 接口并即时推送 notification:new、notification:read、dm:new、dm:read 事件，彻底移除前端所有 setInterval 轮询定时器；3）重构 "
-    }
+    },
+    "planChannelBranch": "autodev-plan-channel",
+    "planActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45212839201",
+    "planActionsRunId": 45212839201
   },
   {
     "id": "job-af152d25",
