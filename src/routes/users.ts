@@ -83,39 +83,57 @@ userRoutes.get('/:id', async (c) => {
 
   const isSelf = Boolean(sessionUser && sessionUser.id === row.id);
 
-  const [postsRow, followingRow, followersRow, likesRow, commentsRow, repliesRow, followRel] =
-    await Promise.all([
-      c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM posts WHERE author_id = ?')
-        .bind(targetId)
-        .first<{ cnt: number }>(),
-      c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM user_follows WHERE follower_id = ?')
-        .bind(targetId)
-        .first<{ cnt: number }>(),
-      c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM user_follows WHERE following_id = ?')
-        .bind(targetId)
-        .first<{ cnt: number }>(),
-      c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM post_likes WHERE user_id = ?')
-        .bind(targetId)
-        .first<{ cnt: number }>(),
-      c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM comments WHERE author_id = ?')
-        .bind(targetId)
-        .first<{ cnt: number }>(),
-      c.env.DB.prepare(
-        `SELECT COUNT(*) AS cnt
-         FROM comment_replies cr
-         JOIN comments cm ON cm.id = cr.comment_id
-         WHERE cr.author_id = ? OR cm.author_id = ? OR cr.reply_to_user_id = ?`
-      )
-        .bind(targetId, targetId, targetId)
-        .first<{ cnt: number }>(),
-      sessionUser && !isSelf
-        ? c.env.DB.prepare(
-            'SELECT 1 AS ok FROM user_follows WHERE follower_id = ? AND following_id = ? LIMIT 1'
-          )
-            .bind(sessionUser.id, targetId)
-            .first<{ ok: number }>()
-        : Promise.resolve(null),
-    ]);
+  const [
+    postsRow,
+    followingRow,
+    followersRow,
+    likesRow,
+    commentsRow,
+    repliesRow,
+    bookmarksRow,
+    followRel,
+  ] = await Promise.all([
+    c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM posts WHERE author_id = ?')
+      .bind(targetId)
+      .first<{ cnt: number }>(),
+    c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM user_follows WHERE follower_id = ?')
+      .bind(targetId)
+      .first<{ cnt: number }>(),
+    c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM user_follows WHERE following_id = ?')
+      .bind(targetId)
+      .first<{ cnt: number }>(),
+    c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM post_likes WHERE user_id = ?')
+      .bind(targetId)
+      .first<{ cnt: number }>(),
+    c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM comments WHERE author_id = ?')
+      .bind(targetId)
+      .first<{ cnt: number }>(),
+    c.env.DB.prepare(
+      `SELECT COUNT(*) AS cnt
+       FROM comment_replies cr
+       JOIN comments cm ON cm.id = cr.comment_id
+       WHERE cr.author_id = ? OR cm.author_id = ? OR cr.reply_to_user_id = ?`
+    )
+      .bind(targetId, targetId, targetId)
+      .first<{ cnt: number }>(),
+    isSelf
+      ? c.env.DB.prepare(
+          `SELECT COUNT(*) AS cnt
+           FROM post_bookmarks pb
+           JOIN posts p ON p.id = pb.post_id
+           WHERE pb.user_id = ?`
+        )
+          .bind(targetId)
+          .first<{ cnt: number }>()
+      : Promise.resolve(null),
+    sessionUser && !isSelf
+      ? c.env.DB.prepare(
+          'SELECT 1 AS ok FROM user_follows WHERE follower_id = ? AND following_id = ? LIMIT 1'
+        )
+          .bind(sessionUser.id, targetId)
+          .first<{ ok: number }>()
+      : Promise.resolve(null),
+  ]);
 
   const userPayload: Record<string, unknown> = {
     id: row.id,
@@ -136,6 +154,7 @@ userRoutes.get('/:id', async (c) => {
 
   if (isSelf) {
     userPayload.email = row.email;
+    userPayload.bookmarksCount = Number(bookmarksRow?.cnt ?? 0);
   }
 
   return c.json({ user: userPayload });
@@ -303,7 +322,11 @@ userRoutes.get('/:id/activity', async (c) => {
   const offset = offsetRaw !== undefined ? Number(offsetRaw) : 0;
 
   if (
-    (tab !== 'posts' && tab !== 'likes' && tab !== 'comments' && tab !== 'replies') ||
+    (tab !== 'posts' &&
+      tab !== 'likes' &&
+      tab !== 'comments' &&
+      tab !== 'replies' &&
+      tab !== 'bookmarks') ||
     !Number.isInteger(limit) ||
     limit < 1 ||
     limit > 50 ||
@@ -313,11 +336,60 @@ userRoutes.get('/:id/activity', async (c) => {
     return c.json({ error: '查询参数无效' }, 400);
   }
 
+  if (tab === 'bookmarks') {
+    if (!sessionUser) {
+      return c.json({ error: '请先登录' }, 401);
+    }
+    if (targetId !== sessionUser.id) {
+      return c.json({ error: '无权查看他人的收藏列表' }, 403);
+    }
+  }
+
   const targetUser = await c.env.DB.prepare('SELECT id FROM users WHERE id = ? LIMIT 1')
     .bind(targetId)
     .first<{ id: string }>();
   if (!targetUser) {
     return c.json({ error: '用户不存在' }, 404);
+  }
+
+  if (tab === 'bookmarks') {
+    const countRow = await c.env.DB.prepare(
+      `SELECT COUNT(*) AS total
+       FROM post_bookmarks pb
+       JOIN posts p ON p.id = pb.post_id
+       WHERE pb.user_id = ?`
+    )
+      .bind(targetId)
+      .first<{ total: number }>();
+
+    const rows = await c.env.DB.prepare(
+      `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
+              p.likes_count, p.comments_count, p.created_at,
+              COALESCE(pm.views_count, 0) AS views_count,
+              COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
+              COALESCE(pm.shares_count, 0) AS shares_count,
+              u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
+              COALESCE(up.avatar_url, '') AS author_avatar_url,
+              CASE WHEN pl.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me,
+              1 AS bookmarked_by_me
+       FROM post_bookmarks pb
+       JOIN posts p ON p.id = pb.post_id
+       JOIN users u ON u.id = p.author_id
+       LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN post_metrics pm ON pm.post_id = p.id
+       LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = ?
+       WHERE pb.user_id = ?
+       ORDER BY pb.created_at DESC
+       LIMIT ? OFFSET ?`
+    )
+      .bind(sessionUser!.id, targetId, limit, offset)
+      .all<PostRow>();
+
+    return c.json({
+      tab,
+      items: (rows.results ?? []).map(serializePost),
+      total: Number(countRow?.total ?? 0),
+    });
   }
 
   if (tab === 'posts') {
@@ -331,28 +403,39 @@ userRoutes.get('/:id/activity', async (c) => {
       ? await c.env.DB.prepare(
           `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
                   p.likes_count, p.comments_count, p.created_at,
+                  COALESCE(pm.views_count, 0) AS views_count,
+                  COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
+                  COALESCE(pm.shares_count, 0) AS shares_count,
                   u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
                   COALESCE(up.avatar_url, '') AS author_avatar_url,
-                  CASE WHEN pl.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me
+                  CASE WHEN pl.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me,
+                  CASE WHEN pb.user_id IS NOT NULL THEN 1 ELSE 0 END AS bookmarked_by_me
            FROM posts p
            JOIN users u ON u.id = p.author_id
            LEFT JOIN user_profiles up ON up.user_id = u.id
+           LEFT JOIN post_metrics pm ON pm.post_id = p.id
            LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = ?
+           LEFT JOIN post_bookmarks pb ON pb.post_id = p.id AND pb.user_id = ?
            WHERE p.author_id = ?
            ORDER BY p.created_at DESC
            LIMIT ? OFFSET ?`
         )
-          .bind(sessionUser.id, targetId, limit, offset)
+          .bind(sessionUser.id, sessionUser.id, targetId, limit, offset)
           .all<PostRow>()
       : await c.env.DB.prepare(
           `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
                   p.likes_count, p.comments_count, p.created_at,
+                  COALESCE(pm.views_count, 0) AS views_count,
+                  COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
+                  COALESCE(pm.shares_count, 0) AS shares_count,
                   u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
                   COALESCE(up.avatar_url, '') AS author_avatar_url,
-                  0 AS liked_by_me
+                  0 AS liked_by_me,
+                  0 AS bookmarked_by_me
            FROM posts p
            JOIN users u ON u.id = p.author_id
            LEFT JOIN user_profiles up ON up.user_id = u.id
+           LEFT JOIN post_metrics pm ON pm.post_id = p.id
            WHERE p.author_id = ?
            ORDER BY p.created_at DESC
            LIMIT ? OFFSET ?`
@@ -381,30 +464,41 @@ userRoutes.get('/:id/activity', async (c) => {
       ? await c.env.DB.prepare(
           `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
                   p.likes_count, p.comments_count, p.created_at,
+                  COALESCE(pm.views_count, 0) AS views_count,
+                  COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
+                  COALESCE(pm.shares_count, 0) AS shares_count,
                   u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
                   COALESCE(up.avatar_url, '') AS author_avatar_url,
-                  CASE WHEN pl_me.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me
+                  CASE WHEN pl_me.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me,
+                  CASE WHEN pb_me.user_id IS NOT NULL THEN 1 ELSE 0 END AS bookmarked_by_me
            FROM post_likes pl
            JOIN posts p ON p.id = pl.post_id
            JOIN users u ON u.id = p.author_id
            LEFT JOIN user_profiles up ON up.user_id = u.id
+           LEFT JOIN post_metrics pm ON pm.post_id = p.id
            LEFT JOIN post_likes pl_me ON pl_me.post_id = p.id AND pl_me.user_id = ?
+           LEFT JOIN post_bookmarks pb_me ON pb_me.post_id = p.id AND pb_me.user_id = ?
            WHERE pl.user_id = ?
            ORDER BY pl.created_at DESC
            LIMIT ? OFFSET ?`
         )
-          .bind(sessionUser.id, targetId, limit, offset)
+          .bind(sessionUser.id, sessionUser.id, targetId, limit, offset)
           .all<PostRow>()
       : await c.env.DB.prepare(
           `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
                   p.likes_count, p.comments_count, p.created_at,
+                  COALESCE(pm.views_count, 0) AS views_count,
+                  COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
+                  COALESCE(pm.shares_count, 0) AS shares_count,
                   u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
                   COALESCE(up.avatar_url, '') AS author_avatar_url,
-                  0 AS liked_by_me
+                  0 AS liked_by_me,
+                  0 AS bookmarked_by_me
            FROM post_likes pl
            JOIN posts p ON p.id = pl.post_id
            JOIN users u ON u.id = p.author_id
            LEFT JOIN user_profiles up ON up.user_id = u.id
+           LEFT JOIN post_metrics pm ON pm.post_id = p.id
            WHERE pl.user_id = ?
            ORDER BY pl.created_at DESC
            LIMIT ? OFFSET ?`

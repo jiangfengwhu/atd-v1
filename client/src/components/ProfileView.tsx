@@ -14,6 +14,7 @@ import {
   CornerDownRight,
   ArrowUpRight,
   ArrowDownLeft,
+  Bookmark,
 } from 'lucide-react';
 import {
   api,
@@ -38,7 +39,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
-type ActivityTab = 'posts' | 'likes' | 'comments' | 'replies';
+type ActivityTab = 'posts' | 'likes' | 'bookmarks' | 'comments' | 'replies';
 
 interface ProfileViewProps {
   userId: string;
@@ -72,6 +73,7 @@ export function ProfileView({
   const [tabError, setTabError] = React.useState<string | null>(null);
   const [postsItems, setPostsItems] = React.useState<PostItem[]>([]);
   const [likesItems, setLikesItems] = React.useState<PostItem[]>([]);
+  const [bookmarksItems, setBookmarksItems] = React.useState<PostItem[]>([]);
   const [commentsItems, setCommentsItems] = React.useState<CommentActivityItem[]>([]);
   const [repliesItems, setRepliesItems] = React.useState<ReplyActivityItem[]>([]);
 
@@ -113,6 +115,7 @@ export function ProfileView({
         const res = await api.getUserActivity(userId, tab);
         if (tab === 'posts') setPostsItems(res.items as PostItem[]);
         else if (tab === 'likes') setLikesItems(res.items as PostItem[]);
+        else if (tab === 'bookmarks') setBookmarksItems(res.items as PostItem[]);
         else if (tab === 'comments') setCommentsItems(res.items as CommentActivityItem[]);
         else setRepliesItems(res.items as ReplyActivityItem[]);
       } catch (err) {
@@ -212,10 +215,68 @@ export function ProfileView({
         );
       setPostsItems(updateList);
       setLikesItems(updateList);
+      setBookmarksItems(updateList);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         onRequireAuth();
       }
+    }
+  };
+
+  const handleTogglePostBookmark = async (postId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentUser) {
+      onRequireAuth();
+      return;
+    }
+    try {
+      const res = await api.toggleBookmark(postId);
+      const updateList = (list: PostItem[]) =>
+        list.map((p) =>
+          p.id === postId
+            ? { ...p, bookmarkedByMe: res.bookmarked, bookmarksCount: res.bookmarksCount }
+            : p
+        );
+      setPostsItems(updateList);
+      setLikesItems(updateList);
+      if (!res.bookmarked && profile?.isSelf) {
+        setBookmarksItems((prev) => prev.filter((p) => p.id !== postId));
+      } else {
+        setBookmarksItems(updateList);
+      }
+      setProfile((prev) =>
+        prev && prev.isSelf
+          ? {
+              ...prev,
+              bookmarksCount: Math.max(
+                0,
+                (prev.bookmarksCount ?? 0) + (res.bookmarked ? 1 : -1)
+              ),
+            }
+          : prev
+      );
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onRequireAuth();
+      }
+    }
+  };
+
+  const handleSharePost = async (postId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const res = await api.sharePost(postId);
+      const shareUrl = `${window.location.origin}${res.sharePath}`;
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl).catch(() => {});
+      }
+      const updateList = (list: PostItem[]) =>
+        list.map((p) => (p.id === postId ? { ...p, sharesCount: res.sharesCount } : p));
+      setPostsItems(updateList);
+      setLikesItems(updateList);
+      setBookmarksItems(updateList);
+    } catch {
+      // Ignore transient share errors
     }
   };
 
@@ -392,6 +453,16 @@ export function ProfileView({
           {[
             { value: 'posts' as const, label: '历史发帖', count: profile.postsCount, icon: FileText },
             { value: 'likes' as const, label: '点赞', count: profile.likesCount, icon: Heart },
+            ...(profile.isSelf
+              ? [
+                  {
+                    value: 'bookmarks' as const,
+                    label: '收藏',
+                    count: profile.bookmarksCount ?? 0,
+                    icon: Bookmark,
+                  },
+                ]
+              : []),
             {
               value: 'comments' as const,
               label: '评论',
@@ -448,13 +519,15 @@ export function ProfileView({
                   还没有发布过图文动态
                 </div>
               ) : (
-                <div className="masonry-grid">
+                <div className="space-y-4">
                   {postsItems.map((post) => (
                     <PostCard
                       key={post.id}
                       post={post}
                       onOpen={onOpenPost}
                       onToggleLike={handleTogglePostLike}
+                      onToggleBookmark={handleTogglePostBookmark}
+                      onShare={handleSharePost}
                       onOpenAuthor={onOpenUserProfile}
                     />
                   ))}
@@ -468,19 +541,45 @@ export function ProfileView({
                   还没有点赞过图文
                 </div>
               ) : (
-                <div className="masonry-grid">
+                <div className="space-y-4">
                   {likesItems.map((post) => (
                     <PostCard
                       key={post.id}
                       post={post}
                       onOpen={onOpenPost}
                       onToggleLike={handleTogglePostLike}
+                      onToggleBookmark={handleTogglePostBookmark}
+                      onShare={handleSharePost}
                       onOpenAuthor={onOpenUserProfile}
                     />
                   ))}
                 </div>
               )}
             </Tabs.Content>
+
+            {profile.isSelf && (
+              <Tabs.Content value="bookmarks">
+                {bookmarksItems.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-zinc-300/80 bg-white/70 py-14 text-center text-sm text-zinc-400">
+                    还没有收藏过动态，去动态列表点击收藏吧
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {bookmarksItems.map((post) => (
+                      <PostCard
+                        key={post.id}
+                        post={post}
+                        onOpen={onOpenPost}
+                        onToggleLike={handleTogglePostLike}
+                        onToggleBookmark={handleTogglePostBookmark}
+                        onShare={handleSharePost}
+                        onOpenAuthor={onOpenUserProfile}
+                      />
+                    ))}
+                  </div>
+                )}
+              </Tabs.Content>
+            )}
 
             <Tabs.Content value="comments">
               {commentsItems.length === 0 ? (

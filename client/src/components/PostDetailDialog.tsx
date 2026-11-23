@@ -1,5 +1,17 @@
 import * as React from 'react';
-import { Heart, MessageCircle, Trash2, Send, Loader2, Hash, CornerDownRight } from 'lucide-react';
+import {
+  Heart,
+  MessageCircle,
+  Trash2,
+  Send,
+  Loader2,
+  Hash,
+  CornerDownRight,
+  Bookmark,
+  Share2,
+  Eye,
+  Check,
+} from 'lucide-react';
 import { api, ApiError, type CommentItem, type PostItem, type UserProfile } from '@/lib/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -39,7 +51,10 @@ export function PostDetailDialog({
   const [replyText, setReplyText] = React.useState('');
   const [submittingReply, setSubmittingReply] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
+  const [copiedShare, setCopiedShare] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const onPostUpdatedRef = React.useRef(onPostUpdated);
+  onPostUpdatedRef.current = onPostUpdated;
 
   React.useEffect(() => {
     if (!postId) {
@@ -47,6 +62,7 @@ export function PostDetailDialog({
       setComments([]);
       setReplyTarget(null);
       setReplyText('');
+      setCopiedShare(false);
       return;
     }
 
@@ -59,10 +75,24 @@ export function PostDetailDialog({
         if (cancelled) return;
         setPost(res.post);
         setComments(res.comments);
+
+        api
+          .recordPostView(postId)
+          .then((viewRes) => {
+            if (cancelled) return;
+            const nextPost = { ...res.post, viewsCount: viewRes.viewsCount };
+            setPost((prev) =>
+              prev && prev.id === postId ? { ...prev, viewsCount: viewRes.viewsCount } : prev
+            );
+            onPostUpdatedRef.current(nextPost);
+          })
+          .catch(() => {
+            // Ignore transient view tracking errors
+          });
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof ApiError ? err.message : '加载帖子详情失败');
+        setError(err instanceof ApiError ? err.message : '帖子不存在或无法加载');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -88,6 +118,46 @@ export function PostDetailDialog({
       if (err instanceof ApiError && err.status === 401) {
         onRequireAuth();
       }
+    }
+  };
+
+  const handleToggleBookmark = async () => {
+    if (!post) return;
+    if (!currentUser) {
+      onRequireAuth();
+      return;
+    }
+    try {
+      const res = await api.toggleBookmark(post.id);
+      const updated = {
+        ...post,
+        bookmarkedByMe: res.bookmarked,
+        bookmarksCount: res.bookmarksCount,
+      };
+      setPost(updated);
+      onPostUpdated(updated);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onRequireAuth();
+      }
+    }
+  };
+
+  const handleShare = async () => {
+    if (!post) return;
+    try {
+      const res = await api.sharePost(post.id);
+      const shareUrl = `${window.location.origin}${res.sharePath}`;
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl).catch(() => {});
+      }
+      const updated = { ...post, sharesCount: res.sharesCount };
+      setPost(updated);
+      onPostUpdated(updated);
+      setCopiedShare(true);
+      window.setTimeout(() => setCopiedShare(false), 2000);
+    } catch {
+      // Ignore transient share errors
     }
   };
 
@@ -479,27 +549,59 @@ export function PostDetailDialog({
                 </div>
               </div>
 
-              {/* Fixed Bottom Like + Comment Input Bar */}
+              {/* Fixed Bottom Like + Bookmark + Share + Comment Input Bar */}
               <div className="shrink-0 border-t border-zinc-100 bg-white px-5 py-3.5 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <Button
                       type="button"
                       size="sm"
                       variant={post.likedByMe ? 'gradient' : 'outline'}
                       onClick={handleToggleLike}
-                      className="h-8 rounded-full gap-1.5 px-3"
+                      aria-label="点赞"
+                      className="h-8 rounded-full gap-1 px-2.5 text-xs"
                     >
                       <Heart className={cn('h-3.5 w-3.5', post.likedByMe && 'fill-current')} />
                       <span>{post.likesCount}</span>
                     </Button>
-                    <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
-                      <MessageCircle className="h-3.5 w-3.5" />
-                      {post.commentsCount} 条评论
-                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={post.bookmarkedByMe ? 'default' : 'outline'}
+                      onClick={handleToggleBookmark}
+                      aria-label={post.bookmarkedByMe ? '取消收藏' : '收藏'}
+                      className={cn(
+                        'h-8 rounded-full gap-1 px-2.5 text-xs',
+                        post.bookmarkedByMe && 'bg-amber-500 text-white hover:bg-amber-600'
+                      )}
+                    >
+                      <Bookmark
+                        className={cn('h-3.5 w-3.5', post.bookmarkedByMe && 'fill-current')}
+                      />
+                      <span>{post.bookmarksCount ?? 0}</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleShare}
+                      aria-label="分享"
+                      className={cn(
+                        'h-8 rounded-full gap-1 px-2.5 text-xs',
+                        copiedShare && 'border-emerald-200 bg-emerald-50 text-emerald-600'
+                      )}
+                    >
+                      {copiedShare ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : (
+                        <Share2 className="h-3.5 w-3.5" />
+                      )}
+                      <span>{copiedShare ? '已复制' : post.sharesCount ?? 0}</span>
+                    </Button>
                   </div>
-                  <span className="text-[11px] text-zinc-400">
-                    {formatRelativeTime(post.createdAt)}
+                  <span className="inline-flex items-center gap-1 text-[11px] text-zinc-400">
+                    <Eye className="h-3.5 w-3.5" />
+                    <span className="tabular-nums">{post.viewsCount ?? 0}</span>
                   </span>
                 </div>
 
@@ -528,11 +630,16 @@ export function PostDetailDialog({
             </div>
           </div>
         ) : (
-          <div className="p-8 text-center text-sm text-zinc-500">
+          <div className="flex flex-col items-center justify-center p-10 text-center space-y-4">
             <DialogHeader className="sr-only">
               <DialogTitle>加载失败</DialogTitle>
             </DialogHeader>
-            {error || '无法加载该图文内容'}
+            <p className="text-sm font-medium text-zinc-600">
+              {error || '该动态不存在或已被删除'}
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>
+              返回首页
+            </Button>
           </div>
         )}
       </DialogContent>

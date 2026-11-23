@@ -8,6 +8,7 @@ import { uploadRoutes } from './routes/uploads';
 import { userRoutes } from './routes/users';
 import { messageRoutes } from './routes/messages';
 import { notificationRoutes } from './routes/notifications';
+import { discoverRoutes } from './routes/discover';
 
 export { UserRealtimeHub } from './realtime/user-hub';
 
@@ -50,6 +51,7 @@ app.route('/api/uploads', uploadRoutes);
 app.route('/api/users', userRoutes);
 app.route('/api/messages', messageRoutes);
 app.route('/api/notifications', notificationRoutes);
+app.route('/api/discover', discoverRoutes);
 
 app.get('/api/ws', async (c) => {
   const user = await getSessionUser(c.env.DB, c.req.header('cookie'));

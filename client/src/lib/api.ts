@@ -23,9 +23,34 @@ export interface PostItem {
   tags: string[];
   likesCount: number;
   commentsCount: number;
+  viewsCount: number;
+  bookmarksCount: number;
+  sharesCount: number;
   likedByMe: boolean;
+  bookmarkedByMe: boolean;
   author: PostAuthor;
   createdAt: string;
+}
+
+export interface TrendingTopicItem {
+  tag: string;
+  postsCount: number;
+  heatScore: number;
+}
+
+export interface RecommendedUserItem {
+  id: string;
+  nickname: string;
+  avatarSeed: string;
+  avatarUrl: string;
+  bio: string;
+  followersCount: number;
+  postsCount: number;
+  isFollowing: boolean;
+}
+
+export interface AccountSummary extends UserProfile {
+  isActive: boolean;
 }
 
 export interface CommentReplyItem {
@@ -60,6 +85,7 @@ export interface PublicUserProfile {
   likesCount: number;
   commentsCount: number;
   repliesCount: number;
+  bookmarksCount?: number;
   isFollowing: boolean;
   isSelf: boolean;
 }
@@ -217,7 +243,23 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  logout: () => requestJson<{ ok: true }>('/api/auth/logout', { method: 'POST' }),
+  logout: (payload?: { userId?: string; all?: boolean }) =>
+    requestJson<{ ok: true; activeUser: UserProfile | null; accounts: AccountSummary[] }>(
+      '/api/auth/logout',
+      {
+        method: 'POST',
+        ...(payload ? { body: JSON.stringify(payload) } : {}),
+      }
+    ),
+
+  listAccounts: () =>
+    requestJson<{ activeUserId: string | null; accounts: AccountSummary[] }>('/api/auth/accounts'),
+
+  switchAccount: (userId: string) =>
+    requestJson<{ ok: true; user: UserProfile; accounts: AccountSummary[] }>('/api/auth/switch', {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
 
   updateProfile: (
     payload: string | { nickname?: string; bio?: string; avatarUrl?: string }
@@ -257,16 +299,25 @@ export const api = {
 
   getUserActivity: <T = PostItem | CommentActivityItem | ReplyActivityItem>(
     userId: string,
-    tab: 'posts' | 'likes' | 'comments' | 'replies',
+    tab: 'posts' | 'likes' | 'comments' | 'replies' | 'bookmarks',
     limit = 24,
     offset = 0
   ) =>
     requestJson<{
-      tab: 'posts' | 'likes' | 'comments' | 'replies';
+      tab: 'posts' | 'likes' | 'comments' | 'replies' | 'bookmarks';
       items: T[];
       total: number;
     }>(
       `/api/users/${encodeURIComponent(userId)}/activity?tab=${tab}&limit=${limit}&offset=${offset}`
+    ),
+
+  // Discover
+  getDiscoverTopics: (limit = 6) =>
+    requestJson<{ topics: TrendingTopicItem[] }>(`/api/discover/topics?limit=${limit}`),
+
+  getRecommendedUsers: (limit = 5) =>
+    requestJson<{ users: RecommendedUserItem[] }>(
+      `/api/discover/recommended-users?limit=${limit}`
     ),
 
   // Posts
@@ -311,6 +362,24 @@ export const api = {
   toggleLike: (id: string) =>
     requestJson<{ ok: true; liked: boolean; likesCount: number }>(
       `/api/posts/${encodeURIComponent(id)}/like`,
+      { method: 'POST' }
+    ),
+
+  recordPostView: (id: string) =>
+    requestJson<{ ok: true; viewsCount: number }>(
+      `/api/posts/${encodeURIComponent(id)}/view`,
+      { method: 'POST' }
+    ),
+
+  toggleBookmark: (id: string) =>
+    requestJson<{ ok: true; bookmarked: boolean; bookmarksCount: number }>(
+      `/api/posts/${encodeURIComponent(id)}/bookmark`,
+      { method: 'POST' }
+    ),
+
+  sharePost: (id: string) =>
+    requestJson<{ ok: true; sharesCount: number; sharePath: string }>(
+      `/api/posts/${encodeURIComponent(id)}/share`,
       { method: 'POST' }
     ),
 

@@ -3,11 +3,15 @@ import type { D1Database } from '@cloudflare/workers-types';
 import type { AppEnv, AuthUser } from '../types';
 import { ensureAdminConfig } from '../lib/admin-config';
 import {
+  MAX_VAULT_SESSIONS,
   USER_SESSION_COOKIE,
+  USER_SESSION_VAULT_COOKIE,
   buildSessionCookie,
   clearSessionCookie,
   getCookieValue,
   isHttpsRequest,
+  parseSessionVaultCookie,
+  serializeSessionVault,
 } from '../lib/cookies';
 import {
   constantTimeEqual,
@@ -30,6 +34,108 @@ interface UserRow {
   avatar_url?: string | null;
   bio?: string | null;
   created_at: string;
+}
+
+interface VaultSessionRow extends UserRow {
+  token_hash: string;
+}
+
+interface VaultEntry {
+  user: AuthUser;
+  token: string;
+  tokenHash: string;
+  isActive: boolean;
+}
+
+function mapUserRow(row: UserRow): AuthUser {
+  return {
+    id: row.id,
+    email: row.email,
+    nickname: row.nickname,
+    avatarSeed: row.avatar_seed,
+    avatarUrl: row.avatar_url ?? '',
+    bio: row.bio ?? '',
+    createdAt: row.created_at,
+  };
+}
+
+async function resolveVaultAccounts(
+  db: D1Database,
+  cookieHeader: string | undefined
+): Promise<{ activeUserId: string | null; activeTokenHash: string | null; entries: VaultEntry[] }> {
+  const activeToken = getCookieValue(cookieHeader, USER_SESSION_COOKIE);
+  const vaultTokens = parseSessionVaultCookie(cookieHeader);
+
+  const candidateTokens: string[] = [];
+  const seenTokens = new Set<string>();
+  for (const t of [activeToken, ...vaultTokens]) {
+    if (t && !seenTokens.has(t)) {
+      seenTokens.add(t);
+      candidateTokens.push(t);
+    }
+  }
+
+  if (candidateTokens.length === 0) {
+    return { activeUserId: null, activeTokenHash: null, entries: [] };
+  }
+
+  const tokenHashes = await Promise.all(candidateTokens.map((t) => sha256Hex(t)));
+  const activeTokenHash = activeToken ? tokenHashes[0] : null;
+  const now = new Date().toISOString();
+  const placeholders = tokenHashes.map(() => '?').join(', ');
+
+  const rows = await db
+    .prepare(
+      `SELECT s.token_hash, u.id, u.email, u.nickname, u.avatar_seed, u.created_at,
+              COALESCE(up.avatar_url, '') AS avatar_url,
+              COALESCE(up.bio, '') AS bio
+       FROM sessions s
+       JOIN users u ON u.id = s.user_id
+       LEFT JOIN user_profiles up ON up.user_id = u.id
+       WHERE s.token_hash IN (${placeholders}) AND s.expires_at > ?`
+    )
+    .bind(...tokenHashes, now)
+    .all<VaultSessionRow>();
+
+  const byHash = new Map<string, VaultSessionRow>();
+  for (const r of rows.results ?? []) {
+    byHash.set(r.token_hash, r);
+  }
+
+  const activeRow = activeTokenHash ? byHash.get(activeTokenHash) : undefined;
+  const activeUserId = activeRow ? activeRow.id : null;
+
+  const entries: VaultEntry[] = [];
+  const seenUsers = new Set<string>();
+  for (let i = 0; i < candidateTokens.length; i += 1) {
+    const token = candidateTokens[i];
+    const tokenHash = tokenHashes[i];
+    const row = byHash.get(tokenHash);
+    if (!row || seenUsers.has(row.id)) continue;
+    seenUsers.add(row.id);
+    entries.push({
+      user: mapUserRow(row),
+      token,
+      tokenHash,
+      isActive: activeUserId === row.id,
+    });
+    if (entries.length >= MAX_VAULT_SESSIONS) break;
+  }
+
+  return { activeUserId, activeTokenHash, entries };
+}
+
+function serializeAccountSummaries(entries: VaultEntry[], activeUserId: string | null) {
+  return entries.map((e) => ({
+    id: e.user.id,
+    email: e.user.email,
+    nickname: e.user.nickname,
+    avatarSeed: e.user.avatarSeed,
+    avatarUrl: e.user.avatarUrl,
+    bio: e.user.bio,
+    createdAt: e.user.createdAt,
+    isActive: e.user.id === activeUserId,
+  }));
 }
 
 export async function getSessionUser(
@@ -56,15 +162,7 @@ export async function getSessionUser(
     .first<UserRow>();
 
   if (!row) return null;
-  return {
-    id: row.id,
-    email: row.email,
-    nickname: row.nickname,
-    avatarSeed: row.avatar_seed,
-    avatarUrl: row.avatar_url ?? '',
-    bio: row.bio ?? '',
-    createdAt: row.created_at,
-  };
+  return mapUserRow(row);
 }
 
 function escapeHtml(text: string): string {
@@ -290,6 +388,8 @@ authRoutes.post('/verify-code', async (c) => {
     };
   }
 
+  const existingVault = await resolveVaultAccounts(c.env.DB, c.req.header('cookie'));
+
   const rawToken = randomTokenHex(32);
   const tokenHash = await sha256Hex(rawToken);
   const sessionExpiresAt = new Date(Date.now() + USER_SESSION_TTL_SECONDS * 1000).toISOString();
@@ -301,23 +401,40 @@ authRoutes.post('/verify-code', async (c) => {
     .bind(crypto.randomUUID(), user.id, tokenHash, sessionExpiresAt, nowIso)
     .run();
 
+  // Deduplicate same-user tokens and enforce max 5 accounts in vault
+  const replacedEntries = existingVault.entries.filter((e) => e.user.id === user!.id);
+  const keptEntries = existingVault.entries.filter((e) => e.user.id !== user!.id);
+  const overflowedEntries = keptEntries.slice(MAX_VAULT_SESSIONS - 1);
+  const finalKeptEntries = keptEntries.slice(0, MAX_VAULT_SESSIONS - 1);
+
+  const hashesToRevoke = [...replacedEntries, ...overflowedEntries].map((e) => e.tokenHash);
+  if (hashesToRevoke.length > 0) {
+    const placeholders = hashesToRevoke.map(() => '?').join(', ');
+    await c.env.DB.prepare(`DELETE FROM sessions WHERE token_hash IN (${placeholders})`)
+      .bind(...hashesToRevoke)
+      .run();
+  }
+
+  const nextVaultTokens = [rawToken, ...finalKeptEntries.map((e) => e.token)];
   const secure = isHttpsRequest(c.req.url, c.req.raw.headers);
   c.header(
     'Set-Cookie',
     buildSessionCookie(USER_SESSION_COOKIE, rawToken, USER_SESSION_TTL_SECONDS, secure)
   );
+  c.header(
+    'Set-Cookie',
+    buildSessionCookie(
+      USER_SESSION_VAULT_COOKIE,
+      serializeSessionVault(nextVaultTokens),
+      USER_SESSION_TTL_SECONDS,
+      secure
+    ),
+    { append: true }
+  );
 
   return c.json({
     ok: true,
-    user: {
-      id: user.id,
-      email: user.email,
-      nickname: user.nickname,
-      avatarSeed: user.avatar_seed,
-      avatarUrl: user.avatar_url ?? '',
-      bio: user.bio ?? '',
-      createdAt: user.created_at,
-    },
+    user: mapUserRow(user),
   });
 });
 
@@ -340,15 +457,180 @@ authRoutes.get('/me', async (c) => {
   });
 });
 
-authRoutes.post('/logout', async (c) => {
-  const token = getCookieValue(c.req.header('cookie'), USER_SESSION_COOKIE);
-  if (token) {
-    const tokenHash = await sha256Hex(token);
-    await c.env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(tokenHash).run();
+authRoutes.get('/accounts', async (c) => {
+  const { activeUserId, entries } = await resolveVaultAccounts(c.env.DB, c.req.header('cookie'));
+  return c.json({
+    activeUserId,
+    accounts: serializeAccountSummaries(entries, activeUserId),
+  });
+});
+
+authRoutes.post('/switch', async (c) => {
+  const { activeUserId, entries } = await resolveVaultAccounts(c.env.DB, c.req.header('cookie'));
+  if (!activeUserId) {
+    return c.json({ error: '请先登录' }, 401);
   }
+
+  const body = await c.req.json<{ userId?: unknown }>().catch(() => null);
+  const targetUserId = typeof body?.userId === 'string' ? body.userId.trim() : '';
+  if (!targetUserId) {
+    return c.json({ error: '请提供要切换的账号 ID' }, 400);
+  }
+
+  const targetEntry = entries.find((e) => e.user.id === targetUserId);
+  if (!targetEntry) {
+    return c.json({ error: '目标账号未在当前浏览器登录或已退出' }, 403);
+  }
+
   const secure = isHttpsRequest(c.req.url, c.req.raw.headers);
-  c.header('Set-Cookie', clearSessionCookie(USER_SESSION_COOKIE, secure));
-  return c.json({ ok: true });
+  c.header(
+    'Set-Cookie',
+    buildSessionCookie(USER_SESSION_COOKIE, targetEntry.token, USER_SESSION_TTL_SECONDS, secure)
+  );
+  c.header(
+    'Set-Cookie',
+    buildSessionCookie(
+      USER_SESSION_VAULT_COOKIE,
+      serializeSessionVault(entries.map((e) => e.token)),
+      USER_SESSION_TTL_SECONDS,
+      secure
+    ),
+    { append: true }
+  );
+
+  return c.json({
+    ok: true,
+    user: targetEntry.user,
+    accounts: serializeAccountSummaries(entries, targetUserId),
+  });
+});
+
+authRoutes.post('/logout', async (c) => {
+  const body = await c.req
+    .json<{ userId?: unknown; all?: unknown }>()
+    .catch(() => ({} as { userId?: unknown; all?: unknown }));
+  const logoutAll = Boolean(body && typeof body === 'object' && body.all === true);
+  const requestedUserId =
+    body && typeof body === 'object' && typeof body.userId === 'string'
+      ? body.userId.trim()
+      : '';
+
+  const cookieHeader = c.req.header('cookie');
+  const { activeUserId, activeTokenHash, entries } = await resolveVaultAccounts(
+    c.env.DB,
+    cookieHeader
+  );
+  const secure = isHttpsRequest(c.req.url, c.req.raw.headers);
+
+  if (logoutAll) {
+    const hashesToDelete = Array.from(
+      new Set([
+        ...entries.map((e) => e.tokenHash),
+        ...(activeTokenHash ? [activeTokenHash] : []),
+      ])
+    );
+    if (hashesToDelete.length > 0) {
+      const placeholders = hashesToDelete.map(() => '?').join(', ');
+      await c.env.DB.prepare(`DELETE FROM sessions WHERE token_hash IN (${placeholders})`)
+        .bind(...hashesToDelete)
+        .run();
+    }
+    c.header('Set-Cookie', clearSessionCookie(USER_SESSION_COOKIE, secure));
+    c.header('Set-Cookie', clearSessionCookie(USER_SESSION_VAULT_COOKIE, secure), {
+      append: true,
+    });
+    return c.json({ ok: true, activeUser: null, accounts: [] });
+  }
+
+  if (requestedUserId) {
+    const targetEntry = entries.find((e) => e.user.id === requestedUserId);
+    if (!targetEntry) {
+      return c.json({ error: '无权退出未在当前浏览器登录的账号' }, 403);
+    }
+
+    await c.env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?')
+      .bind(targetEntry.tokenHash)
+      .run();
+
+    const remaining = entries.filter((e) => e.user.id !== requestedUserId);
+    const nextActive =
+      requestedUserId === activeUserId
+        ? remaining[0] ?? null
+        : remaining.find((e) => e.user.id === activeUserId) ?? remaining[0] ?? null;
+
+    if (nextActive) {
+      c.header(
+        'Set-Cookie',
+        buildSessionCookie(USER_SESSION_COOKIE, nextActive.token, USER_SESSION_TTL_SECONDS, secure)
+      );
+      c.header(
+        'Set-Cookie',
+        buildSessionCookie(
+          USER_SESSION_VAULT_COOKIE,
+          serializeSessionVault(remaining.map((e) => e.token)),
+          USER_SESSION_TTL_SECONDS,
+          secure
+        ),
+        { append: true }
+      );
+    } else {
+      c.header('Set-Cookie', clearSessionCookie(USER_SESSION_COOKIE, secure));
+      c.header('Set-Cookie', clearSessionCookie(USER_SESSION_VAULT_COOKIE, secure), {
+        append: true,
+      });
+    }
+
+    return c.json({
+      ok: true,
+      activeUser: nextActive?.user ?? null,
+      accounts: serializeAccountSummaries(remaining, nextActive?.user.id ?? null),
+    });
+  }
+
+  // Default: logout current active session and fall back to next remaining vault session if any
+  const hashesToDelete = Array.from(
+    new Set([
+      ...(activeTokenHash ? [activeTokenHash] : []),
+      ...entries.filter((e) => e.user.id === activeUserId).map((e) => e.tokenHash),
+    ])
+  );
+  if (hashesToDelete.length > 0) {
+    const placeholders = hashesToDelete.map(() => '?').join(', ');
+    await c.env.DB.prepare(`DELETE FROM sessions WHERE token_hash IN (${placeholders})`)
+      .bind(...hashesToDelete)
+      .run();
+  }
+
+  const remaining = activeUserId ? entries.filter((e) => e.user.id !== activeUserId) : entries;
+  const nextActive = remaining[0] ?? null;
+
+  if (nextActive) {
+    c.header(
+      'Set-Cookie',
+      buildSessionCookie(USER_SESSION_COOKIE, nextActive.token, USER_SESSION_TTL_SECONDS, secure)
+    );
+    c.header(
+      'Set-Cookie',
+      buildSessionCookie(
+        USER_SESSION_VAULT_COOKIE,
+        serializeSessionVault(remaining.map((e) => e.token)),
+        USER_SESSION_TTL_SECONDS,
+        secure
+      ),
+      { append: true }
+    );
+  } else {
+    c.header('Set-Cookie', clearSessionCookie(USER_SESSION_COOKIE, secure));
+    c.header('Set-Cookie', clearSessionCookie(USER_SESSION_VAULT_COOKIE, secure), {
+      append: true,
+    });
+  }
+
+  return c.json({
+    ok: true,
+    activeUser: nextActive?.user ?? null,
+    accounts: serializeAccountSummaries(remaining, nextActive?.user.id ?? null),
+  });
 });
 
 authRoutes.patch('/profile', async (c) => {

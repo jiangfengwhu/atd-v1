@@ -16,13 +16,23 @@ import {
   ChevronUp,
   Settings,
   LogIn,
+  Check,
+  UserPlus,
+  X,
 } from 'lucide-react';
-import { api, ApiError, type PostItem, type UserProfile } from '@/lib/api';
+import {
+  api,
+  ApiError,
+  type AccountSummary,
+  type PostItem,
+  type UserProfile,
+} from '@/lib/api';
 import { realtimeClient } from '@/lib/realtime';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { PostCard } from '@/components/PostCard';
+import { DiscoverSidebar } from '@/components/DiscoverSidebar';
 import { AuthDialog } from '@/components/AuthDialog';
 import { ComposeDialog } from '@/components/ComposeDialog';
 import { PostDetailDialog } from '@/components/PostDetailDialog';
@@ -39,31 +49,39 @@ type ActiveNav = 'feed' | 'notifications' | 'messages' | 'profile';
 interface RouteState {
   view: ActiveNav;
   profileUserId: string | null;
+  detailPostId: string | null;
 }
 
 function parsePathname(pathname: string): RouteState {
   if (pathname === '/notifications') {
-    return { view: 'notifications', profileUserId: null };
+    return { view: 'notifications', profileUserId: null, detailPostId: null };
   }
   if (pathname === '/messages') {
-    return { view: 'messages', profileUserId: null };
+    return { view: 'messages', profileUserId: null, detailPostId: null };
   }
   if (pathname === '/profile') {
-    return { view: 'profile', profileUserId: 'me' };
+    return { view: 'profile', profileUserId: 'me', detailPostId: null };
   }
   if (pathname.startsWith('/users/')) {
     const id = decodeURIComponent(pathname.slice('/users/'.length));
     if (id) {
-      return { view: 'profile', profileUserId: id };
+      return { view: 'profile', profileUserId: id, detailPostId: null };
     }
   }
-  return { view: 'feed', profileUserId: null };
+  if (pathname.startsWith('/posts/')) {
+    const id = decodeURIComponent(pathname.slice('/posts/'.length)).split('/')[0];
+    if (id) {
+      return { view: 'feed', profileUserId: null, detailPostId: id };
+    }
+  }
+  return { view: 'feed', profileUserId: null, detailPostId: null };
 }
 
 export function CommunityPage() {
   const initialRoute = React.useMemo(() => parsePathname(window.location.pathname), []);
 
   const [user, setUser] = React.useState<UserProfile | null>(null);
+  const [accounts, setAccounts] = React.useState<AccountSummary[]>([]);
   const [authLoaded, setAuthLoaded] = React.useState(false);
   const [siteName, setSiteName] = React.useState('拾光集 · 轻图文社区');
   const [posts, setPosts] = React.useState<PostItem[]>([]);
@@ -79,6 +97,7 @@ export function CommunityPage() {
   const [messagesUnread, setMessagesUnread] = React.useState(0);
   const [notificationsUnread, setNotificationsUnread] = React.useState(0);
   const [profileRefreshKey, setProfileRefreshKey] = React.useState(0);
+  const [discoverRefreshKey, setDiscoverRefreshKey] = React.useState(0);
 
   const [searchInput, setSearchInput] = React.useState('');
   const [activeQuery, setActiveQuery] = React.useState('');
@@ -86,12 +105,24 @@ export function CommunityPage() {
   const [sort, setSort] = React.useState<'latest' | 'hot'>('latest');
 
   const [authOpen, setAuthOpen] = React.useState(false);
+  const [authMode, setAuthMode] = React.useState<'login' | 'add'>('login');
   const [pendingAction, setPendingAction] = React.useState<(() => void) | null>(null);
   const [composeOpen, setComposeOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
-  const [detailPostId, setDetailPostId] = React.useState<string | null>(null);
+  const [detailPostId, setDetailPostId] = React.useState<string | null>(
+    initialRoute.detailPostId
+  );
   const [accountMenuOpen, setAccountMenuOpen] = React.useState(false);
+  const [switchingAccountId, setSwitchingAccountId] = React.useState<string | null>(null);
+  const [toastMessage, setToastMessage] = React.useState<string | null>(null);
   const accountMenuRef = React.useRef<HTMLDivElement | null>(null);
+
+  const showToast = React.useCallback((msg: string) => {
+    setToastMessage(msg);
+    window.setTimeout(() => {
+      setToastMessage((curr) => (curr === msg ? null : curr));
+    }, 2400);
+  }, []);
 
   const syncUrl = React.useCallback((path: string) => {
     if (window.location.pathname !== path) {
@@ -99,11 +130,27 @@ export function CommunityPage() {
     }
   }, []);
 
+  const getBasePathForView = React.useCallback(
+    (nav: ActiveNav, profileId: string | null, currentUserId?: string) => {
+      if (nav === 'notifications') return '/notifications';
+      if (nav === 'messages') return '/messages';
+      if (nav === 'profile') {
+        if (!profileId || profileId === 'me' || profileId === currentUserId) {
+          return '/profile';
+        }
+        return `/users/${encodeURIComponent(profileId)}`;
+      }
+      return '/';
+    },
+    []
+  );
+
   React.useEffect(() => {
     const onPopState = () => {
       const parsed = parsePathname(window.location.pathname);
       setActiveNav(parsed.view);
       setViewingUserId(parsed.profileUserId);
+      setDetailPostId(parsed.detailPostId);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -134,14 +181,28 @@ export function CommunityPage() {
     }
   }, []);
 
+  const refreshAccounts = React.useCallback(async () => {
+    try {
+      const res = await api.listAccounts();
+      setAccounts(res.accounts);
+    } catch {
+      setAccounts([]);
+    }
+  }, []);
+
   const loadUser = React.useCallback(async () => {
     try {
-      const me = await api.me();
+      const [me, accountsRes] = await Promise.all([
+        api.me(),
+        api.listAccounts().catch(() => ({ activeUserId: null, accounts: [] as AccountSummary[] })),
+      ]);
       const loadedUser = me.authenticated ? me.user : null;
       setUser(loadedUser);
+      setAccounts(accountsRes.accounts);
       loadUnreadSummary(loadedUser);
     } catch {
       setUser(null);
+      setAccounts([]);
       setMessagesUnread(0);
       setNotificationsUnread(0);
     } finally {
@@ -182,10 +243,11 @@ export function CommunityPage() {
   }, [loadPosts]);
 
   React.useEffect(() => {
-    if (!user) {
+    if (!user?.id) {
       realtimeClient.disconnect();
       return;
     }
+    realtimeClient.disconnect();
     realtimeClient.connect();
     const unsubscribe = realtimeClient.subscribe((event) => {
       if (event.type === 'notification:new' || event.type === 'notification:read') {
@@ -196,8 +258,9 @@ export function CommunityPage() {
     });
     return () => {
       unsubscribe();
+      realtimeClient.disconnect();
     };
-  }, [user]);
+  }, [user?.id]);
 
   React.useEffect(() => {
     return () => {
@@ -209,7 +272,20 @@ export function CommunityPage() {
     if (action) {
       setPendingAction(() => action);
     }
+    setAuthMode('login');
     setAuthOpen(true);
+  };
+
+  const openPostDetail = (postId: string) => {
+    setDetailPostId(postId);
+    syncUrl(`/posts/${encodeURIComponent(postId)}`);
+  };
+
+  const closePostDetail = () => {
+    setDetailPostId(null);
+    if (window.location.pathname.startsWith('/posts/')) {
+      syncUrl(getBasePathForView(activeNav, viewingUserId, user?.id));
+    }
   };
 
   const goFeed = () => {
@@ -306,22 +382,110 @@ export function CommunityPage() {
     }
   };
 
-  const handleLogout = async () => {
-    setAccountMenuOpen(false);
-    realtimeClient.disconnect();
-    await api.logout().catch(() => {});
-    setUser(null);
-    setMessagesUnread(0);
-    setNotificationsUnread(0);
-    setMessagePeerId(null);
-    if (
-      activeNav === 'messages' ||
-      activeNav === 'notifications' ||
-      (activeNav === 'profile' && viewingUserId === 'me')
-    ) {
-      goFeed();
+  const handleToggleBookmark = async (postId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) {
+      requireAuthThen();
+      return;
     }
+    try {
+      const res = await api.toggleBookmark(postId);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? { ...p, bookmarkedByMe: res.bookmarked, bookmarksCount: res.bookmarksCount }
+            : p
+        )
+      );
+      setProfileRefreshKey((k) => k + 1);
+      setDiscoverRefreshKey((k) => k + 1);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setUser(null);
+        requireAuthThen();
+      }
+    }
+  };
+
+  const handleSharePost = async (postId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const res = await api.sharePost(postId);
+      const shareUrl = `${window.location.origin}${res.sharePath}`;
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl).catch(() => {});
+      }
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, sharesCount: res.sharesCount } : p))
+      );
+      setDiscoverRefreshKey((k) => k + 1);
+      showToast('已复制分享链接');
+    } catch {
+      showToast('分享失败，请稍后重试');
+    }
+  };
+
+  const applyAccountTransition = (
+    nextUser: UserProfile | null,
+    nextAccounts: AccountSummary[],
+    previousUserId?: string
+  ) => {
+    setUser(nextUser);
+    setAccounts(nextAccounts);
+    setMessagePeerId(null);
+    loadUnreadSummary(nextUser);
     loadPosts();
+    setDiscoverRefreshKey((k) => k + 1);
+    setProfileRefreshKey((k) => k + 1);
+
+    if (!nextUser) {
+      if (
+        activeNav === 'messages' ||
+        activeNav === 'notifications' ||
+        (activeNav === 'profile' && (viewingUserId === 'me' || viewingUserId === previousUserId))
+      ) {
+        goFeed();
+      }
+    } else if (
+      activeNav === 'profile' &&
+      (viewingUserId === 'me' || viewingUserId === previousUserId)
+    ) {
+      setViewingUserId(nextUser.id);
+      syncUrl('/profile');
+    }
+  };
+
+  const handleSwitchAccount = async (targetUserId: string) => {
+    setAccountMenuOpen(false);
+    if (!user || targetUserId === user.id) return;
+    setSwitchingAccountId(targetUserId);
+    const previousUserId = user.id;
+    try {
+      realtimeClient.disconnect();
+      const res = await api.switchAccount(targetUserId);
+      applyAccountTransition(res.user, res.accounts, previousUserId);
+      showToast(`已切换至账号：${res.user.nickname}`);
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : '切换账号失败');
+      loadUser();
+    } finally {
+      setSwitchingAccountId(null);
+    }
+  };
+
+  const handleLogout = async (options?: { userId?: string; all?: boolean }) => {
+    setAccountMenuOpen(false);
+    const previousUserId = user?.id;
+    realtimeClient.disconnect();
+    try {
+      const res = await api.logout(options);
+      applyAccountTransition(res.activeUser, res.accounts, previousUserId);
+      if (res.activeUser) {
+        showToast(`已切换至剩余账号：${res.activeUser.nickname}`);
+      }
+    } catch {
+      applyAccountTransition(null, [], previousUserId);
+    }
   };
 
   const resolvedProfileId =
@@ -448,7 +612,7 @@ export function CommunityPage() {
             </Button>
           </div>
 
-          {/* Bottom Profile Trigger & Popover Menu */}
+          {/* Bottom Profile Trigger & Multi-Account Popover Menu */}
           <div ref={accountMenuRef} className="relative pt-4">
             {user ? (
               <>
@@ -458,6 +622,61 @@ export function CommunityPage() {
                     aria-label="个人资料选项"
                     className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-2xl border border-zinc-200/90 bg-white p-1.5 shadow-xl"
                   >
+                    {accounts.length > 0 && (
+                      <div className="mb-1">
+                        <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                          切换账号 ({accounts.length}/5)
+                        </p>
+                        <div className="max-h-44 space-y-0.5 overflow-y-auto">
+                          {accounts.map((acc) => (
+                            <button
+                              key={acc.id}
+                              type="button"
+                              role="menuitem"
+                              disabled={switchingAccountId === acc.id}
+                              onClick={() => handleSwitchAccount(acc.id)}
+                              className={cn(
+                                'flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition',
+                                acc.isActive
+                                  ? 'bg-rose-50/80 text-zinc-900'
+                                  : 'text-zinc-700 hover:bg-zinc-100'
+                              )}
+                            >
+                              <AvatarBadge
+                                nickname={acc.nickname}
+                                seed={acc.avatarSeed}
+                                avatarUrl={acc.avatarUrl}
+                                size="sm"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-semibold text-zinc-900">
+                                  {acc.nickname}
+                                </p>
+                                <p className="truncate text-[10px] text-zinc-400">{acc.email}</p>
+                              </div>
+                              {acc.isActive && (
+                                <Check className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="my-1 border-t border-zinc-100" />
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setAccountMenuOpen(false);
+                        setAuthMode('add');
+                        setAuthOpen(true);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                    >
+                      <UserPlus className="h-3.5 w-3.5 text-zinc-500" />
+                      添加其他账号
+                    </button>
                     <button
                       type="button"
                       role="menuitem"
@@ -480,15 +699,38 @@ export function CommunityPage() {
                       编辑资料
                     </button>
                     <div className="my-1 border-t border-zinc-100" />
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={handleLogout}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-red-600 transition hover:bg-red-50"
-                    >
-                      <LogOut className="h-3.5 w-3.5" />
-                      退出登录
-                    </button>
+                    {accounts.length > 1 ? (
+                      <>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => handleLogout({})}
+                          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                        >
+                          <LogOut className="h-3.5 w-3.5" />
+                          退出当前账号
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => handleLogout({ all: true })}
+                          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                        >
+                          <LogOut className="h-3.5 w-3.5" />
+                          退出全部账号
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => handleLogout({})}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                      >
+                        <LogOut className="h-3.5 w-3.5" />
+                        退出登录
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -509,7 +751,9 @@ export function CommunityPage() {
                     />
                     <div className="min-w-0">
                       <p className="truncate text-xs font-bold text-zinc-900">{user.nickname}</p>
-                      <p className="text-[11px] text-zinc-400">个人资料</p>
+                      <p className="text-[11px] text-zinc-400">
+                        {accounts.length > 1 ? `个人资料 · ${accounts.length}账号` : '个人资料'}
+                      </p>
                     </div>
                   </div>
                   <ChevronUp
@@ -524,7 +768,10 @@ export function CommunityPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setAuthOpen(true)}
+                onClick={() => {
+                  setAuthMode('login');
+                  setAuthOpen(true);
+                }}
                 className="w-full h-11 rounded-full justify-center bg-white/85 shadow-sm"
               >
                 <LogIn className="h-4 w-4" />
@@ -555,21 +802,40 @@ export function CommunityPage() {
               {user ? (
                 <button
                   type="button"
-                  onClick={handleLogout}
+                  onClick={() => handleLogout({})}
                   aria-label="退出登录"
                   className="rounded-full border border-zinc-200 bg-white p-1.5 text-zinc-600"
                 >
                   <LogOut className="h-4 w-4" />
                 </button>
               ) : (
-                <Button variant="outline" size="sm" onClick={() => setAuthOpen(true)} className="h-8">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setAuthMode('login');
+                    setAuthOpen(true);
+                  }}
+                  className="h-8"
+                >
                   登录
                 </Button>
               )}
             </div>
           </header>
 
-          <main className="w-full max-w-5xl flex-1 px-4 py-6 md:px-0 md:py-7">
+          <div
+            className={cn(
+              'flex flex-1 items-start',
+              activeNav === 'feed' && 'lg:gap-7'
+            )}
+          >
+            <main
+              className={cn(
+                'w-full min-w-0 flex-1 px-4 py-6 md:px-0 md:py-7',
+                activeNav === 'feed' ? 'max-w-[660px]' : 'max-w-5xl'
+              )}
+            >
           {activeNav === 'feed' && (
             <>
               {/* Search + Hero + Filter bar */}
@@ -643,6 +909,17 @@ export function CommunityPage() {
                   >
                     全部 ({total})
                   </button>
+                  {activeTag && !FEATURED_TAGS.includes(activeTag) && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTag('')}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm"
+                    >
+                      <Hash className="h-3 w-3" />
+                      {activeTag}
+                      <X className="ml-0.5 h-3 w-3" />
+                    </button>
+                  )}
                   {FEATURED_TAGS.map((tag) => (
                     <button
                       key={tag}
@@ -662,21 +939,24 @@ export function CommunityPage() {
                 </div>
               </section>
 
-              {/* Feed Content */}
+              {/* Feed Content — X.com Single-Column Vertical List */}
               {loading ? (
-                <div className="masonry-grid">
-                  {[180, 240, 150, 220, 190, 260].map((h, i) => (
+                <div className="space-y-4">
+                  {[160, 220, 140, 200].map((h, i) => (
                     <div
                       key={i}
-                      className="masonry-item overflow-hidden rounded-3xl border border-zinc-200/70 bg-white p-4 shadow-card"
+                      className="overflow-hidden rounded-3xl border border-zinc-200/70 bg-white p-5 shadow-card"
                     >
-                      <div
-                        className="w-full animate-pulse rounded-2xl bg-zinc-200/70"
-                        style={{ height: `${h}px` }}
-                      />
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 animate-pulse rounded-full bg-zinc-200/70" />
+                        <div className="h-4 w-32 animate-pulse rounded bg-zinc-200/70" />
+                      </div>
                       <div className="mt-4 h-4 w-3/4 animate-pulse rounded bg-zinc-200/70" />
                       <div className="mt-2 h-3 w-full animate-pulse rounded bg-zinc-100" />
-                      <div className="mt-1.5 h-3 w-2/3 animate-pulse rounded bg-zinc-100" />
+                      <div
+                        className="mt-3 w-full animate-pulse rounded-2xl bg-zinc-200/60"
+                        style={{ height: `${h}px` }}
+                      />
                     </div>
                   ))}
                 </div>
@@ -721,14 +1001,17 @@ export function CommunityPage() {
                   </div>
                 </div>
               ) : (
-                <div className="masonry-grid">
+                <div className="space-y-4">
                   {posts.map((post) => (
                     <PostCard
                       key={post.id}
                       post={post}
-                      onOpen={(id) => setDetailPostId(id)}
+                      onOpen={openPostDetail}
                       onToggleLike={handleToggleLike}
+                      onToggleBookmark={handleToggleBookmark}
+                      onShare={handleSharePost}
                       onOpenAuthor={goUserProfile}
+                      onSelectTag={(tag) => setActiveTag(activeTag === tag ? '' : tag)}
                     />
                   ))}
                 </div>
@@ -741,7 +1024,7 @@ export function CommunityPage() {
               {user ? (
                 <NotificationsView
                   onUnreadUpdated={setNotificationsUnread}
-                  onOpenPost={(id) => setDetailPostId(id)}
+                  onOpenPost={openPostDetail}
                   onOpenUserProfile={goUserProfile}
                 />
               ) : authLoaded ? (
@@ -792,7 +1075,7 @@ export function CommunityPage() {
                   refreshKey={profileRefreshKey}
                   onRequireAuth={() => requireAuthThen()}
                   onOpenEditProfile={() => setProfileOpen(true)}
-                  onOpenPost={(id) => setDetailPostId(id)}
+                  onOpenPost={openPostDetail}
                   onOpenUserProfile={goUserProfile}
                   onStartMessage={(peerId) => goMessages(peerId)}
                   onCurrentUserUpdated={(updated) => {
@@ -816,6 +1099,18 @@ export function CommunityPage() {
             </>
           )}
         </main>
+
+        {activeNav === 'feed' && (
+          <DiscoverSidebar
+            currentUser={user}
+            activeTag={activeTag}
+            refreshKey={discoverRefreshKey}
+            onSelectTag={(tag) => setActiveTag(tag)}
+            onOpenUserProfile={goUserProfile}
+            onRequireAuth={() => requireAuthThen()}
+          />
+        )}
+          </div>
       </div>
       </div>
 
@@ -878,14 +1173,27 @@ export function CommunityPage() {
 
       <AuthDialog
         open={authOpen}
+        mode={authMode}
         onOpenChange={(v) => {
           setAuthOpen(v);
           if (!v) setPendingAction(null);
         }}
         onSuccess={(loggedUser) => {
+          const previousUserId = user?.id;
+          realtimeClient.disconnect();
           setUser(loggedUser);
+          refreshAccounts();
           loadUnreadSummary(loggedUser);
           loadPosts();
+          setDiscoverRefreshKey((k) => k + 1);
+          setProfileRefreshKey((k) => k + 1);
+          if (
+            activeNav === 'profile' &&
+            (viewingUserId === 'me' || viewingUserId === previousUserId)
+          ) {
+            setViewingUserId(loggedUser.id);
+            syncUrl('/profile');
+          }
           if (pendingAction) {
             const act = pendingAction;
             setPendingAction(null);
@@ -901,22 +1209,25 @@ export function CommunityPage() {
           setPosts((prev) => [newPost, ...prev]);
           setTotal((t) => t + 1);
           setProfileRefreshKey((k) => k + 1);
+          setDiscoverRefreshKey((k) => k + 1);
         }}
       />
 
       <PostDetailDialog
         postId={detailPostId}
         currentUser={user}
-        onClose={() => setDetailPostId(null)}
+        onClose={closePostDetail}
         onRequireAuth={() => requireAuthThen()}
         onPostUpdated={(updated) => {
           setPosts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
           setProfileRefreshKey((k) => k + 1);
+          setDiscoverRefreshKey((k) => k + 1);
         }}
         onPostDeleted={(deletedId) => {
           setPosts((prev) => prev.filter((p) => p.id !== deletedId));
           setTotal((t) => Math.max(0, t - 1));
           setProfileRefreshKey((k) => k + 1);
+          setDiscoverRefreshKey((k) => k + 1);
         }}
         onOpenAuthor={goUserProfile}
       />
@@ -927,10 +1238,22 @@ export function CommunityPage() {
         onOpenChange={setProfileOpen}
         onUpdated={(updated) => {
           setUser(updated);
+          refreshAccounts();
           setProfileRefreshKey((k) => k + 1);
+          setDiscoverRefreshKey((k) => k + 1);
           loadPosts();
         }}
       />
+
+      {toastMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-full bg-zinc-900 px-4 py-2 text-xs font-semibold text-white shadow-lg md:bottom-6"
+        >
+          {toastMessage}
+        </div>
+      )}
     </div>
   );
 }
