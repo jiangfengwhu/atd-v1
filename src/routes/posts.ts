@@ -19,11 +19,15 @@ export interface PostRow {
   tags_json: string;
   likes_count: number;
   comments_count: number;
+  views_count?: number | null;
+  bookmarks_count?: number | null;
+  shares_count?: number | null;
   created_at: string;
   author_nickname: string;
   author_avatar_seed: string;
   author_avatar_url?: string | null;
   liked_by_me?: number;
+  bookmarked_by_me?: number;
 }
 
 interface CommentRow {
@@ -69,7 +73,11 @@ export function serializePost(row: PostRow) {
     tags: parseTagsJson(row.tags_json),
     likesCount: Number(row.likes_count),
     commentsCount: Number(row.comments_count),
+    viewsCount: Number(row.views_count ?? 0),
+    bookmarksCount: Number(row.bookmarks_count ?? 0),
+    sharesCount: Number(row.shares_count ?? 0),
     likedByMe: Boolean(row.liked_by_me),
+    bookmarkedByMe: Boolean(row.bookmarked_by_me),
     author: {
       id: row.author_id,
       nickname: row.author_nickname,
@@ -135,30 +143,41 @@ postRoutes.get('/', async (c) => {
   const listQuery = user
     ? `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
               p.likes_count, p.comments_count, p.created_at,
+              COALESCE(pm.views_count, 0) AS views_count,
+              COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
+              COALESCE(pm.shares_count, 0) AS shares_count,
               u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
               COALESCE(up.avatar_url, '') AS author_avatar_url,
-              CASE WHEN pl.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me
+              CASE WHEN pl.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me,
+              CASE WHEN pb.user_id IS NOT NULL THEN 1 ELSE 0 END AS bookmarked_by_me
        FROM posts p
        JOIN users u ON u.id = p.author_id
        LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN post_metrics pm ON pm.post_id = p.id
        LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = ?
+       LEFT JOIN post_bookmarks pb ON pb.post_id = p.id AND pb.user_id = ?
        ${whereSql}
        ${orderSql}
        LIMIT ? OFFSET ?`
     : `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
               p.likes_count, p.comments_count, p.created_at,
+              COALESCE(pm.views_count, 0) AS views_count,
+              COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
+              COALESCE(pm.shares_count, 0) AS shares_count,
               u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
               COALESCE(up.avatar_url, '') AS author_avatar_url,
-              0 AS liked_by_me
+              0 AS liked_by_me,
+              0 AS bookmarked_by_me
        FROM posts p
        JOIN users u ON u.id = p.author_id
        LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN post_metrics pm ON pm.post_id = p.id
        ${whereSql}
        ${orderSql}
        LIMIT ? OFFSET ?`;
 
   const listBindings = user
-    ? [user.id, ...filterParams, limit, offset]
+    ? [user.id, user.id, ...filterParams, limit, offset]
     : [...filterParams, limit, offset];
 
   const rows = await c.env.DB.prepare(listQuery)
@@ -224,7 +243,11 @@ postRoutes.post('/', async (c) => {
         tags,
         likesCount: 0,
         commentsCount: 0,
+        viewsCount: 0,
+        bookmarksCount: 0,
+        sharesCount: 0,
         likedByMe: false,
+        bookmarkedByMe: false,
         author: {
           id: user.id,
           nickname: user.nickname,
@@ -245,28 +268,39 @@ postRoutes.get('/:id', async (c) => {
   const postQuery = user
     ? `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
               p.likes_count, p.comments_count, p.created_at,
+              COALESCE(pm.views_count, 0) AS views_count,
+              COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
+              COALESCE(pm.shares_count, 0) AS shares_count,
               u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
               COALESCE(up.avatar_url, '') AS author_avatar_url,
-              CASE WHEN pl.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me
+              CASE WHEN pl.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me,
+              CASE WHEN pb.user_id IS NOT NULL THEN 1 ELSE 0 END AS bookmarked_by_me
        FROM posts p
        JOIN users u ON u.id = p.author_id
        LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN post_metrics pm ON pm.post_id = p.id
        LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = ?
+       LEFT JOIN post_bookmarks pb ON pb.post_id = p.id AND pb.user_id = ?
        WHERE p.id = ?
        LIMIT 1`
     : `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
               p.likes_count, p.comments_count, p.created_at,
+              COALESCE(pm.views_count, 0) AS views_count,
+              COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
+              COALESCE(pm.shares_count, 0) AS shares_count,
               u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
               COALESCE(up.avatar_url, '') AS author_avatar_url,
-              0 AS liked_by_me
+              0 AS liked_by_me,
+              0 AS bookmarked_by_me
        FROM posts p
        JOIN users u ON u.id = p.author_id
        LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN post_metrics pm ON pm.post_id = p.id
        WHERE p.id = ?
        LIMIT 1`;
 
   const row = user
-    ? await c.env.DB.prepare(postQuery).bind(user.id, postId).first<PostRow>()
+    ? await c.env.DB.prepare(postQuery).bind(user.id, user.id, postId).first<PostRow>()
     : await c.env.DB.prepare(postQuery).bind(postId).first<PostRow>();
 
   if (!row) {
@@ -377,6 +411,8 @@ postRoutes.delete('/:id', async (c) => {
 
   await c.env.DB.batch([
     c.env.DB.prepare('DELETE FROM notifications WHERE post_id = ?').bind(postId),
+    c.env.DB.prepare('DELETE FROM post_bookmarks WHERE post_id = ?').bind(postId),
+    c.env.DB.prepare('DELETE FROM post_metrics WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_likes WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM comment_replies WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM comments WHERE post_id = ?').bind(postId),
@@ -460,6 +496,136 @@ postRoutes.post('/:id/like', async (c) => {
     ok: true,
     liked,
     likesCount: Number(updated?.likes_count ?? 0),
+  });
+});
+
+postRoutes.post('/:id/view', async (c) => {
+  const postId = c.req.param('id');
+  const post = await c.env.DB.prepare('SELECT id FROM posts WHERE id = ? LIMIT 1')
+    .bind(postId)
+    .first<{ id: string }>();
+
+  if (!post) {
+    return c.json({ error: '帖子不存在' }, 404);
+  }
+
+  const nowIso = new Date().toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO post_metrics (post_id, views_count, bookmarks_count, shares_count, updated_at)
+     VALUES (?, 1, 0, 0, ?)
+     ON CONFLICT(post_id) DO UPDATE SET
+       views_count = post_metrics.views_count + 1,
+       updated_at = excluded.updated_at`
+  )
+    .bind(postId, nowIso)
+    .run();
+
+  const metrics = await c.env.DB.prepare(
+    'SELECT views_count FROM post_metrics WHERE post_id = ? LIMIT 1'
+  )
+    .bind(postId)
+    .first<{ views_count: number }>();
+
+  return c.json({
+    ok: true,
+    viewsCount: Number(metrics?.views_count ?? 1),
+  });
+});
+
+postRoutes.post('/:id/bookmark', async (c) => {
+  const user = await getSessionUser(c.env.DB, c.req.header('cookie'));
+  if (!user) {
+    return c.json({ error: '请先登录后再收藏' }, 401);
+  }
+
+  const postId = c.req.param('id');
+  const post = await c.env.DB.prepare('SELECT id FROM posts WHERE id = ? LIMIT 1')
+    .bind(postId)
+    .first<{ id: string }>();
+
+  if (!post) {
+    return c.json({ error: '帖子不存在' }, 404);
+  }
+
+  const existing = await c.env.DB.prepare(
+    'SELECT 1 AS ok FROM post_bookmarks WHERE post_id = ? AND user_id = ? LIMIT 1'
+  )
+    .bind(postId, user.id)
+    .first<{ ok: number }>();
+
+  const nowIso = new Date().toISOString();
+  if (existing) {
+    await c.env.DB.prepare('DELETE FROM post_bookmarks WHERE post_id = ? AND user_id = ?')
+      .bind(postId, user.id)
+      .run();
+  } else {
+    await c.env.DB.prepare(
+      'INSERT OR IGNORE INTO post_bookmarks (post_id, user_id, created_at) VALUES (?, ?, ?)'
+    )
+      .bind(postId, user.id, nowIso)
+      .run();
+  }
+
+  const [countRow, mineRow] = await Promise.all([
+    c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM post_bookmarks WHERE post_id = ?')
+      .bind(postId)
+      .first<{ cnt: number }>(),
+    c.env.DB.prepare(
+      'SELECT 1 AS ok FROM post_bookmarks WHERE post_id = ? AND user_id = ? LIMIT 1'
+    )
+      .bind(postId, user.id)
+      .first<{ ok: number }>(),
+  ]);
+
+  const bookmarksCount = Math.max(0, Number(countRow?.cnt ?? 0));
+  await c.env.DB.prepare(
+    `INSERT INTO post_metrics (post_id, views_count, bookmarks_count, shares_count, updated_at)
+     VALUES (?, 0, ?, 0, ?)
+     ON CONFLICT(post_id) DO UPDATE SET
+       bookmarks_count = excluded.bookmarks_count,
+       updated_at = excluded.updated_at`
+  )
+    .bind(postId, bookmarksCount, nowIso)
+    .run();
+
+  return c.json({
+    ok: true,
+    bookmarked: Boolean(mineRow?.ok),
+    bookmarksCount,
+  });
+});
+
+postRoutes.post('/:id/share', async (c) => {
+  const postId = c.req.param('id');
+  const post = await c.env.DB.prepare('SELECT id FROM posts WHERE id = ? LIMIT 1')
+    .bind(postId)
+    .first<{ id: string }>();
+
+  if (!post) {
+    return c.json({ error: '帖子不存在' }, 404);
+  }
+
+  const nowIso = new Date().toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO post_metrics (post_id, views_count, bookmarks_count, shares_count, updated_at)
+     VALUES (?, 0, 0, 1, ?)
+     ON CONFLICT(post_id) DO UPDATE SET
+       shares_count = post_metrics.shares_count + 1,
+       updated_at = excluded.updated_at`
+  )
+    .bind(postId, nowIso)
+    .run();
+
+  const metrics = await c.env.DB.prepare(
+    'SELECT shares_count FROM post_metrics WHERE post_id = ? LIMIT 1'
+  )
+    .bind(postId)
+    .first<{ shares_count: number }>();
+
+  return c.json({
+    ok: true,
+    sharesCount: Number(metrics?.shares_count ?? 1),
+    sharePath: `/posts/${postId}`,
   });
 });
 

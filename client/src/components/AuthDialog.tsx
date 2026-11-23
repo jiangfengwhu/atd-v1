@@ -13,11 +13,12 @@ import { Input } from '@/components/ui/input';
 
 interface AuthDialogProps {
   open: boolean;
+  mode?: 'login' | 'add';
   onOpenChange: (open: boolean) => void;
   onSuccess: (user: UserProfile) => void;
 }
 
-export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
+export function AuthDialog({ open, mode = 'login', onOpenChange, onSuccess }: AuthDialogProps) {
   const [email, setEmail] = React.useState('');
   const [code, setCode] = React.useState('');
   const [nickname, setNickname] = React.useState('');
@@ -39,8 +40,16 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
   React.useEffect(() => {
     if (!open) {
       setError(null);
+    } else if (mode === 'add') {
+      setEmail('');
+      setCode('');
+      setNickname('');
+      setDevCode(null);
+      setDeliveryHint(null);
+      setCountdown(0);
+      setError(null);
     }
-  }, [open]);
+  }, [open, mode]);
 
   const handleSendCode = async () => {
     setError(null);
@@ -105,9 +114,13 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
           <div className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-indigo-500 text-white shadow-md shadow-rose-500/20">
             <Sparkles className="h-5 w-5" />
           </div>
-          <DialogTitle className="text-xl">邮箱验证码登录</DialogTitle>
+          <DialogTitle className="text-xl">
+            {mode === 'add' ? '添加其他账号' : '邮箱验证码登录'}
+          </DialogTitle>
           <DialogDescription>
-            无需记住密码，输入邮箱获取 6 位一次性验证码即可加入社区。
+            {mode === 'add'
+              ? '验证另一个邮箱账号，即可在同一浏览器中随时一键切换身份。'
+              : '无需记住密码，输入邮箱获取 6 位一次性验证码即可加入社区。'}
           </DialogDescription>
         </DialogHeader>
 

@@ -240,8 +240,8 @@ test.describe.serial('动态改版（X.com列表流、点击/收藏/分享直达
       await page.goto('/');
       const leftSidebar = page.locator('aside').first();
       const feedArticle = page.locator('article').filter({ hasText: hotPostTitle }).first();
-      const trendingTitle = page.getByText(/热门话题/).first();
-      const recTitle = page.getByText(/推荐关注/).first();
+      const trendingTitle = page.getByRole('heading', { name: /热门话题/ }).first();
+      const recTitle = page.getByRole('heading', { name: /推荐关注/ }).first();
 
       await expect(leftSidebar).toBeVisible({ timeout: 10000 });
       await expect(feedArticle).toBeVisible({ timeout: 10000 });
