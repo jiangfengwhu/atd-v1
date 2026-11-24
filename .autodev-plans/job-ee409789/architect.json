@@ -1,0 +1,197 @@
+{
+  "ambiguities": [
+    {
+      "id": "AMB-1",
+      "severity": "medium",
+      "title": "存量动态标题与正文的合并拼接规则及无标题摘要展示",
+      "detail": "现有 posts 表存在非空 title 与 content 字段，且通知中心、个人主页评论/回复记录与管理后台均依赖 post_title 展示引用摘要。移除 title 字段并将存量数据合并后，需要明确合并格式与摘要截取规则。",
+      "clarificationSuggestion": "存量迁移时当 title 与 content 均非空则以换行符拼接（trim(title) || char(10) || trim(content)），任一为空则保留非空项，避免出现多余空行；通知、个人互动记录及后台内容管理列表统一取 content 前 60-80 字符作为摘要展示。"
+    },
+    {
+      "id": "AMB-2",
+      "severity": "low",
+      "title": "通知中心首次进入是否自动清除全部未读红点",
+      "detail": "PRD 要求「通知红点点击对应分类就标为已读，不需要一个个点击」。若进入通知页默认选中「全部」即立刻自动标为全部已读，用户将看不到「评论」「点赞」「关注」各分类上的未读红点。",
+      "clarificationSuggestion": "首次进入通知中心时保留各分类未读红点及计数展示，仅在用户主动点击「评论」「点赞」「关注」或「全部」分类标签时，自动将该分类下所有未读通知批量标记为已读，同时保留「全部标为已读」快捷按钮。"
+    },
+    {
+      "id": "AMB-3",
+      "severity": "low",
+      "title": "未登录用户访问「我的关注」Tab 与左侧「收藏」页面的交互表现",
+      "detail": "「我的关注」动态流与「收藏」列表均属于用户强绑定数据，未登录状态下无法查询。",
+      "clarificationSuggestion": "未登录用户切换到「我的关注」Tab 或点击「收藏」导航时，在主内容区展示友好的登录引导卡片（附「立即登录」按钮）或直接触发登录弹窗；同时后端接口严格返回 401 拒绝未授权访问。"
+    },
+    {
+      "id": "AMB-4",
+      "severity": "low",
+      "title": "应用更名为「dev社区」与后台自定义站点名称的兼容性",
+      "detail": "当前站点名称同时存在于前端默认文案、HTML 标题以及数据库 admin_config.site_name 中，管理员可能已在后台自定义过名称。",
+      "clarificationSuggestion": "新建代码默认值全部改为「dev社区」，增量 SQL 迁移仅当 admin_config.site_name 仍为旧默认值「拾光集 · 轻图文社区」时将其更新为「dev社区」，保留管理员自定义站点名称的覆盖能力。"
+    }
+  ],
+  "architectureSummary": "基于现有 Cloudflare Workers + Hono + D1 + Durable Objects（WebSocket 实时推送）+ React/Vite/Tailwind 架构执行增量演进：1）通过原子化增量迁移 0005 合并 posts 表存量 title 与 content 并删除 title 列，同时平滑迁移默认站点名称为「dev社区」；2）扩展 POST /api/posts 为 X.com 风格纯正文发帖并内置正文 #话题 自动解析，扩展 GET /api/posts 支持 sort=following 关注流查询；3）扩展通知接口提供分类型未读统计 unreadByType 与按分类批量已读 POST /api/notifications/read({ type })，并经由现有 Durable Objects WebSocket 通道实时同步多端未读角标；4）前端重构为桌面端视口锁定（h-screen）三栏独立滚动布局与全局隐形滚动条，去除红紫渐变 AI 风格并切换为清爽克制的开发者社区 Slate + Tech Blue 视觉体系，将搜索框移至右栏顶部、顶部「最新/最热/我的关注」升级为同宽吸顶 Tab 栏、动态卡片排布更紧凑，左侧导航新增直达 /bookmarks 的独立收藏页，发布器重构为支持拖拽与剪贴板粘贴图片的 X.com 无标题编辑器。",
+  "techDecisions": [
+    "遵循 RSI Cloudflare D1 迁移规范：绝不修改已应用的 0001-0004 迁移脚本，新增原子化增量脚本 migrations/0005_publish_redesign_and_brand.sql；执行迁移前必须校验 wrangler.toml 的 database_id 配置及 CI 环境 CLOUDFLARE_API_TOKEN 凭据完备性。",
+    "数据库结构演进：0005 迁移先将存量 posts.title 与 posts.content 按换行安全合并（处理空值避免冗余换行），再执行 ALTER TABLE posts DROP COLUMN title 保留全部既有索引，并仅在 admin_config.site_name 为旧默认值时幂等更新为「dev社区」。",
+    "无标题动态与 #话题 统一解析：前后端共用一致的话题提取规则（正则匹配正文中的 #话题，支持中英文/数字/下划线/连字符，单标签上限 20 字符、单帖最多 8 个去重写入 tags_json），天然复用现有热门话题聚合 /api/discover/topics 与标签筛选 /api/posts?tag= 逻辑；卡片与详情正文高亮渲染可点击 #话题，并对未出现在正文中的历史存量标签保留底部兜底展示。",
+    "三栏独立滚动与吸顶架构：移除外层容器破坏 sticky 定位的 overflow-x-hidden，桌面端（md/lg）外层容器固定 h-screen overflow-hidden，左导航栏、中间内容流、右侧发现栏分别作为独立纵向滚动容器（左栏主体 nav 区独立滚动、底部账号菜单外置防裁切），动态区「最新/最热/我的关注」Tab 栏使用 sticky top-0 w-full 吸附在中间滚动容器顶部并与动态卡片严格同宽；通过全局 CSS scrollbar-width: none 与 ::-webkit-scrollbar { display: none } 隐藏全部滚动条。",
+    "去 AI 味开发者社区视觉体系：全面替换现有 rose/fuchsia/indigo 多段渐变与粉色光晕，采用中性浅灰底色（#F8FAFC）+ 纯白卡片 + 细灰描边 + 深石板黑（#0F172A）主操作与科技蓝（#2563EB）高亮交互色，保留点赞红心、收藏琥珀与未读红点等功能语义色；动态列表间距收紧为紧凑间隔（8px-10px）。",
+    "通知分类红点与无竞态批量已读：后端 getNotificationsUnreadByType 汇总 comment/like/follow 分项未读数并随列表、未读统计与 WebSocket 事件下发；前端点击分类 Tab 时串行先完成 POST /api/notifications/read({ type }) 再刷新该分类列表（防止请求乱序回写旧未读态），一键清零对应分类红点并同步左侧导航总未读数。"
+  ],
+  "apiContracts": [
+    {
+      "id": "API-1",
+      "method": "GET",
+      "path": "/api/posts",
+      "summary": "获取动态流列表，新增 sort=following 我的关注流，适配无标题动态模型与默认 dev社区 站点名",
+      "requestSchema": "Query: { q?: string, tag?: string, sort?: 'latest' | 'hot' | 'following', limit?: number(1-50), offset?: number(>=0) }",
+      "responseSchema": "{ posts: Array<{ id, content, imageUrl, tags, likesCount, commentsCount, viewsCount, bookmarksCount, sharesCount, likedByMe, bookmarkedByMe, author, createdAt }>, total: number, siteName: string }",
+      "errorCodes": [
+        "400",
+        "401"
+      ]
+    },
+    {
+      "id": "API-2",
+      "method": "POST",
+      "path": "/api/posts",
+      "summary": "X.com 风格纯正文发布动态，无需 title，自动解析正文 #话题 并合并可选 tags 持久化",
+      "requestSchema": "Body: { content: string(1-5000), imageUrl?: string, tags?: string[] }",
+      "responseSchema": "201 { ok: true, post: { id, content, imageUrl, tags, likesCount, commentsCount, viewsCount, bookmarksCount, sharesCount, likedByMe, bookmarkedByMe, author, createdAt } }",
+      "errorCodes": [
+        "400",
+        "401"
+      ]
+    },
+    {
+      "id": "API-3",
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "summary": "获取当前登录用户的通知总未读数、按分类拆分的未读数及私信未读数",
+      "requestSchema": "Headers: Cookie(session)",
+      "responseSchema": "{ notificationsUnread: number, unreadByType: { comment: number, like: number, follow: number }, messagesUnread: number, totalUnread: number }",
+      "errorCodes": [
+        "401"
+      ]
+    },
+    {
+      "id": "API-4",
+      "method": "GET",
+      "path": "/api/notifications",
+      "summary": "分页按分类获取通知列表并返回分类型未读计数，关联动态摘要改由正文截取",
+      "requestSchema": "Query: { type?: 'all' | 'comment' | 'like' | 'follow', limit?: number(1-50), offset?: number(>=0) }",
+      "responseSchema": "{ notifications: Array<{ id, type, isRead, contentPreview, createdAt, actor, post: { id, content, contentPreview, imageUrl } | null, commentId }>, total: number, unreadCount: number, unreadByType: { comment: number, like: number, follow: number } }",
+      "errorCodes": [
+        "400",
+        "401"
+      ]
+    },
+    {
+      "id": "API-5",
+      "method": "POST",
+      "path": "/api/notifications/read",
+      "summary": "标记通知已读，新增按分类批量已读 { type }，并实时推送最新分项未读计数",
+      "requestSchema": "Body: { all: true } | { ids: string[] } | { type: 'all' | 'comment' | 'like' | 'follow' }",
+      "responseSchema": "{ ok: true, unreadCount: number, unreadByType: { comment: number, like: number, follow: number } }",
+      "errorCodes": [
+        "400",
+        "401"
+      ]
+    },
+    {
+      "id": "API-6",
+      "method": "GET",
+      "path": "/api/users/me/activity",
+      "summary": "供左侧「收藏」独立页面读取当前用户收藏列表（tab=bookmarks），适配无标题动态返回结构与隐私隔离",
+      "requestSchema": "Query: { tab: 'bookmarks' | 'posts' | 'likes' | 'comments' | 'replies', limit?: number(1-50), offset?: number(>=0) }",
+      "responseSchema": "{ tab: string, items: Array<PostItem | CommentActivityItem | ReplyActivityItem>, total: number }",
+      "errorCodes": [
+        "400",
+        "401",
+        "403",
+        "404"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-01",
+      "title": "数据库增量迁移、无标题动态模型与关注流/品牌后端接口改造",
+      "module": "backend/db",
+      "description": "1. 校验 wrangler.toml D1 配置后新增原子化增量迁移 migrations/0005_publish_redesign_and_brand.sql：先将 posts 存量记录的 title 与 content 合并写回 content（避免空值多余空行），再删除 posts.title 列，并幂等将默认 admin_config.site_name 由旧品牌名更新为「dev社区」。2. 更新 src/lib/admin-config.ts 默认站点名为「dev社区」。3. 在 src/lib/validation.ts 新增正文 #话题 提取工具函数 extractHashtagsFromContent。4. 改造 src/routes/posts.ts：POST /api/posts 取消 title 校验、强制校验 content（1-5000字）并自动提取正文 #话题 合并去重写入 tags_json；GET /api/posts 扩展 sort=following（未登录返回 401，已登录通过 user_follows 过滤关注作者并按时间倒序）且搜索仅匹配 content 与 tags_json；移除点赞/评论/详情 SQL 中对 p.title 的引用。5. 同步更新 src/routes/users.ts、src/routes/admin.ts、src/lib/notifications.ts 中所有对 p.title 的 SQL 查询，改用 p.content 截取摘要。",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "历史已发布的动态在升级后标题与正文完整合并显示，原有内容、配图、点赞数与评论数均无丢失",
+        "用户发布新动态时无需填写标题，仅输入正文即可成功发布，正文中以 #话题 形式书写的标签会被自动识别并同步计入对应话题与热门话题榜",
+        "已登录用户在首页切换到「我的关注」后，列表仅展示其已关注作者发布的动态，且按发布时间从新到旧排列",
+        "社区默认站点名称更新为「dev社区」，且不影响管理员在后台自定义站点名称"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-02",
+      "title": "通知分类型未读红点与点击分类一键标为已读",
+      "module": "notifications",
+      "description": "1. 在 src/lib/notifications.ts 新增 getNotificationsUnreadByType 统计 comment/like/follow 三类未读数，并随 GET /api/notifications、GET /api/notifications/unread-count、POST /api/notifications/read 及 WebSocket 推送事件返回 unreadByType。2. 扩展 POST /api/notifications/read 支持 { type: 'all' | 'comment' | 'like' | 'follow' } 参数（非法 type 返回 400），仅更新当前用户对应分类下的未读通知并广播实时同步事件。3. 升级 client/src/components/NotificationsView.tsx、client/src/lib/api.ts 与 realtime.ts：在「全部」「评论」「点赞」「关注」分类标签上展示各自未读红点/角标；用户点击某分类标签且该分类存在未读时，串行先调用分类已读再拉取列表，立即消除该分类红点并同步更新左侧导航总未读角标，同时将点赞/评论通知的动态摘要改为正文节选展示。",
+      "dependsOn": [
+        "T-01"
+      ],
+      "acceptanceCriteria": [
+        "用户收到新的评论、点赞或关注提醒后，进入通知中心可在对应的「评论」「点赞」「关注」分类标签上直观看到未读红点提示",
+        "用户直接点击「评论」「点赞」或「关注」任一分类标签后，该分类下的所有未读提醒立即批量标为已读且该分类红点消失，无需逐条点开",
+        "点击某一分类标为已读时，其他尚未查看的分类红点保持可见，左侧导航栏通知总未读角标同步扣减；全部查看完毕后总未读角标清零消失",
+        "通知中心列表中的动态摘要展示正文节选，点击通知条目仍可正常打开对应动态详情或访问用户主页"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-03",
+      "title": "首页三栏独立滚动布局、dev社区品牌升级、吸顶Tab栏、右侧搜索与配色紧凑视觉重塑",
+      "module": "layout/theme",
+      "description": "1. 在 client/src/index.css 添加全局隐藏滚动条样式（html/body/* 设置 scrollbar-width: none 与 ::-webkit-scrollbar display: none），保持平滑滚动。2. 重构 client/src/pages/CommunityPage.tsx 与 DiscoverSidebar.tsx 桌面端三栏布局：移除破坏 sticky 的外层 overflow-x-hidden，桌面端采用视口高度三栏容器（md:h-screen md:overflow-hidden），使左侧导航区、中间动态流、右侧发现栏各自独立纵向滚动互不带动（左栏底部账号菜单独立挂载防止被裁切）。3. 将 client/index.html、CommunityPage.tsx、AdminPage.tsx 默认品牌名改为「dev社区」，彻底删除首页「轻图文 · 慢生活灵感角落」与「把日常瞬间写成光」Hero 区块。4. 将「最新」「最热」升级为全宽 X.com 风格吸顶 Tab 栏并新增「我的关注」Tab，宽度与动态栏完全一致，滚动时吸附在动态区顶部；未登录点击「我的关注」展示友好登录引导。5. 将搜索框迁移至右侧发现栏顶部（热门话题卡片上方），保留移动端紧凑搜索入口。6. 全站去除红紫渐变（rose/fuchsia/indigo）AI 味配色，统一为清爽克制的开发者社区中性 Slate + Tech Blue（#2563EB / #0F172A）主题；收紧动态卡片上下间距与内边距。",
+      "dependsOn": [
+        "T-01"
+      ],
+      "acceptanceCriteria": [
+        "桌面端首页呈三栏布局，用户上下滚动中间动态流时，左侧导航栏与右侧发现栏保持原地不动，且三栏各自可独立上下滚动",
+        "站点名称在浏览器标题与导航栏显示为「dev社区」，原「轻图文 · 慢生活灵感角落」与「把日常瞬间写成光」内容块已彻底删除",
+        "动态流顶部展示「最新」「最热」「我的关注」三项切换标签，整体宽度与下方动态卡片宽度一致，向下浏览动态时标签栏吸附固定在顶部",
+        "搜索框位于右侧导航栏顶部（热门话题上方），用户输入关键词并回车后可即时筛选中间动态流",
+        "全站界面采用清爽克制的开发者社区配色，彻底去除原有红紫渐变视觉风格，页面与弹窗内所有滚动区域均隐藏滚动条外观，动态卡片上下排列更加紧凑"
+      ],
+      "estimatedComplexity": "L"
+    },
+    {
+      "id": "T-04",
+      "title": "左侧导航栏新增「收藏」Tab 与专属收藏页面",
+      "module": "bookmarks",
+      "description": "1. 在 CommunityPage.tsx 左侧主导航栏与移动端底部导航栏新增「收藏」Tab（使用 Bookmark 图标），支持点击直接跳转至 /bookmarks 路由与浏览器前进后退同步。2. 新建 client/src/components/BookmarksView.tsx 专属收藏页，调用 GET /api/users/me/activity?tab=bookmarks 加载当前用户收藏动态列表，支持查看详情、点赞、分享、点击正文 #话题 跳转筛选，以及直接取消收藏后即时移出列表并同步动态流状态。3. 未登录访问 /bookmarks 展示登录引导卡片；切换或退出账号时正确刷新或回退视图；保留个人主页原有「收藏」Tab 兼容。",
+      "dependsOn": [
+        "T-01",
+        "T-03"
+      ],
+      "acceptanceCriteria": [
+        "左侧导航栏与移动端底部导航均新增「收藏」入口，已登录用户点击后直接进入专属收藏页面展示自己收藏的全部动态",
+        "用户在收藏页面可直接取消收藏某条动态，该动态会立即从收藏列表中移除，并同步更新动态的收藏状态",
+        "未登录用户点击「收藏」入口时，页面引导用户登录，不会展示其他用户的私人收藏内容"
+      ],
+      "estimatedComplexity": "S"
+    },
+    {
+      "id": "T-05",
+      "title": "X.com 风格无标题发布器（拖拽/粘贴配图与正文 #话题 实时解析渲染）",
+      "module": "compose/feed",
+      "description": "1. 抽离通用无标题发布组件 client/src/components/PostComposer.tsx，同时用于首页动态流顶部快捷发布框与左侧按钮触发的 ComposeDialog.tsx：移除标题输入框与独立自定义标签表单，仅保留正文输入框、实时提取的 #话题 预览胶囊、本地选图与裁剪编辑。2. 为发布器实现拖拽图片（dragenter/dragover/dragleave/drop 高亮提示与文件校验）与剪贴板粘贴图片（onPaste 拦截图片文件自动预览并保留纯文本正常粘贴），支持超过 2MB 提示裁剪或拒绝非图片文件，并支持 Ctrl/Cmd+Enter 快捷发布。3. 改造 PostCard.tsx、PostDetailDialog.tsx、ProfileView.tsx 与 AdminPage.tsx：取消标题行展示，正文内联高亮渲染可点击的 #话题 令牌（点击触发话题筛选），并对未出现在正文中的历史标签保留紧凑兜底标签展示；无图详情页、评论记录与管理后台均改为基于正文摘要渲染。",
+      "dependsOn": [
+        "T-01",
+        "T-03"
+      ],
+      "acceptanceCriteria": [
+        "用户在首页顶部快捷发布区或点击发布按钮打开的发布窗中创作动态时，仅需填写正文，界面不存在标题输入框",
+        "用户将图片文件拖拽到发布区域，或复制/截图图片后直接在输入框内粘贴时，界面立即识别并展示配图预览，支持裁剪或移除后随动态一起发布",
+        "用户在正文中直接输入 #话题 即可添加话题标签，发布后动态卡片与详情页会高亮展示正文中的话题，点击任意话题可直接按该话题筛选动态"
+      ],
+      "estimatedComplexity": "M"
+    }
+  ]
+}
