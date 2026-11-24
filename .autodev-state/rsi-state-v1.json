@@ -1201,7 +1201,34 @@
       "relatedRunId": "run-aec3b8f5",
       "branch": "main",
       "occurredAt": "2026-11-24T02:52:46.687Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "build_typecheck",
+        "rootCauseSummary": "生产环境构建失败，日志显示 vite build 在执行过程中无输出异常中断，通常由构建内存超限或依赖解析环境差异导致。",
+        "shouldCodifyAsRule": true,
+        "decisionRationale": "Decision 门控收入「待观察候选池」（通用性 71% · 泛化评分 1.85/3.0）：暂不占用注入预算，同类问题复发 ≥ 2 次或人工转正后自动生效。 构建环节在 CI 环境中静默失败是高频且可预防的工程问题，通过在构建命令中加入内存监控和更详细的错误捕获，可以大幅提升排障效率。",
+        "confidence": 0.71,
+        "suggestedRule": {
+          "title": "前端构建异常捕获规范",
+          "targetStage": "coding",
+          "severity": "recommended",
+          "promptDirective": "执行前端构建时，必须在命令中增加 --debug 或配置 Node.js 内存限制（如 NODE_OPTIONS=--max-old-space-size=4096），并在失败时自动输出构建时的环境变量与系统资源占用信息，以便准确定位 OOM 或依赖解析异常。",
+          "dedupeKey": "frontend-build-diagnostic-capture"
+        },
+        "decisionGate": {
+          "model": "gemini-decision-1",
+          "generalizableProb": 0.712,
+          "duplicateProb": 0.3637,
+          "generalityScore": 1.846,
+          "chosenAction": "merge_existing",
+          "actionConfidence": 0.4284,
+          "evaluatedAt": "2026-11-24T02:52:57.886Z"
+        },
+        "appliedOutcome": "candidate_created",
+        "analyzedAt": "2026-11-24T02:52:57.886Z",
+        "model": "gemini-3.1-flash-lite + gemini-decision-1",
+        "generatedRuleId": "rsi-5987d72c"
+      }
     },
     {
       "id": "inc-1903069d",
@@ -1607,6 +1634,23 @@
     }
   ],
   "rules": [
+    {
+      "id": "rsi-5987d72c",
+      "dedupeKey": "frontend-build-diagnostic-capture",
+      "title": "前端构建异常捕获规范",
+      "targetStage": "coding",
+      "severity": "recommended",
+      "status": "candidate",
+      "promptDirective": "执行前端构建时，必须在命令中增加 --debug 或配置 Node.js 内存限制（如 NODE_OPTIONS=--max-old-space-size=4096），并在失败时自动输出构建时的环境变量与系统资源占用信息，以便准确定位 OOM 或依赖解析异常。",
+      "rootCauseCategory": "build_typecheck",
+      "sourceIncidentIds": [
+        "inc-1ea9e5c4"
+      ],
+      "hitCount": 1,
+      "appliedCount": 0,
+      "createdAt": "2026-11-24T02:52:57.886Z",
+      "updatedAt": "2026-11-24T02:52:57.886Z"
+    },
     {
       "id": "rsi-ee034fd2",
       "dedupeKey": "frontend-build-dependency-declaration",
