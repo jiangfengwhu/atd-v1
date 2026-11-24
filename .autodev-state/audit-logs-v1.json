@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-5e0b0bbb",
+    "timestamp": "2026-11-24T02:45:07.085Z",
+    "category": "approval",
+    "action": "release_approved",
+    "label": "验收通过并批准上线",
+    "actor": "验收审批人",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-aec3b8f5",
+    "prdTitle": "发布功能优化+bugfix",
+    "branch": "autodev/feat-20261124-021727",
+    "prNumber": 13,
+    "status": "success",
+    "detail": "验收通过并合入 main（Commit 9fc1083）（生产自动部署异常：Command failed: npm install --include=dev --no-audit --no-fund\nnpm warn config production Use `--omit=dev` instead.）"
+  },
+  {
     "id": "aud-ccc56c75",
     "timestamp": "2026-11-24T02:17:56.076Z",
     "category": "execution",
