@@ -1,0 +1,8 @@
+{
+  "branchName": "autodev/feat-20261124-021727",
+  "prNumber": 13,
+  "e2eTestPath": "tests/e2e/run-aec3b8f5.spec.ts",
+  "e2eVaultPath": ".autodev-e2e-vault/run-aec3b8f5/e2e.spec.ts",
+  "prTitle": "[AutoDev Spec] 发布功能优化+bugfix",
+  "createdAt": "2026-11-24T02:17:32.753Z"
+}
