@@ -9,7 +9,9 @@ import {
   Check,
 } from 'lucide-react';
 import type { PostItem } from '@/lib/api';
+import { extractHashtagsFromContent } from '@/lib/hashtags';
 import { AvatarBadge } from '@/components/AvatarBadge';
+import { HashtagText } from '@/components/HashtagText';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
 interface PostCardProps {
@@ -34,6 +36,12 @@ export function PostCard({
   const [imgError, setImgError] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
 
+  const fallbackTags = React.useMemo(() => {
+    if (!post.tags || post.tags.length === 0) return [];
+    const inlineSet = new Set(extractHashtagsFromContent(post.content));
+    return post.tags.filter((t) => !inlineSet.has(t));
+  }, [post.content, post.tags]);
+
   const handleShareClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!onShare) return;
@@ -45,9 +53,9 @@ export function PostCard({
   return (
     <article
       onClick={() => onOpen(post.id)}
-      className="group cursor-pointer rounded-3xl border border-zinc-200/80 bg-white p-4 sm:p-5 shadow-card transition-all duration-200 hover:border-zinc-300/90 hover:shadow-soft"
+      className="group cursor-pointer rounded-2xl border border-slate-200/80 bg-white px-4 py-3.5 shadow-card transition-all duration-150 hover:border-slate-300/90 hover:shadow-soft"
     >
-      <div className="flex gap-3 sm:gap-3.5">
+      <div className="flex gap-3">
         {/* Left Avatar Gutter (X.com timeline style) */}
         <button
           type="button"
@@ -69,7 +77,7 @@ export function PostCard({
         </button>
 
         {/* Right Timeline Content Column */}
-        <div className="min-w-0 flex-1 space-y-2.5">
+        <div className="min-w-0 flex-1 space-y-2">
           {/* Author + Timestamp */}
           <div className="flex items-center justify-between gap-2">
             <button
@@ -80,31 +88,26 @@ export function PostCard({
                   onOpenAuthor(post.author.id);
                 }
               }}
-              className="flex min-w-0 items-center gap-2 text-left hover:opacity-80 transition-opacity"
+              className="flex min-w-0 items-center gap-2 text-left transition-opacity hover:opacity-80"
             >
-              <span className="truncate text-sm font-bold text-zinc-900">
+              <span className="truncate text-sm font-bold text-slate-900">
                 {post.author.nickname}
               </span>
-              <span className="shrink-0 text-xs text-zinc-400">
+              <span className="shrink-0 text-xs text-slate-400">
                 · {formatRelativeTime(post.createdAt)}
               </span>
             </button>
           </div>
 
-          {/* Post Title & Body */}
-          <div className="space-y-1.5">
-            <h3 className="text-[15px] sm:text-base font-bold leading-snug text-zinc-900 group-hover:text-rose-600 transition-colors">
-              {post.title}
-            </h3>
-            <p className="line-clamp-4 whitespace-pre-wrap text-[13px] sm:text-sm leading-relaxed text-zinc-600">
-              {post.content}
-            </p>
-          </div>
+          {/* Post Body with inline clickable #hashtags */}
+          <p className="line-clamp-5 whitespace-pre-wrap text-[14px] leading-relaxed text-slate-800">
+            <HashtagText content={post.content} onSelectTag={onSelectTag} />
+          </p>
 
-          {/* Tags */}
-          {post.tags.length > 0 && (
+          {/* Fallback Tags (for legacy posts whose tags weren't written inline) */}
+          {fallbackTags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {post.tags.slice(0, 4).map((tag) => (
+              {fallbackTags.slice(0, 4).map((tag) => (
                 <button
                   key={tag}
                   type="button"
@@ -114,7 +117,7 @@ export function PostCard({
                       onSelectTag(tag, e);
                     }
                   }}
-                  className="inline-flex items-center gap-0.5 rounded-full bg-rose-50/90 px-2.5 py-0.5 text-[11px] font-semibold text-rose-600 transition hover:bg-rose-100"
+                  className="inline-flex items-center gap-0.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-blue-600 transition hover:bg-blue-50"
                 >
                   <Hash className="h-2.5 w-2.5" />
                   {tag}
@@ -125,19 +128,19 @@ export function PostCard({
 
           {/* Media Image */}
           {post.imageUrl && !imgError && (
-            <div className="overflow-hidden rounded-2xl border border-zinc-100 bg-zinc-100">
+            <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-100">
               <img
                 src={post.imageUrl}
-                alt={post.title}
+                alt={post.content.slice(0, 40) || '动态配图'}
                 loading="lazy"
                 onError={() => setImgError(true)}
-                className="w-full max-h-[420px] object-cover transition-transform duration-500 group-hover:scale-[1.015]"
+                className="w-full max-h-[400px] object-cover transition-transform duration-300 group-hover:scale-[1.01]"
               />
             </div>
           )}
 
           {/* X.com Style Bottom Action Bar */}
-          <div className="flex items-center justify-between pt-1.5 text-xs text-zinc-400">
+          <div className="flex items-center justify-between pt-0.5 text-xs text-slate-400">
             <button
               type="button"
               onClick={(e) => {
@@ -145,7 +148,7 @@ export function PostCard({
                 onOpen(post.id);
               }}
               aria-label="评论"
-              className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors hover:bg-sky-50 hover:text-sky-600"
+              className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors hover:bg-blue-50 hover:text-blue-600"
             >
               <MessageCircle className="h-4 w-4" />
               <span className="tabular-nums">{post.commentsCount}</span>
@@ -186,9 +189,9 @@ export function PostCard({
             </button>
 
             <span
-              title="点击数"
-              aria-label={`点击 ${post.viewsCount ?? 0}`}
-              className="inline-flex items-center gap-1.5 px-2 py-1 text-zinc-400"
+              title="浏览数"
+              aria-label={`浏览 ${post.viewsCount ?? 0}`}
+              className="inline-flex items-center gap-1.5 px-2 py-1 text-slate-400"
             >
               <Eye className="h-4 w-4" />
               <span className="tabular-nums">{post.viewsCount ?? 0}</span>
@@ -202,7 +205,7 @@ export function PostCard({
                 'inline-flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors',
                 copied
                   ? 'bg-emerald-50 text-emerald-600 font-semibold'
-                  : 'hover:bg-indigo-50 hover:text-indigo-600'
+                  : 'hover:bg-blue-50 hover:text-blue-600'
               )}
             >
               {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}

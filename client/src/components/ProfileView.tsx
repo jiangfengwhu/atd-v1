@@ -311,8 +311,8 @@ export function ProfileView({
   return (
     <div className="space-y-6">
       {/* Profile Header Card */}
-      <section className="overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-card">
-        <div className="h-24 bg-gradient-to-r from-rose-100 via-fuchsia-100 to-indigo-100" />
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card">
+        <div className="h-24 bg-gradient-to-r from-slate-100 via-blue-50 to-slate-100" />
         <div className="px-6 pb-6">
           <div className="-mt-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-end gap-4">
@@ -327,7 +327,7 @@ export function ProfileView({
                 {profile.isSelf && (
                   <label
                     title="更换头像"
-                    className="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 shadow-sm transition hover:bg-rose-50 hover:text-rose-600"
+                    className="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-blue-50 hover:text-blue-600"
                   >
                     {uploadingAvatar ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -422,22 +422,22 @@ export function ProfileView({
             <button
               type="button"
               onClick={() => handleOpenFollows('following')}
-              className="flex items-baseline gap-1.5 hover:text-rose-600 transition-colors"
+              className="flex items-baseline gap-1.5 hover:text-blue-600 transition-colors"
             >
-              <span className="font-bold text-zinc-900 tabular-nums">
+              <span className="font-bold text-slate-900 tabular-nums">
                 {profile.followingCount}
               </span>
-              <span className="text-xs text-zinc-500">关注</span>
+              <span className="text-xs text-slate-500">关注</span>
             </button>
             <button
               type="button"
               onClick={() => handleOpenFollows('followers')}
-              className="flex items-baseline gap-1.5 hover:text-rose-600 transition-colors"
+              className="flex items-baseline gap-1.5 hover:text-blue-600 transition-colors"
             >
-              <span className="font-bold text-zinc-900 tabular-nums">
+              <span className="font-bold text-slate-900 tabular-nums">
                 {profile.followersCount}
               </span>
-              <span className="text-xs text-zinc-500">粉丝</span>
+              <span className="text-xs text-slate-500">粉丝</span>
             </button>
           </div>
         </div>
@@ -496,8 +496,8 @@ export function ProfileView({
         </Tabs.List>
 
         {tabLoading ? (
-          <div className="flex h-48 items-center justify-center rounded-3xl border border-zinc-200/70 bg-white">
-            <Loader2 className="h-6 w-6 animate-spin text-rose-500" />
+          <div className="flex h-48 items-center justify-center rounded-2xl border border-slate-200/70 bg-white">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
           </div>
         ) : tabError ? (
           <div className="flex flex-col items-center justify-center rounded-3xl border border-red-100 bg-white py-12 text-center">
@@ -592,15 +592,15 @@ export function ProfileView({
                     <li
                       key={item.id}
                       onClick={() => onOpenPost(item.postId)}
-                      className="cursor-pointer rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm transition hover:border-rose-200 hover:shadow-card"
+                      className="cursor-pointer rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-card"
                     >
-                      <div className="flex items-center justify-between gap-2 text-xs text-zinc-400">
-                        <span className="font-medium text-zinc-600 truncate">
-                          评论了帖子：《{item.postTitle}》
+                      <div className="flex items-center justify-between gap-2 text-xs text-slate-400">
+                        <span className="font-medium text-slate-600 truncate">
+                          评论了动态：{item.postContentPreview}
                         </span>
                         <span className="shrink-0">{formatRelativeTime(item.createdAt)}</span>
                       </div>
-                      <p className="mt-2 text-sm text-zinc-800 whitespace-pre-wrap">
+                      <p className="mt-2 text-sm text-slate-800 whitespace-pre-wrap">
                         {item.content}
                       </p>
                     </li>
@@ -611,16 +611,16 @@ export function ProfileView({
 
             <Tabs.Content value="replies">
               {repliesItems.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-zinc-300/80 bg-white/70 py-14 text-center text-sm text-zinc-400">
+                <div className="rounded-2xl border border-dashed border-slate-300/80 bg-white/70 py-14 text-center text-sm text-slate-400">
                   还没有回复记录
                 </div>
               ) : (
-                <ul className="space-y-3">
+                <ul className="space-y-2.5">
                   {repliesItems.map((item) => (
                     <li
                       key={item.id}
                       onClick={() => onOpenPost(item.postId)}
-                      className="cursor-pointer rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm transition hover:border-rose-200 hover:shadow-card"
+                      className="cursor-pointer rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-card"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
@@ -628,8 +628,8 @@ export function ProfileView({
                             className={cn(
                               'inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
                               item.direction === 'sent'
-                                ? 'bg-indigo-50 text-indigo-600'
-                                : 'bg-rose-50 text-rose-600'
+                                ? 'bg-blue-50 text-blue-600'
+                                : 'bg-emerald-50 text-emerald-600'
                             )}
                           >
                             {item.direction === 'sent' ? (
@@ -639,24 +639,24 @@ export function ProfileView({
                             )}
                             {item.direction === 'sent' ? '发出回复' : '收到回复'}
                           </span>
-                          <span className="truncate text-xs font-medium text-zinc-700">
+                          <span className="truncate text-xs font-medium text-slate-700">
                             {item.author.nickname}
                             {item.replyToUser ? ` 回复 @${item.replyToUser.nickname}` : ''}
                           </span>
                         </div>
-                        <span className="shrink-0 text-xs text-zinc-400">
+                        <span className="shrink-0 text-xs text-slate-400">
                           {formatRelativeTime(item.createdAt)}
                         </span>
                       </div>
 
-                      <p className="mt-2 text-sm text-zinc-800 whitespace-pre-wrap">
+                      <p className="mt-2 text-sm text-slate-800 whitespace-pre-wrap">
                         {item.content}
                       </p>
 
-                      <div className="mt-2.5 rounded-xl bg-zinc-50 px-3 py-2 text-xs text-zinc-500">
+                      <div className="mt-2.5 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">
                         <span className="line-clamp-1">原评论：{item.parentCommentContent}</span>
-                        <span className="mt-0.5 block font-medium text-zinc-600 truncate">
-                          来源帖子：《{item.postTitle}》
+                        <span className="mt-0.5 block font-medium text-slate-600 truncate">
+                          来源动态：{item.postContentPreview}
                         </span>
                       </div>
                     </li>

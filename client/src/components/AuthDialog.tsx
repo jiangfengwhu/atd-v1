@@ -111,7 +111,7 @@ export function AuthDialog({ open, mode = 'login', onOpenChange, onSuccess }: Au
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <div className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-indigo-500 text-white shadow-md shadow-rose-500/20">
+          <div className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm">
             <Sparkles className="h-5 w-5" />
           </div>
           <DialogTitle className="text-xl">
@@ -164,7 +164,7 @@ export function AuthDialog({ open, mode = 'login', onOpenChange, onSuccess }: Au
             <div className="flex items-center justify-between rounded-2xl border border-dashed border-amber-300 bg-amber-50/80 px-3.5 py-2.5 text-xs text-amber-900">
               <div>
                 <span className="font-semibold">本地调试验证码：</span>
-                <code className="rounded bg-white px-2 py-0.5 font-mono text-sm font-bold text-rose-600">
+                <code className="rounded bg-white px-2 py-0.5 font-mono text-sm font-bold text-blue-600">
                   {devCode}
                 </code>
               </div>

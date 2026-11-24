@@ -37,6 +37,43 @@ export function isValidImageUrl(url: string): boolean {
   }
 }
 
+const HASHTAG_PATTERN = /(?:^|(?<![a-zA-Z0-9_/]))#([\u4e00-\u9fa5a-zA-Z0-9_-]+)/g;
+
+export function extractHashtagsFromContent(content: string): string[] {
+  if (!content) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  HASHTAG_PATTERN.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = HASHTAG_PATTERN.exec(content)) !== null) {
+    const clean = match[1].trim().slice(0, 20);
+    if (!clean || seen.has(clean)) continue;
+    seen.add(clean);
+    out.push(clean);
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
+export function mergePostTags(content: string, extraTags: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const tag of [...extractHashtagsFromContent(content), ...extraTags]) {
+    const clean = tag.trim().replace(/^#+/, '').slice(0, 20);
+    if (!clean || seen.has(clean)) continue;
+    seen.add(clean);
+    out.push(clean);
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
+export function makeContentPreview(content: string, maxLength = 80): string {
+  const normalized = content.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength)}...`;
+}
+
 export function sanitizeTags(raw: unknown): string[] | null {
   if (raw === undefined || raw === null) return [];
   if (!Array.isArray(raw)) return null;

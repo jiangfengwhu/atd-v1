@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {
   Search,
-  Sparkles,
+  Terminal,
   Plus,
   Flame,
   Clock,
@@ -19,6 +19,8 @@ import {
   Check,
   UserPlus,
   X,
+  Bookmark,
+  Users,
 } from 'lucide-react';
 import {
   api,
@@ -32,7 +34,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { PostCard } from '@/components/PostCard';
+import { PostComposer } from '@/components/PostComposer';
 import { DiscoverSidebar } from '@/components/DiscoverSidebar';
+import { BookmarksView } from '@/components/BookmarksView';
 import { AuthDialog } from '@/components/AuthDialog';
 import { ComposeDialog } from '@/components/ComposeDialog';
 import { PostDetailDialog } from '@/components/PostDetailDialog';
@@ -42,9 +46,8 @@ import { MessagesView } from '@/components/MessagesView';
 import { NotificationsView } from '@/components/NotificationsView';
 import { cn } from '@/lib/utils';
 
-const FEATURED_TAGS = ['日常碎碎念', '摄影美学', '好物分享', '咖啡时光', '数码桌搭', '城市漫步'];
-
-type ActiveNav = 'feed' | 'notifications' | 'messages' | 'profile';
+type ActiveNav = 'feed' | 'bookmarks' | 'notifications' | 'messages' | 'profile';
+type FeedSort = 'latest' | 'hot' | 'following';
 
 interface RouteState {
   view: ActiveNav;
@@ -53,6 +56,9 @@ interface RouteState {
 }
 
 function parsePathname(pathname: string): RouteState {
+  if (pathname === '/bookmarks') {
+    return { view: 'bookmarks', profileUserId: null, detailPostId: null };
+  }
   if (pathname === '/notifications') {
     return { view: 'notifications', profileUserId: null, detailPostId: null };
   }
@@ -83,7 +89,7 @@ export function CommunityPage() {
   const [user, setUser] = React.useState<UserProfile | null>(null);
   const [accounts, setAccounts] = React.useState<AccountSummary[]>([]);
   const [authLoaded, setAuthLoaded] = React.useState(false);
-  const [siteName, setSiteName] = React.useState('拾光集 · 轻图文社区');
+  const [siteName, setSiteName] = React.useState('dev社区');
   const [posts, setPosts] = React.useState<PostItem[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
@@ -97,12 +103,13 @@ export function CommunityPage() {
   const [messagesUnread, setMessagesUnread] = React.useState(0);
   const [notificationsUnread, setNotificationsUnread] = React.useState(0);
   const [profileRefreshKey, setProfileRefreshKey] = React.useState(0);
+  const [bookmarksRefreshKey, setBookmarksRefreshKey] = React.useState(0);
   const [discoverRefreshKey, setDiscoverRefreshKey] = React.useState(0);
 
   const [searchInput, setSearchInput] = React.useState('');
   const [activeQuery, setActiveQuery] = React.useState('');
   const [activeTag, setActiveTag] = React.useState('');
-  const [sort, setSort] = React.useState<'latest' | 'hot'>('latest');
+  const [sort, setSort] = React.useState<FeedSort>('latest');
 
   const [authOpen, setAuthOpen] = React.useState(false);
   const [authMode, setAuthMode] = React.useState<'login' | 'add'>('login');
@@ -132,6 +139,7 @@ export function CommunityPage() {
 
   const getBasePathForView = React.useCallback(
     (nav: ActiveNav, profileId: string | null, currentUserId?: string) => {
+      if (nav === 'bookmarks') return '/bookmarks';
       if (nav === 'notifications') return '/notifications';
       if (nav === 'messages') return '/messages';
       if (nav === 'profile') {
@@ -211,6 +219,17 @@ export function CommunityPage() {
   }, [loadUnreadSummary]);
 
   const loadPosts = React.useCallback(async () => {
+    if (sort === 'following') {
+      if (!authLoaded) return;
+      if (!user?.id) {
+        setPosts([]);
+        setTotal(0);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -232,7 +251,7 @@ export function CommunityPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeQuery, activeTag, sort]);
+  }, [activeQuery, activeTag, sort, authLoaded, user?.id]);
 
   React.useEffect(() => {
     loadUser();
@@ -295,6 +314,13 @@ export function CommunityPage() {
     syncUrl('/');
   };
 
+  const goBookmarks = () => {
+    setActiveNav('bookmarks');
+    setViewingUserId(null);
+    setAccountMenuOpen(false);
+    syncUrl('/bookmarks');
+  };
+
   const goNotifications = () => {
     setAccountMenuOpen(false);
     if (!user) {
@@ -345,9 +371,28 @@ export function CommunityPage() {
     syncUrl(user && targetId === user.id ? '/profile' : `/users/${encodeURIComponent(targetId)}`);
   };
 
+  const handleSearchInputChange = (val: string) => {
+    setSearchInput(val);
+    if (!val.trim() && activeQuery) {
+      setActiveQuery('');
+    }
+  };
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setActiveQuery(searchInput.trim());
+    if (activeNav !== 'feed') {
+      goFeed();
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setActiveQuery('');
+  };
+
+  const handleSelectTagFromAnyView = (tag: string) => {
+    setActiveTag((prev) => (prev === tag ? '' : tag));
     if (activeNav !== 'feed') {
       goFeed();
     }
@@ -359,6 +404,13 @@ export function CommunityPage() {
       return;
     }
     setComposeOpen(true);
+  };
+
+  const handlePostCreated = (newPost: PostItem) => {
+    setPosts((prev) => [newPost, ...prev]);
+    setTotal((t) => t + 1);
+    setProfileRefreshKey((k) => k + 1);
+    setDiscoverRefreshKey((k) => k + 1);
   };
 
   const handleToggleLike = async (postId: string, e: React.MouseEvent) => {
@@ -397,6 +449,7 @@ export function CommunityPage() {
             : p
         )
       );
+      setBookmarksRefreshKey((k) => k + 1);
       setProfileRefreshKey((k) => k + 1);
       setDiscoverRefreshKey((k) => k + 1);
     } catch (err) {
@@ -434,9 +487,9 @@ export function CommunityPage() {
     setAccounts(nextAccounts);
     setMessagePeerId(null);
     loadUnreadSummary(nextUser);
-    loadPosts();
     setDiscoverRefreshKey((k) => k + 1);
     setProfileRefreshKey((k) => k + 1);
+    setBookmarksRefreshKey((k) => k + 1);
 
     if (!nextUser) {
       if (
@@ -492,18 +545,13 @@ export function CommunityPage() {
     viewingUserId === 'me' ? user?.id ?? null : viewingUserId;
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] relative overflow-x-hidden">
-      {/* Subtle decorative pastel gradient backdrop */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 top-0 -z-0 h-[420px] bg-[radial-gradient(ellipse_at_top_left,_rgba(244,63,94,0.10),_transparent_50%),radial-gradient(ellipse_at_top_right,_rgba(99,102,241,0.10),_transparent_50%)]"
-      />
-
-      {/* Centered Compact Shell (Xiaohongshu / X style) */}
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1320px] flex-col md:flex-row md:gap-6 md:px-6 lg:gap-8 lg:px-8">
+    <div className="min-h-screen md:h-screen md:overflow-hidden bg-[#F8FAFC] text-slate-900">
+      {/* Three-Column Independent Scroll Shell */}
+      <div className="mx-auto flex min-h-screen md:h-full w-full max-w-[1320px] flex-col md:flex-row md:gap-5 md:px-6 lg:gap-7 lg:px-8">
         {/* Desktop Left Sidebar — Zero /admin links */}
-        <aside className="hidden md:flex md:w-[232px] md:shrink-0 md:flex-col md:justify-between sticky top-0 z-30 h-screen py-6">
-          <div className="space-y-6">
+        <aside className="hidden md:flex md:w-[232px] md:shrink-0 md:h-full md:flex-col md:justify-between py-5">
+          {/* Scrollable Top Navigation Section */}
+          <div className="min-h-0 flex-1 overflow-y-auto space-y-5 pr-1">
             {/* Brand */}
             <button
               type="button"
@@ -511,52 +559,69 @@ export function CommunityPage() {
                 setSearchInput('');
                 setActiveQuery('');
                 setActiveTag('');
+                setSort('latest');
                 goFeed();
               }}
-              className="flex w-full items-center gap-2.5 px-3 py-1 text-left transition-opacity hover:opacity-90"
+              className="flex w-full items-center gap-2.5 px-3 py-1 text-left transition-opacity hover:opacity-85"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-fuchsia-500 to-indigo-500 text-white shadow-sm">
-                <Sparkles className="h-4 w-4" />
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+                <Terminal className="h-4 w-4" />
               </span>
-              <span className="truncate text-base font-extrabold tracking-tight text-zinc-900">
+              <span className="truncate text-base font-extrabold tracking-tight text-slate-900">
                 {siteName}
               </span>
             </button>
 
             {/* Primary Navigation */}
-            <nav aria-label="主导航" className="space-y-1.5">
+            <nav aria-label="主导航" className="space-y-1">
               <button
                 type="button"
                 onClick={goFeed}
                 className={cn(
-                  'flex w-full items-center gap-3.5 rounded-full px-4 py-3 text-[15px] font-semibold transition',
+                  'flex w-full items-center gap-3.5 rounded-full px-4 py-2.5 text-[15px] font-semibold transition',
                   activeNav === 'feed'
-                    ? 'bg-white text-zinc-950 shadow-sm ring-1 ring-zinc-200/80 font-bold'
-                    : 'text-zinc-600 hover:bg-white/75 hover:text-zinc-900'
+                    ? 'bg-white text-slate-950 shadow-card ring-1 ring-slate-200/80 font-bold'
+                    : 'text-slate-600 hover:bg-white/80 hover:text-slate-900'
                 )}
               >
-                <Compass className={cn('h-5 w-5', activeNav === 'feed' && 'text-rose-500')} />
+                <Compass className={cn('h-5 w-5', activeNav === 'feed' && 'text-blue-600')} />
                 <span>动态</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={goBookmarks}
+                className={cn(
+                  'flex w-full items-center gap-3.5 rounded-full px-4 py-2.5 text-[15px] font-semibold transition',
+                  activeNav === 'bookmarks'
+                    ? 'bg-white text-slate-950 shadow-card ring-1 ring-slate-200/80 font-bold'
+                    : 'text-slate-600 hover:bg-white/80 hover:text-slate-900'
+                )}
+              >
+                <Bookmark
+                  className={cn('h-5 w-5', activeNav === 'bookmarks' && 'text-blue-600')}
+                />
+                <span>收藏</span>
               </button>
 
               <button
                 type="button"
                 onClick={goNotifications}
                 className={cn(
-                  'flex w-full items-center justify-between rounded-full px-4 py-3 text-[15px] font-semibold transition',
+                  'flex w-full items-center justify-between rounded-full px-4 py-2.5 text-[15px] font-semibold transition',
                   activeNav === 'notifications'
-                    ? 'bg-white text-zinc-950 shadow-sm ring-1 ring-zinc-200/80 font-bold'
-                    : 'text-zinc-600 hover:bg-white/75 hover:text-zinc-900'
+                    ? 'bg-white text-slate-950 shadow-card ring-1 ring-slate-200/80 font-bold'
+                    : 'text-slate-600 hover:bg-white/80 hover:text-slate-900'
                 )}
               >
                 <span className="flex items-center gap-3.5">
                   <Bell
-                    className={cn('h-5 w-5', activeNav === 'notifications' && 'text-rose-500')}
+                    className={cn('h-5 w-5', activeNav === 'notifications' && 'text-blue-600')}
                   />
                   <span>通知</span>
                 </span>
                 {notificationsUnread > 0 && (
-                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-white">
+                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white">
                     {notificationsUnread > 99 ? '99+' : notificationsUnread}
                   </span>
                 )}
@@ -566,20 +631,20 @@ export function CommunityPage() {
                 type="button"
                 onClick={() => goMessages()}
                 className={cn(
-                  'flex w-full items-center justify-between rounded-full px-4 py-3 text-[15px] font-semibold transition',
+                  'flex w-full items-center justify-between rounded-full px-4 py-2.5 text-[15px] font-semibold transition',
                   activeNav === 'messages'
-                    ? 'bg-white text-zinc-950 shadow-sm ring-1 ring-zinc-200/80 font-bold'
-                    : 'text-zinc-600 hover:bg-white/75 hover:text-zinc-900'
+                    ? 'bg-white text-slate-950 shadow-card ring-1 ring-slate-200/80 font-bold'
+                    : 'text-slate-600 hover:bg-white/80 hover:text-slate-900'
                 )}
               >
                 <span className="flex items-center gap-3.5">
                   <MessageSquare
-                    className={cn('h-5 w-5', activeNav === 'messages' && 'text-rose-500')}
+                    className={cn('h-5 w-5', activeNav === 'messages' && 'text-blue-600')}
                   />
                   <span>私信</span>
                 </span>
                 {messagesUnread > 0 && (
-                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-white">
+                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white">
                     {messagesUnread > 99 ? '99+' : messagesUnread}
                   </span>
                 )}
@@ -589,13 +654,13 @@ export function CommunityPage() {
                 type="button"
                 onClick={goMyProfile}
                 className={cn(
-                  'flex w-full items-center gap-3.5 rounded-full px-4 py-3 text-[15px] font-semibold transition',
+                  'flex w-full items-center gap-3.5 rounded-full px-4 py-2.5 text-[15px] font-semibold transition',
                   activeNav === 'profile'
-                    ? 'bg-white text-zinc-950 shadow-sm ring-1 ring-zinc-200/80 font-bold'
-                    : 'text-zinc-600 hover:bg-white/75 hover:text-zinc-900'
+                    ? 'bg-white text-slate-950 shadow-card ring-1 ring-slate-200/80 font-bold'
+                    : 'text-slate-600 hover:bg-white/80 hover:text-slate-900'
                 )}
               >
-                <UserIcon className={cn('h-5 w-5', activeNav === 'profile' && 'text-rose-500')} />
+                <UserIcon className={cn('h-5 w-5', activeNav === 'profile' && 'text-blue-600')} />
                 <span>主页</span>
               </button>
             </nav>
@@ -605,26 +670,26 @@ export function CommunityPage() {
               type="button"
               variant="gradient"
               onClick={handleOpenCompose}
-              className="w-full h-11 rounded-full justify-center text-sm font-bold shadow-md shadow-rose-500/20"
+              className="w-full h-10 rounded-full justify-center text-sm font-bold"
             >
               <Plus className="h-4 w-4" />
-              <span>发布图文</span>
+              <span>发布动态</span>
             </Button>
           </div>
 
-          {/* Bottom Profile Trigger & Multi-Account Popover Menu */}
-          <div ref={accountMenuRef} className="relative pt-4">
+          {/* Bottom Profile Trigger & Multi-Account Popover Menu (outside scrollable nav so never clipped) */}
+          <div ref={accountMenuRef} className="relative shrink-0 pt-3">
             {user ? (
               <>
                 {accountMenuOpen && (
                   <div
                     role="menu"
                     aria-label="个人资料选项"
-                    className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-2xl border border-zinc-200/90 bg-white p-1.5 shadow-xl"
+                    className="absolute bottom-full left-0 right-0 z-40 mb-2 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl"
                   >
                     {accounts.length > 0 && (
                       <div className="mb-1">
-                        <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                        <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                           切换账号 ({accounts.length}/5)
                         </p>
                         <div className="max-h-44 space-y-0.5 overflow-y-auto">
@@ -638,8 +703,8 @@ export function CommunityPage() {
                               className={cn(
                                 'flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition',
                                 acc.isActive
-                                  ? 'bg-rose-50/80 text-zinc-900'
-                                  : 'text-zinc-700 hover:bg-zinc-100'
+                                  ? 'bg-blue-50 text-slate-900'
+                                  : 'text-slate-700 hover:bg-slate-100'
                               )}
                             >
                               <AvatarBadge
@@ -649,18 +714,18 @@ export function CommunityPage() {
                                 size="sm"
                               />
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-xs font-semibold text-zinc-900">
+                                <p className="truncate text-xs font-semibold text-slate-900">
                                   {acc.nickname}
                                 </p>
-                                <p className="truncate text-[10px] text-zinc-400">{acc.email}</p>
+                                <p className="truncate text-[10px] text-slate-400">{acc.email}</p>
                               </div>
                               {acc.isActive && (
-                                <Check className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                                <Check className="h-3.5 w-3.5 shrink-0 text-blue-600" />
                               )}
                             </button>
                           ))}
                         </div>
-                        <div className="my-1 border-t border-zinc-100" />
+                        <div className="my-1 border-t border-slate-100" />
                       </div>
                     )}
 
@@ -672,18 +737,18 @@ export function CommunityPage() {
                         setAuthMode('add');
                         setAuthOpen(true);
                       }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
                     >
-                      <UserPlus className="h-3.5 w-3.5 text-zinc-500" />
+                      <UserPlus className="h-3.5 w-3.5 text-slate-500" />
                       添加其他账号
                     </button>
                     <button
                       type="button"
                       role="menuitem"
                       onClick={goMyProfile}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
                     >
-                      <UserIcon className="h-3.5 w-3.5 text-zinc-500" />
+                      <UserIcon className="h-3.5 w-3.5 text-slate-500" />
                       查看主页
                     </button>
                     <button
@@ -693,12 +758,12 @@ export function CommunityPage() {
                         setAccountMenuOpen(false);
                         setProfileOpen(true);
                       }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
                     >
-                      <Settings className="h-3.5 w-3.5 text-zinc-500" />
+                      <Settings className="h-3.5 w-3.5 text-slate-500" />
                       编辑资料
                     </button>
-                    <div className="my-1 border-t border-zinc-100" />
+                    <div className="my-1 border-t border-slate-100" />
                     {accounts.length > 1 ? (
                       <>
                         <button
@@ -740,7 +805,7 @@ export function CommunityPage() {
                   aria-expanded={accountMenuOpen}
                   aria-label={`个人资料 ${user.nickname}`}
                   onClick={() => setAccountMenuOpen((prev) => !prev)}
-                  className="flex w-full items-center justify-between gap-2 rounded-full border border-zinc-200/80 bg-white/85 px-3 py-2 text-left shadow-sm backdrop-blur-md transition hover:bg-white"
+                  className="flex w-full items-center justify-between gap-2 rounded-full border border-slate-200/80 bg-white px-3 py-2 text-left shadow-card transition hover:border-slate-300"
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
                     <AvatarBadge
@@ -750,15 +815,15 @@ export function CommunityPage() {
                       size="md"
                     />
                     <div className="min-w-0">
-                      <p className="truncate text-xs font-bold text-zinc-900">{user.nickname}</p>
-                      <p className="text-[11px] text-zinc-400">
+                      <p className="truncate text-xs font-bold text-slate-900">{user.nickname}</p>
+                      <p className="text-[11px] text-slate-400">
                         {accounts.length > 1 ? `个人资料 · ${accounts.length}账号` : '个人资料'}
                       </p>
                     </div>
                   </div>
                   <ChevronUp
                     className={cn(
-                      'h-4 w-4 shrink-0 text-zinc-400 transition-transform',
+                      'h-4 w-4 shrink-0 text-slate-400 transition-transform',
                       accountMenuOpen && 'rotate-180'
                     )}
                   />
@@ -772,7 +837,7 @@ export function CommunityPage() {
                   setAuthMode('login');
                   setAuthOpen(true);
                 }}
-                className="w-full h-11 rounded-full justify-center bg-white/85 shadow-sm"
+                className="w-full h-10 rounded-full justify-center bg-white shadow-card"
               >
                 <LogIn className="h-4 w-4" />
                 登录 / 注册
@@ -781,15 +846,15 @@ export function CommunityPage() {
           </div>
         </aside>
 
-        {/* Right Content Column */}
-        <div className="relative z-10 flex min-w-0 flex-1 flex-col pb-20 md:pb-0">
+        {/* Center + Right Columns */}
+        <div className="flex min-w-0 flex-1 flex-col md:h-full md:min-h-0 pb-20 md:pb-0">
           {/* Mobile Top Bar */}
-          <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-zinc-200/70 bg-white/85 px-4 py-3 backdrop-blur-xl md:hidden">
+          <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur-xl md:hidden">
             <button type="button" onClick={goFeed} className="flex items-center gap-2 text-left">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 via-fuchsia-500 to-indigo-500 text-white">
-                <Sparkles className="h-4 w-4" />
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-900 text-white">
+                <Terminal className="h-4 w-4" />
               </span>
-              <span className="text-sm font-extrabold text-zinc-900 truncate max-w-[140px]">
+              <span className="text-sm font-extrabold text-slate-900 truncate max-w-[140px]">
                 {siteName}
               </span>
             </button>
@@ -797,14 +862,14 @@ export function CommunityPage() {
             <div className="flex items-center gap-2">
               <Button variant="gradient" size="sm" onClick={handleOpenCompose} className="h-8 px-3">
                 <Plus className="h-3.5 w-3.5" />
-                发布图文
+                发布动态
               </Button>
               {user ? (
                 <button
                   type="button"
                   onClick={() => handleLogout({})}
                   aria-label="退出登录"
-                  className="rounded-full border border-zinc-200 bg-white p-1.5 text-zinc-600"
+                  className="rounded-full border border-slate-200 bg-white p-1.5 text-slate-600"
                 >
                   <LogOut className="h-4 w-4" />
                 </button>
@@ -826,305 +891,421 @@ export function CommunityPage() {
 
           <div
             className={cn(
-              'flex flex-1 items-start',
-              activeNav === 'feed' && 'lg:gap-7'
+              'flex flex-1 min-h-0 items-start md:h-full',
+              activeNav === 'feed' && 'lg:gap-6'
             )}
           >
+            {/* Independently Scrollable Center Content Column */}
             <main
               className={cn(
-                'w-full min-w-0 flex-1 px-4 py-6 md:px-0 md:py-7',
-                activeNav === 'feed' ? 'max-w-[660px]' : 'max-w-5xl'
+                'w-full min-w-0 flex-1 md:h-full md:overflow-y-auto px-4 pb-8 md:px-0',
+                activeNav === 'feed' || activeNav === 'bookmarks' ? 'max-w-[660px]' : 'max-w-4xl'
               )}
             >
-          {activeNav === 'feed' && (
-            <>
-              {/* Search + Hero + Filter bar */}
-              <section className="mb-7 space-y-5">
-                <form onSubmit={handleSearchSubmit} className="relative max-w-xl">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-                  <Input
-                    value={searchInput}
-                    onChange={(e) => {
-                      setSearchInput(e.target.value);
-                      if (!e.target.value.trim() && activeQuery) {
-                        setActiveQuery('');
-                      }
-                    }}
-                    placeholder="搜索关键词、话题或灵感..."
-                    className="h-10 rounded-full border-zinc-200/80 bg-white pl-10 pr-4 text-xs sm:text-sm shadow-sm"
-                  />
-                </form>
-
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <p className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-[11px] font-semibold text-rose-600">
-                      <Sparkles className="h-3 w-3" />
-                      轻图文 · 慢生活灵感角落
-                    </p>
-                    <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-zinc-900 sm:text-3xl">
-                      把日常瞬间写成光
-                    </h1>
-                  </div>
-
-                  <div className="inline-flex self-start rounded-full border border-zinc-200/80 bg-white p-1 shadow-sm">
-                    <button
-                      type="button"
-                      onClick={() => setSort('latest')}
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition',
-                        sort === 'latest'
-                          ? 'bg-zinc-900 text-white'
-                          : 'text-zinc-500 hover:text-zinc-900'
-                      )}
-                    >
-                      <Clock className="h-3.5 w-3.5" />
-                      最新
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSort('hot')}
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition',
-                        sort === 'hot'
-                          ? 'bg-zinc-900 text-white'
-                          : 'text-zinc-500 hover:text-zinc-900'
-                      )}
-                    >
-                      <Flame className="h-3.5 w-3.5" />
-                      最热
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTag('')}
-                    className={cn(
-                      'shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition',
-                      activeTag === ''
-                        ? 'bg-zinc-900 text-white shadow-sm'
-                        : 'border border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-50'
-                    )}
-                  >
-                    全部 ({total})
-                  </button>
-                  {activeTag && !FEATURED_TAGS.includes(activeTag) && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTag('')}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm"
-                    >
-                      <Hash className="h-3 w-3" />
-                      {activeTag}
-                      <X className="ml-0.5 h-3 w-3" />
-                    </button>
-                  )}
-                  {FEATURED_TAGS.map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => setActiveTag(activeTag === tag ? '' : tag)}
-                      className={cn(
-                        'inline-flex shrink-0 items-center gap-1 rounded-full px-3.5 py-1.5 text-xs font-semibold transition',
-                        activeTag === tag
-                          ? 'bg-rose-500 text-white shadow-sm'
-                          : 'border border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-50'
-                      )}
-                    >
-                      <Hash className="h-3 w-3" />
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {/* Feed Content — X.com Single-Column Vertical List */}
-              {loading ? (
-                <div className="space-y-4">
-                  {[160, 220, 140, 200].map((h, i) => (
+              {activeNav === 'feed' && (
+                <>
+                  {/* Sticky Full-Width X.com Style Tab Bar */}
+                  <div className="sticky top-0 z-20 w-full bg-[#F8FAFC]/95 pt-5 pb-2.5 backdrop-blur-md">
                     <div
-                      key={i}
-                      className="overflow-hidden rounded-3xl border border-zinc-200/70 bg-white p-5 shadow-card"
+                      role="tablist"
+                      aria-label="动态流排序"
+                      className="grid w-full grid-cols-3 rounded-2xl border border-slate-200/80 bg-white p-1 shadow-card"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 animate-pulse rounded-full bg-zinc-200/70" />
-                        <div className="h-4 w-32 animate-pulse rounded bg-zinc-200/70" />
-                      </div>
-                      <div className="mt-4 h-4 w-3/4 animate-pulse rounded bg-zinc-200/70" />
-                      <div className="mt-2 h-3 w-full animate-pulse rounded bg-zinc-100" />
-                      <div
-                        className="mt-3 w-full animate-pulse rounded-2xl bg-zinc-200/60"
-                        style={{ height: `${h}px` }}
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={sort === 'latest'}
+                        onClick={() => setSort('latest')}
+                        className={cn(
+                          'relative inline-flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs sm:text-sm font-semibold transition',
+                          sort === 'latest'
+                            ? 'bg-slate-900 text-white shadow-sm'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        )}
+                      >
+                        <Clock className="h-3.5 w-3.5" />
+                        <span>最新</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={sort === 'hot'}
+                        onClick={() => setSort('hot')}
+                        className={cn(
+                          'relative inline-flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs sm:text-sm font-semibold transition',
+                          sort === 'hot'
+                            ? 'bg-slate-900 text-white shadow-sm'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        )}
+                      >
+                        <Flame className="h-3.5 w-3.5" />
+                        <span>最热</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={sort === 'following'}
+                        onClick={() => setSort('following')}
+                        className={cn(
+                          'relative inline-flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs sm:text-sm font-semibold transition',
+                          sort === 'following'
+                            ? 'bg-slate-900 text-white shadow-sm'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        )}
+                      >
+                        <Users className="h-3.5 w-3.5" />
+                        <span>我的关注</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mobile / Tablet Search Fallback (desktop search lives at top of right sidebar) */}
+                  <form onSubmit={handleSearchSubmit} className="relative mb-3 lg:hidden">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      value={searchInput}
+                      onChange={(e) => handleSearchInputChange(e.target.value)}
+                      placeholder="搜索关键词、#话题或动态..."
+                      className="h-9 rounded-full border-slate-200 bg-white pl-10 pr-8 text-xs shadow-card"
+                    />
+                    {(searchInput || activeQuery) && (
+                      <button
+                        type="button"
+                        onClick={handleClearSearch}
+                        aria-label="清除搜索"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </form>
+
+                  {/* X.com Inline Titleless Post Composer */}
+                  {user && sort !== 'following' && (
+                    <div className="mb-3">
+                      <PostComposer
+                        currentUser={user}
+                        compact
+                        onCreated={handlePostCreated}
                       />
                     </div>
-                  ))}
-                </div>
-              ) : error ? (
-                <div className="flex flex-col items-center justify-center rounded-3xl border border-red-100 bg-white py-16 px-6 text-center shadow-card">
-                  <p className="text-sm font-medium text-red-600">{error}</p>
-                  <Button variant="outline" size="sm" onClick={loadPosts} className="mt-4">
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    重新加载
-                  </Button>
-                </div>
-              ) : posts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300/80 bg-white/70 py-20 px-6 text-center">
-                  <div className="animate-float-slow flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-rose-100 to-indigo-100 text-rose-500">
-                    <ImageIcon className="h-7 w-7" />
-                  </div>
-                  <h2 className="mt-4 text-lg font-bold text-zinc-900">
-                    {activeQuery || activeTag ? '没有找到匹配的图文' : '这里还是一片空白画布'}
-                  </h2>
-                  <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-zinc-500">
-                    {activeQuery || activeTag
-                      ? '换个关键词或标签试试看，或者自己发布一篇相关的图文。'
-                      : '拍一张喜欢的照片、写下此刻的想法，成为社区第一批发光的记录者吧。'}
-                  </p>
-                  <div className="mt-5 flex gap-2.5">
-                    {(activeQuery || activeTag) && (
-                      <Button
-                        variant="outline"
+                  )}
+
+                  {/* Active Filter Indicator */}
+                  {(activeTag || activeQuery) && (
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-blue-200/80 bg-blue-50/60 px-3.5 py-2 text-xs">
+                      <div className="flex flex-wrap items-center gap-2 text-slate-700">
+                        <span className="font-semibold">当前筛选：</span>
+                        {activeTag && (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTag('')}
+                            className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-0.5 font-semibold text-white"
+                          >
+                            <Hash className="h-3 w-3" />
+                            {activeTag}
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                        {activeQuery && (
+                          <button
+                            type="button"
+                            onClick={handleClearSearch}
+                            className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 font-semibold text-white"
+                          >
+                            <Search className="h-3 w-3" />
+                            {activeQuery}
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                        <span className="text-slate-500">共 {total} 条动态</span>
+                      </div>
+                      <button
+                        type="button"
                         onClick={() => {
                           setSearchInput('');
                           setActiveQuery('');
                           setActiveTag('');
                         }}
+                        className="font-semibold text-blue-600 hover:text-blue-700"
                       >
-                        清除筛选
+                        清除全部
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Feed Content */}
+                  {sort === 'following' && authLoaded && !user ? (
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/80 py-20 px-6 text-center">
+                      <Users className="h-10 w-10 text-slate-300" />
+                      <h2 className="mt-4 text-lg font-bold text-slate-900">
+                        登录后查看「我的关注」动态
+                      </h2>
+                      <p className="mt-1 text-xs text-slate-500">
+                        关注感兴趣的开发者，在这里集中浏览他们的最新分享
+                      </p>
+                      <Button
+                        variant="gradient"
+                        className="mt-5"
+                        onClick={() => requireAuthThen()}
+                      >
+                        立即登录
                       </Button>
-                    )}
-                    <Button variant="gradient" onClick={handleOpenCompose}>
-                      <Plus className="h-4 w-4" />
-                      发布第一篇图文
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {posts.map((post) => (
-                    <PostCard
-                      key={post.id}
-                      post={post}
-                      onOpen={openPostDetail}
-                      onToggleLike={handleToggleLike}
-                      onToggleBookmark={handleToggleBookmark}
-                      onShare={handleSharePost}
+                    </div>
+                  ) : loading ? (
+                    <div className="space-y-2.5">
+                      {[140, 180, 120, 160].map((h, i) => (
+                        <div
+                          key={i}
+                          className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-4 shadow-card"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 animate-pulse rounded-full bg-slate-200/70" />
+                            <div className="h-3.5 w-28 animate-pulse rounded bg-slate-200/70" />
+                          </div>
+                          <div className="mt-3 h-3.5 w-3/4 animate-pulse rounded bg-slate-200/70" />
+                          <div
+                            className="mt-3 w-full animate-pulse rounded-xl bg-slate-100"
+                            style={{ height: `${h}px` }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : error ? (
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-red-100 bg-white py-16 px-6 text-center shadow-card">
+                      <p className="text-sm font-medium text-red-600">{error}</p>
+                      <Button variant="outline" size="sm" onClick={loadPosts} className="mt-4">
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        重新加载
+                      </Button>
+                    </div>
+                  ) : posts.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300/80 bg-white/80 py-20 px-6 text-center">
+                      <div className="animate-float-slow flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+                        <ImageIcon className="h-6 w-6" />
+                      </div>
+                      <h2 className="mt-4 text-base font-bold text-slate-900">
+                        {sort === 'following'
+                          ? '关注的作者暂未发布动态'
+                          : activeQuery || activeTag
+                            ? '没有找到匹配的动态'
+                            : '这里还是一片空白'}
+                      </h2>
+                      <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-slate-500">
+                        {sort === 'following'
+                          ? '去「最新」或右侧「推荐关注」发现更多值得关注的创作者吧。'
+                          : activeQuery || activeTag
+                            ? '换个关键词或标签试试看，或者发布一条相关动态。'
+                            : '写下你的代码心得、架构思考或生活片段，成为社区的第一批分享者。'}
+                      </p>
+                      <div className="mt-5 flex gap-2.5">
+                        {(activeQuery || activeTag) && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setSearchInput('');
+                              setActiveQuery('');
+                              setActiveTag('');
+                            }}
+                          >
+                            清除筛选
+                          </Button>
+                        )}
+                        {sort === 'following' ? (
+                          <Button variant="outline" onClick={() => setSort('latest')}>
+                            浏览最新动态
+                          </Button>
+                        ) : (
+                          <Button variant="gradient" onClick={handleOpenCompose}>
+                            <Plus className="h-4 w-4" />
+                            发布第一条动态
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {posts.map((post) => (
+                        <PostCard
+                          key={post.id}
+                          post={post}
+                          onOpen={openPostDetail}
+                          onToggleLike={handleToggleLike}
+                          onToggleBookmark={handleToggleBookmark}
+                          onShare={handleSharePost}
+                          onOpenAuthor={goUserProfile}
+                          onSelectTag={(tag) => setActiveTag(activeTag === tag ? '' : tag)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {activeNav === 'bookmarks' && (
+                <div className="pt-5">
+                  {user ? (
+                    <BookmarksView
+                      currentUser={user}
+                      refreshKey={bookmarksRefreshKey}
+                      onOpenPost={openPostDetail}
                       onOpenAuthor={goUserProfile}
-                      onSelectTag={(tag) => setActiveTag(activeTag === tag ? '' : tag)}
+                      onSelectTag={handleSelectTagFromAnyView}
+                      onSharePost={handleSharePost}
+                      onGoFeed={goFeed}
+                      onBookmarkChanged={(postId, bookmarked, bookmarksCount) => {
+                        setPosts((prev) =>
+                          prev.map((p) =>
+                            p.id === postId
+                              ? { ...p, bookmarkedByMe: bookmarked, bookmarksCount }
+                              : p
+                          )
+                        );
+                        setProfileRefreshKey((k) => k + 1);
+                        setDiscoverRefreshKey((k) => k + 1);
+                      }}
+                      onLikeChanged={(postId, liked, likesCount) => {
+                        setPosts((prev) =>
+                          prev.map((p) =>
+                            p.id === postId
+                              ? { ...p, likedByMe: liked, likesCount }
+                              : p
+                          )
+                        );
+                      }}
                     />
-                  ))}
+                  ) : authLoaded ? (
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/80 py-20 px-6 text-center">
+                      <Bookmark className="h-10 w-10 text-slate-300" />
+                      <h2 className="mt-4 text-lg font-bold text-slate-900">
+                        登录后查看个人收藏
+                      </h2>
+                      <p className="mt-1 text-xs text-slate-500">
+                        保存你喜欢的技术文章与动态，随时在收藏页集中回顾
+                      </p>
+                      <Button
+                        variant="gradient"
+                        className="mt-5"
+                        onClick={() => requireAuthThen()}
+                      >
+                        立即登录
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               )}
-            </>
-          )}
 
-          {activeNav === 'notifications' && (
-            <>
-              {user ? (
-                <NotificationsView
-                  onUnreadUpdated={setNotificationsUnread}
-                  onOpenPost={openPostDetail}
-                  onOpenUserProfile={goUserProfile}
-                />
-              ) : authLoaded ? (
-                <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 bg-white/80 py-20 px-6 text-center">
-                  <Bell className="h-10 w-10 text-zinc-300" />
-                  <h2 className="mt-4 text-lg font-bold text-zinc-900">登录后查看通知中心</h2>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    实时接收好友的点赞、评论与新增关注提醒
-                  </p>
-                  <Button variant="gradient" className="mt-5" onClick={goNotifications}>
-                    立即登录
-                  </Button>
+              {activeNav === 'notifications' && (
+                <div className="pt-5">
+                  {user ? (
+                    <NotificationsView
+                      onUnreadUpdated={setNotificationsUnread}
+                      onOpenPost={openPostDetail}
+                      onOpenUserProfile={goUserProfile}
+                    />
+                  ) : authLoaded ? (
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/80 py-20 px-6 text-center">
+                      <Bell className="h-10 w-10 text-slate-300" />
+                      <h2 className="mt-4 text-lg font-bold text-slate-900">登录后查看通知中心</h2>
+                      <p className="mt-1 text-xs text-slate-500">
+                        实时接收好友的点赞、评论与新增关注提醒
+                      </p>
+                      <Button variant="gradient" className="mt-5" onClick={goNotifications}>
+                        立即登录
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
-            </>
-          )}
+              )}
 
-          {activeNav === 'messages' && (
-            <>
-              {user ? (
-                <MessagesView
-                  currentUser={user}
-                  initialPeerId={messagePeerId}
-                  onOpenUserProfile={goUserProfile}
-                  onUnreadUpdated={setMessagesUnread}
-                />
-              ) : authLoaded ? (
-                <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 bg-white/80 py-20 px-6 text-center">
-                  <MessageSquare className="h-10 w-10 text-zinc-300" />
-                  <h2 className="mt-4 text-lg font-bold text-zinc-900">登录后查看站内私信</h2>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    使用邮箱验证码登录，即可与社区好友实时发送私信
-                  </p>
-                  <Button variant="gradient" className="mt-5" onClick={() => goMessages()}>
-                    立即登录
-                  </Button>
+              {activeNav === 'messages' && (
+                <div className="pt-5">
+                  {user ? (
+                    <MessagesView
+                      currentUser={user}
+                      initialPeerId={messagePeerId}
+                      onOpenUserProfile={goUserProfile}
+                      onUnreadUpdated={setMessagesUnread}
+                    />
+                  ) : authLoaded ? (
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/80 py-20 px-6 text-center">
+                      <MessageSquare className="h-10 w-10 text-slate-300" />
+                      <h2 className="mt-4 text-lg font-bold text-slate-900">登录后查看站内私信</h2>
+                      <p className="mt-1 text-xs text-slate-500">
+                        使用邮箱验证码登录，即可与社区好友实时发送私信
+                      </p>
+                      <Button variant="gradient" className="mt-5" onClick={() => goMessages()}>
+                        立即登录
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
-            </>
-          )}
+              )}
 
-          {activeNav === 'profile' && (
-            <>
-              {resolvedProfileId ? (
-                <ProfileView
-                  userId={resolvedProfileId}
-                  currentUser={user}
-                  refreshKey={profileRefreshKey}
-                  onRequireAuth={() => requireAuthThen()}
-                  onOpenEditProfile={() => setProfileOpen(true)}
-                  onOpenPost={openPostDetail}
-                  onOpenUserProfile={goUserProfile}
-                  onStartMessage={(peerId) => goMessages(peerId)}
-                  onCurrentUserUpdated={(updated) => {
-                    setUser(updated);
-                    setProfileRefreshKey((k) => k + 1);
-                    loadPosts();
-                  }}
-                />
-              ) : authLoaded ? (
-                <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 bg-white/80 py-20 px-6 text-center">
-                  <UserIcon className="h-10 w-10 text-zinc-300" />
-                  <h2 className="mt-4 text-lg font-bold text-zinc-900">登录后查看个人主页</h2>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    管理个人头像、简介、关注与粉丝，以及历史互动记录
-                  </p>
-                  <Button variant="gradient" className="mt-5" onClick={goMyProfile}>
-                    立即登录
-                  </Button>
+              {activeNav === 'profile' && (
+                <div className="pt-5">
+                  {resolvedProfileId ? (
+                    <ProfileView
+                      userId={resolvedProfileId}
+                      currentUser={user}
+                      refreshKey={profileRefreshKey}
+                      onRequireAuth={() => requireAuthThen()}
+                      onOpenEditProfile={() => setProfileOpen(true)}
+                      onOpenPost={openPostDetail}
+                      onOpenUserProfile={goUserProfile}
+                      onStartMessage={(peerId) => goMessages(peerId)}
+                      onCurrentUserUpdated={(updated) => {
+                        setUser(updated);
+                        setProfileRefreshKey((k) => k + 1);
+                        loadPosts();
+                      }}
+                    />
+                  ) : authLoaded ? (
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/80 py-20 px-6 text-center">
+                      <UserIcon className="h-10 w-10 text-slate-300" />
+                      <h2 className="mt-4 text-lg font-bold text-slate-900">登录后查看个人主页</h2>
+                      <p className="mt-1 text-xs text-slate-500">
+                        管理个人头像、简介、关注与粉丝，以及历史互动记录
+                      </p>
+                      <Button variant="gradient" className="mt-5" onClick={goMyProfile}>
+                        立即登录
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
-            </>
-          )}
-        </main>
+              )}
+            </main>
 
-        {activeNav === 'feed' && (
-          <DiscoverSidebar
-            currentUser={user}
-            activeTag={activeTag}
-            refreshKey={discoverRefreshKey}
-            onSelectTag={(tag) => setActiveTag(tag)}
-            onOpenUserProfile={goUserProfile}
-            onRequireAuth={() => requireAuthThen()}
-          />
-        )}
+            {activeNav === 'feed' && (
+              <DiscoverSidebar
+                currentUser={user}
+                activeTag={activeTag}
+                refreshKey={discoverRefreshKey}
+                searchInput={searchInput}
+                activeQuery={activeQuery}
+                onSearchInputChange={handleSearchInputChange}
+                onSearchSubmit={handleSearchSubmit}
+                onClearSearch={handleClearSearch}
+                onSelectTag={(tag) => setActiveTag(tag)}
+                onOpenUserProfile={goUserProfile}
+                onRequireAuth={() => requireAuthThen()}
+              />
+            )}
           </div>
-      </div>
+        </div>
       </div>
 
       {/* Mobile Bottom Navigation */}
       <nav
         aria-label="移动端导航"
-        className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-zinc-200/80 bg-white/95 py-2 backdrop-blur-xl md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-slate-200/80 bg-white/95 py-2 backdrop-blur-xl md:hidden"
       >
         <button
           type="button"
           onClick={goFeed}
           className={cn(
             'flex flex-col items-center gap-0.5 px-3 py-1 text-[11px] font-semibold',
-            activeNav === 'feed' ? 'text-rose-600' : 'text-zinc-500'
+            activeNav === 'feed' ? 'text-blue-600' : 'text-slate-500'
           )}
         >
           <Compass className="h-4 w-4" />
@@ -1132,16 +1313,27 @@ export function CommunityPage() {
         </button>
         <button
           type="button"
+          onClick={goBookmarks}
+          className={cn(
+            'flex flex-col items-center gap-0.5 px-3 py-1 text-[11px] font-semibold',
+            activeNav === 'bookmarks' ? 'text-blue-600' : 'text-slate-500'
+          )}
+        >
+          <Bookmark className="h-4 w-4" />
+          <span>收藏</span>
+        </button>
+        <button
+          type="button"
           onClick={goNotifications}
           className={cn(
             'relative flex flex-col items-center gap-0.5 px-3 py-1 text-[11px] font-semibold',
-            activeNav === 'notifications' ? 'text-rose-600' : 'text-zinc-500'
+            activeNav === 'notifications' ? 'text-blue-600' : 'text-slate-500'
           )}
         >
           <Bell className="h-4 w-4" />
           <span>通知</span>
           {notificationsUnread > 0 && (
-            <span className="absolute right-1.5 top-0.5 h-2 w-2 rounded-full bg-rose-500" />
+            <span className="absolute right-1.5 top-0.5 h-2 w-2 rounded-full bg-red-500" />
           )}
         </button>
         <button
@@ -1149,13 +1341,13 @@ export function CommunityPage() {
           onClick={() => goMessages()}
           className={cn(
             'relative flex flex-col items-center gap-0.5 px-3 py-1 text-[11px] font-semibold',
-            activeNav === 'messages' ? 'text-rose-600' : 'text-zinc-500'
+            activeNav === 'messages' ? 'text-blue-600' : 'text-slate-500'
           )}
         >
           <MessageSquare className="h-4 w-4" />
           <span>私信</span>
           {messagesUnread > 0 && (
-            <span className="absolute right-1.5 top-0.5 h-2 w-2 rounded-full bg-rose-500" />
+            <span className="absolute right-1.5 top-0.5 h-2 w-2 rounded-full bg-red-500" />
           )}
         </button>
         <button
@@ -1163,7 +1355,7 @@ export function CommunityPage() {
           onClick={goMyProfile}
           className={cn(
             'flex flex-col items-center gap-0.5 px-3 py-1 text-[11px] font-semibold',
-            activeNav === 'profile' ? 'text-rose-600' : 'text-zinc-500'
+            activeNav === 'profile' ? 'text-blue-600' : 'text-slate-500'
           )}
         >
           <UserIcon className="h-4 w-4" />
@@ -1184,9 +1376,9 @@ export function CommunityPage() {
           setUser(loggedUser);
           refreshAccounts();
           loadUnreadSummary(loggedUser);
-          loadPosts();
           setDiscoverRefreshKey((k) => k + 1);
           setProfileRefreshKey((k) => k + 1);
+          setBookmarksRefreshKey((k) => k + 1);
           if (
             activeNav === 'profile' &&
             (viewingUserId === 'me' || viewingUserId === previousUserId)
@@ -1204,13 +1396,9 @@ export function CommunityPage() {
 
       <ComposeDialog
         open={composeOpen}
+        currentUser={user}
         onOpenChange={setComposeOpen}
-        onCreated={(newPost) => {
-          setPosts((prev) => [newPost, ...prev]);
-          setTotal((t) => t + 1);
-          setProfileRefreshKey((k) => k + 1);
-          setDiscoverRefreshKey((k) => k + 1);
-        }}
+        onCreated={handlePostCreated}
       />
 
       <PostDetailDialog
@@ -1220,16 +1408,19 @@ export function CommunityPage() {
         onRequireAuth={() => requireAuthThen()}
         onPostUpdated={(updated) => {
           setPosts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+          setBookmarksRefreshKey((k) => k + 1);
           setProfileRefreshKey((k) => k + 1);
           setDiscoverRefreshKey((k) => k + 1);
         }}
         onPostDeleted={(deletedId) => {
           setPosts((prev) => prev.filter((p) => p.id !== deletedId));
           setTotal((t) => Math.max(0, t - 1));
+          setBookmarksRefreshKey((k) => k + 1);
           setProfileRefreshKey((k) => k + 1);
           setDiscoverRefreshKey((k) => k + 1);
         }}
         onOpenAuthor={goUserProfile}
+        onSelectTag={handleSelectTagFromAnyView}
       />
 
       <ProfileDialog
@@ -1249,7 +1440,7 @@ export function CommunityPage() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-full bg-zinc-900 px-4 py-2 text-xs font-semibold text-white shadow-lg md:bottom-6"
+          className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-lg md:bottom-6"
         >
           {toastMessage}
         </div>

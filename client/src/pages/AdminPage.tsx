@@ -206,7 +206,7 @@ export function AdminPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4">
         <div className="w-full max-w-sm rounded-3xl border border-zinc-800 bg-zinc-900/90 p-7 shadow-2xl">
-          <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-zinc-800 text-rose-400">
+          <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-zinc-800 text-blue-400">
             <Lock className="h-5 w-5" />
           </div>
           <h1 className="text-xl font-bold text-white">管理控制台</h1>
@@ -328,7 +328,7 @@ export function AdminPage() {
           <section className="rounded-2xl border border-zinc-200 bg-white p-6">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Key className="h-4 w-4 text-rose-500" />
+                <Key className="h-4 w-4 text-blue-600" />
                 <h2 className="text-base font-bold">Resend 邮件与站点配置</h2>
               </div>
               {settings?.hasResendApiKey && (
@@ -385,7 +385,7 @@ export function AdminPage() {
                   id="site-name"
                   value={siteName}
                   onChange={(e) => setSiteName(e.target.value)}
-                  placeholder="拾光集 · 轻图文社区"
+                  placeholder="dev社区"
                 />
               </div>
 
@@ -491,8 +491,10 @@ export function AdminPage() {
                   className="flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-zinc-900">{post.title}</p>
-                    <p className="mt-0.5 truncate text-xs text-zinc-500">
+                    <p className="truncate text-sm font-semibold text-slate-900">
+                      {post.contentPreview || post.content}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
                       {post.author.nickname} ({post.author.email}) ·{' '}
                       {formatRelativeTime(post.createdAt)} · 点赞 {post.likesCount} · 评论{' '}
                       {post.commentsCount}

@@ -6,6 +6,7 @@ import {
   clearUnreadFollowNotification,
   createOrUpdateNotification,
 } from '../lib/notifications';
+import { makeContentPreview } from '../lib/validation';
 
 interface UserProfileRow {
   id: string;
@@ -30,7 +31,7 @@ interface FollowUserRow {
 interface CommentActivityRow {
   id: string;
   post_id: string;
-  post_title: string;
+  post_content: string;
   content: string;
   created_at: string;
   author_id: string;
@@ -43,7 +44,7 @@ interface ReplyActivityRow {
   id: string;
   comment_id: string;
   post_id: string;
-  post_title: string;
+  post_content: string;
   parent_comment_content: string;
   content: string;
   created_at: string;
@@ -363,7 +364,7 @@ userRoutes.get('/:id/activity', async (c) => {
       .first<{ total: number }>();
 
     const rows = await c.env.DB.prepare(
-      `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
+      `SELECT p.id, p.author_id, p.content, p.image_url, p.tags_json,
               p.likes_count, p.comments_count, p.created_at,
               COALESCE(pm.views_count, 0) AS views_count,
               COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
@@ -401,7 +402,7 @@ userRoutes.get('/:id/activity', async (c) => {
 
     const rows = sessionUser
       ? await c.env.DB.prepare(
-          `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
+          `SELECT p.id, p.author_id, p.content, p.image_url, p.tags_json,
                   p.likes_count, p.comments_count, p.created_at,
                   COALESCE(pm.views_count, 0) AS views_count,
                   COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
@@ -423,7 +424,7 @@ userRoutes.get('/:id/activity', async (c) => {
           .bind(sessionUser.id, sessionUser.id, targetId, limit, offset)
           .all<PostRow>()
       : await c.env.DB.prepare(
-          `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
+          `SELECT p.id, p.author_id, p.content, p.image_url, p.tags_json,
                   p.likes_count, p.comments_count, p.created_at,
                   COALESCE(pm.views_count, 0) AS views_count,
                   COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
@@ -462,7 +463,7 @@ userRoutes.get('/:id/activity', async (c) => {
 
     const rows = sessionUser
       ? await c.env.DB.prepare(
-          `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
+          `SELECT p.id, p.author_id, p.content, p.image_url, p.tags_json,
                   p.likes_count, p.comments_count, p.created_at,
                   COALESCE(pm.views_count, 0) AS views_count,
                   COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
@@ -485,7 +486,7 @@ userRoutes.get('/:id/activity', async (c) => {
           .bind(sessionUser.id, sessionUser.id, targetId, limit, offset)
           .all<PostRow>()
       : await c.env.DB.prepare(
-          `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
+          `SELECT p.id, p.author_id, p.content, p.image_url, p.tags_json,
                   p.likes_count, p.comments_count, p.created_at,
                   COALESCE(pm.views_count, 0) AS views_count,
                   COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
@@ -524,7 +525,7 @@ userRoutes.get('/:id/activity', async (c) => {
       .first<{ total: number }>();
 
     const rows = await c.env.DB.prepare(
-      `SELECT cm.id, cm.post_id, p.title AS post_title, cm.content, cm.created_at,
+      `SELECT cm.id, cm.post_id, p.content AS post_content, cm.content, cm.created_at,
               u.id AS author_id, u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
               COALESCE(up.avatar_url, '') AS author_avatar_url
        FROM comments cm
@@ -543,7 +544,7 @@ userRoutes.get('/:id/activity', async (c) => {
       items: (rows.results ?? []).map((cm) => ({
         id: cm.id,
         postId: cm.post_id,
-        postTitle: cm.post_title,
+        postContentPreview: makeContentPreview(cm.post_content, 80),
         content: cm.content,
         author: {
           id: cm.author_id,
@@ -569,7 +570,7 @@ userRoutes.get('/:id/activity', async (c) => {
     .first<{ total: number }>();
 
   const rows = await c.env.DB.prepare(
-    `SELECT cr.id, cr.comment_id, cr.post_id, p.title AS post_title,
+    `SELECT cr.id, cr.comment_id, cr.post_id, p.content AS post_content,
             cm.content AS parent_comment_content,
             cr.content, cr.created_at,
             u.id AS author_id, u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
@@ -594,7 +595,7 @@ userRoutes.get('/:id/activity', async (c) => {
       id: r.id,
       commentId: r.comment_id,
       postId: r.post_id,
-      postTitle: r.post_title,
+      postContentPreview: makeContentPreview(r.post_content, 80),
       parentCommentContent: r.parent_comment_content,
       content: r.content,
       direction: r.author_id === targetId ? ('sent' as const) : ('received' as const),

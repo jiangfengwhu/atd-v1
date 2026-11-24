@@ -13,10 +13,12 @@ import {
   Check,
 } from 'lucide-react';
 import { api, ApiError, type CommentItem, type PostItem, type UserProfile } from '@/lib/api';
+import { extractHashtagsFromContent } from '@/lib/hashtags';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AvatarBadge } from '@/components/AvatarBadge';
+import { HashtagText } from '@/components/HashtagText';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
 interface PostDetailDialogProps {
@@ -27,6 +29,7 @@ interface PostDetailDialogProps {
   onPostUpdated: (post: PostItem) => void;
   onPostDeleted: (postId: string) => void;
   onOpenAuthor?: (userId: string) => void;
+  onSelectTag?: (tag: string) => void;
 }
 
 export function PostDetailDialog({
@@ -37,6 +40,7 @@ export function PostDetailDialog({
   onPostUpdated,
   onPostDeleted,
   onOpenAuthor,
+  onSelectTag,
 }: PostDetailDialogProps) {
   const [post, setPost] = React.useState<PostItem | null>(null);
   const [comments, setComments] = React.useState<CommentItem[]>([]);
@@ -86,13 +90,11 @@ export function PostDetailDialog({
             );
             onPostUpdatedRef.current(nextPost);
           })
-          .catch(() => {
-            // Ignore transient view tracking errors
-          });
+          .catch(() => {});
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof ApiError ? err.message : '帖子不存在或无法加载');
+        setError(err instanceof ApiError ? err.message : '动态不存在或无法加载');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -102,6 +104,19 @@ export function PostDetailDialog({
       cancelled = true;
     };
   }, [postId]);
+
+  const fallbackTags = React.useMemo(() => {
+    if (!post || !post.tags || post.tags.length === 0) return [];
+    const inlineSet = new Set(extractHashtagsFromContent(post.content));
+    return post.tags.filter((t) => !inlineSet.has(t));
+  }, [post]);
+
+  const handleTagClick = (tag: string) => {
+    if (onSelectTag) {
+      onClose();
+      onSelectTag(tag);
+    }
+  };
 
   const handleToggleLike = async () => {
     if (!post) return;
@@ -246,7 +261,7 @@ export function PostDetailDialog({
       onPostDeleted(post.id);
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '删除帖子失败');
+      setError(err instanceof ApiError ? err.message : '删除动态失败');
     } finally {
       setDeleting(false);
     }
@@ -267,47 +282,46 @@ export function PostDetailDialog({
             <DialogHeader className="sr-only">
               <DialogTitle>加载动态详情</DialogTitle>
             </DialogHeader>
-            <Loader2 className="h-6 w-6 animate-spin text-rose-500" />
+            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
           </div>
         ) : post ? (
           <div className="flex flex-col md:flex-row md:h-full">
-            {/* Left Media / Editorial Cover Column */}
+            {/* Left Media / Clean Text Card */}
             <div className="md:w-[58%] md:h-full md:shrink-0">
               {post.imageUrl ? (
-                <div className="flex min-h-[240px] max-h-[46vh] md:max-h-none md:h-full w-full items-center justify-center overflow-hidden bg-zinc-950">
+                <div className="flex min-h-[240px] max-h-[46vh] md:max-h-none md:h-full w-full items-center justify-center overflow-hidden bg-slate-950">
                   <img
                     src={post.imageUrl}
-                    alt={post.title}
+                    alt={post.content.slice(0, 40) || '动态配图'}
                     className="max-h-[46vh] md:max-h-full max-w-full object-contain"
                   />
                 </div>
               ) : (
-                <div className="flex min-h-[200px] md:h-full w-full flex-col justify-between bg-gradient-to-br from-rose-50 via-amber-50/80 to-indigo-50 p-6 sm:p-10 border-b md:border-b-0 md:border-r border-zinc-100">
-                  <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/85 px-3 py-1 text-[11px] font-semibold text-rose-600 shadow-sm">
-                    轻图文灵感笔记
+                <div className="flex min-h-[200px] md:h-full w-full flex-col justify-between bg-slate-50 p-6 sm:p-10 border-b md:border-b-0 md:border-r border-slate-200/80">
+                  <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600">
+                    dev社区 · 动态详情
                   </div>
-                  <div className="my-6 space-y-3">
-                    <h2 className="text-2xl sm:text-3xl font-extrabold leading-snug tracking-tight text-zinc-900">
-                      {post.title}
-                    </h2>
-                    <p className="line-clamp-5 whitespace-pre-wrap text-sm leading-relaxed text-zinc-600">
-                      {post.content}
+                  <div className="my-6">
+                    <p className="whitespace-pre-wrap text-base sm:text-lg leading-relaxed text-slate-800">
+                      <HashtagText content={post.content} onSelectTag={(tag) => handleTagClick(tag)} />
                     </p>
                   </div>
                   {post.tags.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5">
                       {post.tags.map((tag) => (
-                        <span
+                        <button
                           key={tag}
-                          className="inline-flex items-center gap-0.5 rounded-full bg-white/85 px-2.5 py-1 text-xs font-medium text-rose-600 shadow-sm"
+                          type="button"
+                          onClick={() => handleTagClick(tag)}
+                          className="inline-flex items-center gap-0.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
                         >
                           <Hash className="h-3 w-3" />
                           {tag}
-                        </span>
+                        </button>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-xs text-zinc-400">
+                    <div className="text-xs text-slate-400">
                       {post.author.nickname} · {formatRelativeTime(post.createdAt)}
                     </div>
                   )}
@@ -318,11 +332,14 @@ export function PostDetailDialog({
             {/* Right 3-Part Interaction Column */}
             <div className="flex flex-col bg-white min-w-0 md:w-[42%] md:h-full">
               {/* Fixed Top Author Header */}
-              <div className="shrink-0 flex items-center justify-between gap-3 border-b border-zinc-100 px-5 py-3.5 pr-12">
+              <div className="shrink-0 flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-3.5 pr-12">
+                <DialogHeader className="sr-only">
+                  <DialogTitle>{post.author.nickname} 的动态</DialogTitle>
+                </DialogHeader>
                 <button
                   type="button"
                   onClick={() => navigateToUser(post.author.id)}
-                  className="flex min-w-0 items-center gap-2.5 text-left hover:opacity-80 transition-opacity"
+                  className="flex min-w-0 items-center gap-2.5 text-left transition-opacity hover:opacity-80"
                 >
                   <AvatarBadge
                     nickname={post.author.nickname}
@@ -331,10 +348,10 @@ export function PostDetailDialog({
                     size="md"
                   />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-zinc-900">
+                    <p className="truncate text-sm font-semibold text-slate-900">
                       {post.author.nickname}
                     </p>
-                    <p className="text-xs text-zinc-400">{formatRelativeTime(post.createdAt)}</p>
+                    <p className="text-xs text-slate-400">{formatRelativeTime(post.createdAt)}</p>
                   </div>
                 </button>
 
@@ -355,26 +372,22 @@ export function PostDetailDialog({
 
               {/* Independently Scrollable Body & Comments */}
               <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
-                <DialogHeader>
-                  <DialogTitle className="text-lg leading-snug text-zinc-900">
-                    {post.title}
-                  </DialogTitle>
-                </DialogHeader>
-
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700">
-                  {post.content}
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+                  <HashtagText content={post.content} onSelectTag={(tag) => handleTagClick(tag)} />
                 </p>
 
-                {post.tags.length > 0 && (
+                {fallbackTags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
-                    {post.tags.map((tag) => (
-                      <span
+                    {fallbackTags.map((tag) => (
+                      <button
                         key={tag}
-                        className="inline-flex items-center gap-0.5 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-600"
+                        type="button"
+                        onClick={() => handleTagClick(tag)}
+                        className="inline-flex items-center gap-0.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
                       >
                         <Hash className="h-3 w-3" />
                         {tag}
-                      </span>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -383,15 +396,15 @@ export function PostDetailDialog({
                   <div className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600">{error}</div>
                 )}
 
-                <div className="border-t border-zinc-100 pt-4 space-y-3.5">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-600">
-                    <MessageCircle className="h-3.5 w-3.5 text-zinc-500" />
+                <div className="border-t border-slate-100 pt-4 space-y-3.5">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                    <MessageCircle className="h-3.5 w-3.5 text-slate-500" />
                     <span>评论 ({post.commentsCount})</span>
                   </div>
 
                   {comments.length === 0 ? (
-                    <p className="py-6 text-center text-xs text-zinc-400">
-                      还没有评论，来做第一个留言的人吧 ✨
+                    <p className="py-6 text-center text-xs text-slate-400">
+                      还没有评论，来做第一个留言的人吧
                     </p>
                   ) : (
                     <ul className="space-y-3">
@@ -401,7 +414,7 @@ export function PostDetailDialog({
                         return (
                           <li
                             key={cm.id}
-                            className="rounded-2xl bg-zinc-50/80 p-3 text-sm space-y-2"
+                            className="rounded-2xl bg-slate-50/90 p-3 text-sm space-y-2"
                           >
                             <div className="flex gap-2.5">
                               <button
@@ -421,12 +434,12 @@ export function PostDetailDialog({
                                   <button
                                     type="button"
                                     onClick={() => navigateToUser(cm.author.id)}
-                                    className="font-semibold text-zinc-800 hover:text-rose-600 transition-colors"
+                                    className="font-semibold text-slate-800 hover:text-blue-600 transition-colors"
                                   >
                                     {cm.author.nickname}
                                   </button>
                                   <div className="flex items-center gap-2">
-                                    <span className="text-[11px] text-zinc-400">
+                                    <span className="text-[11px] text-slate-400">
                                       {formatRelativeTime(cm.createdAt)}
                                     </span>
                                     <button
@@ -434,18 +447,18 @@ export function PostDetailDialog({
                                       onClick={() =>
                                         handleOpenReply(cm.id, cm.author.nickname, cm.author.id)
                                       }
-                                      className="text-xs font-medium text-zinc-500 hover:text-rose-600 transition-colors"
+                                      className="text-xs font-medium text-slate-500 hover:text-blue-600 transition-colors"
                                     >
                                       回复
                                     </button>
                                   </div>
                                 </div>
-                                <p className="mt-1 whitespace-pre-wrap text-zinc-600">{cm.content}</p>
+                                <p className="mt-1 whitespace-pre-wrap text-slate-600">{cm.content}</p>
                               </div>
                             </div>
 
                             {replies.length > 0 && (
-                              <ul className="ml-8 space-y-2 border-l-2 border-zinc-200/80 pl-3">
+                              <ul className="ml-8 space-y-2 border-l-2 border-slate-200/80 pl-3">
                                 {replies.map((rp) => (
                                   <li key={rp.id} className="flex gap-2 text-xs">
                                     <button
@@ -466,18 +479,18 @@ export function PostDetailDialog({
                                           <button
                                             type="button"
                                             onClick={() => navigateToUser(rp.author.id)}
-                                            className="font-semibold text-zinc-800 hover:text-rose-600"
+                                            className="font-semibold text-slate-800 hover:text-blue-600"
                                           >
                                             {rp.author.nickname}
                                           </button>
                                           {rp.replyToUser && (
-                                            <span className="text-zinc-400">
+                                            <span className="text-slate-400">
                                               回复 @{rp.replyToUser.nickname}
                                             </span>
                                           )}
                                         </div>
                                         <div className="flex items-center gap-2">
-                                          <span className="text-[11px] text-zinc-400">
+                                          <span className="text-[11px] text-slate-400">
                                             {formatRelativeTime(rp.createdAt)}
                                           </span>
                                           <button
@@ -489,13 +502,13 @@ export function PostDetailDialog({
                                                 rp.author.id
                                               )
                                             }
-                                            className="text-[11px] font-medium text-zinc-500 hover:text-rose-600"
+                                            className="text-[11px] font-medium text-slate-500 hover:text-blue-600"
                                           >
                                             回复
                                           </button>
                                         </div>
                                       </div>
-                                      <p className="mt-0.5 whitespace-pre-wrap text-zinc-600">
+                                      <p className="mt-0.5 whitespace-pre-wrap text-slate-600">
                                         {rp.content}
                                       </p>
                                     </div>
@@ -509,7 +522,7 @@ export function PostDetailDialog({
                                 onSubmit={handleSubmitReply}
                                 className="ml-8 flex items-center gap-2 pt-1"
                               >
-                                <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                                <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                                 <Input
                                   value={replyText}
                                   onChange={(e) => setReplyText(e.target.value)}
@@ -550,16 +563,19 @@ export function PostDetailDialog({
               </div>
 
               {/* Fixed Bottom Like + Bookmark + Share + Comment Input Bar */}
-              <div className="shrink-0 border-t border-zinc-100 bg-white px-5 py-3.5 space-y-2.5">
+              <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-3.5 space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Button
                       type="button"
                       size="sm"
-                      variant={post.likedByMe ? 'gradient' : 'outline'}
+                      variant="outline"
                       onClick={handleToggleLike}
                       aria-label="点赞"
-                      className="h-8 rounded-full gap-1 px-2.5 text-xs"
+                      className={cn(
+                        'h-8 rounded-full gap-1 px-2.5 text-xs',
+                        post.likedByMe && 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
+                      )}
                     >
                       <Heart className={cn('h-3.5 w-3.5', post.likedByMe && 'fill-current')} />
                       <span>{post.likesCount}</span>
@@ -599,7 +615,7 @@ export function PostDetailDialog({
                       <span>{copiedShare ? '已复制' : post.sharesCount ?? 0}</span>
                     </Button>
                   </div>
-                  <span className="inline-flex items-center gap-1 text-[11px] text-zinc-400">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
                     <Eye className="h-3.5 w-3.5" />
                     <span className="tabular-nums">{post.viewsCount ?? 0}</span>
                   </span>
@@ -609,7 +625,7 @@ export function PostDetailDialog({
                   <Input
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
-                    placeholder={currentUser ? '说点什么吧，留下你的共鸣...' : '登录后即可发表评论'}
+                    placeholder={currentUser ? '写下你的评论或补充建议...' : '登录后即可发表评论'}
                     maxLength={1000}
                     className="h-9 rounded-full"
                   />
@@ -634,7 +650,7 @@ export function PostDetailDialog({
             <DialogHeader className="sr-only">
               <DialogTitle>加载失败</DialogTitle>
             </DialogHeader>
-            <p className="text-sm font-medium text-zinc-600">
+            <p className="text-sm font-medium text-slate-600">
               {error || '该动态不存在或已被删除'}
             </p>
             <Button type="button" variant="outline" size="sm" onClick={onClose}>

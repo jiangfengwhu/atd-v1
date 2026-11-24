@@ -279,7 +279,7 @@ export function MessagesView({
 
           {loadingList ? (
             <div className="flex h-60 items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-rose-500" />
+              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
             </div>
           ) : listError ? (
             <div className="p-6 text-center text-xs text-red-600">{listError}</div>
@@ -302,7 +302,7 @@ export function MessagesView({
                       onClick={() => setActivePeerId(conv.peer.id)}
                       className={cn(
                         'flex w-full items-center gap-3 px-4 py-3.5 text-left transition',
-                        selected ? 'bg-rose-50/70' : 'hover:bg-zinc-50'
+                        selected ? 'bg-blue-50/70' : 'hover:bg-slate-50'
                       )}
                     >
                       <AvatarBadge
@@ -325,7 +325,7 @@ export function MessagesView({
                             {conv.lastMessage.content}
                           </p>
                           {conv.unreadCount > 0 && (
-                            <span className="inline-flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white">
+                            <span className="inline-flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
                               {conv.unreadCount}
                             </span>
                           )}
@@ -392,8 +392,8 @@ export function MessagesView({
                           className={cn(
                             'max-w-[78%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap shadow-sm',
                             isMine
-                              ? 'bg-gradient-to-r from-rose-500 to-fuchsia-500 text-white'
-                              : 'bg-white text-zinc-800 border border-zinc-200/70'
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-slate-800 border border-slate-200/70'
                           )}
                         >
                           {msg.content}

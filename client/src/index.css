@@ -5,32 +5,26 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
   body {
     font-family: 'Plus Jakarta Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 }
 
-.masonry-grid {
-  column-count: 1;
-  column-gap: 1.25rem;
-}
-
-@media (min-width: 640px) {
-  .masonry-grid {
-    column-count: 2;
-  }
-}
-
-@media (min-width: 1024px) {
-  .masonry-grid {
-    column-count: 3;
-  }
-}
-
-.masonry-item {
-  break-inside: avoid;
-  margin-bottom: 1.25rem;
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 @keyframes floatSlow {

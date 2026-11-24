@@ -14,11 +14,11 @@ export default {
         ],
       },
       colors: {
-        canvas: '#FAF8F5',
+        canvas: '#F8FAFC',
       },
       boxShadow: {
-        soft: '0 8px 30px rgba(24, 24, 27, 0.05)',
-        card: '0 4px 20px rgba(24, 24, 27, 0.04)',
+        soft: '0 8px 24px rgba(15, 23, 42, 0.06)',
+        card: '0 1px 3px rgba(15, 23, 42, 0.04)',
       },
     },
   },

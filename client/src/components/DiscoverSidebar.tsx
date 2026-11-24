@@ -1,5 +1,15 @@
 import * as React from 'react';
-import { Flame, Users, Hash, RefreshCw, UserPlus, UserCheck, Loader2 } from 'lucide-react';
+import {
+  Flame,
+  Users,
+  Hash,
+  RefreshCw,
+  UserPlus,
+  UserCheck,
+  Loader2,
+  Search,
+  X,
+} from 'lucide-react';
 import {
   api,
   ApiError,
@@ -9,12 +19,18 @@ import {
 } from '@/lib/api';
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 interface DiscoverSidebarProps {
   currentUser: UserProfile | null;
   activeTag: string;
   refreshKey: number;
+  searchInput: string;
+  activeQuery: string;
+  onSearchInputChange: (value: string) => void;
+  onSearchSubmit: (e: React.FormEvent) => void;
+  onClearSearch: () => void;
   onSelectTag: (tag: string) => void;
   onOpenUserProfile: (userId: string) => void;
   onRequireAuth: () => void;
@@ -24,6 +40,11 @@ export function DiscoverSidebar({
   currentUser,
   activeTag,
   refreshKey,
+  searchInput,
+  activeQuery,
+  onSearchInputChange,
+  onSearchSubmit,
+  onClearSearch,
   onSelectTag,
   onOpenUserProfile,
   onRequireAuth,
@@ -102,13 +123,35 @@ export function DiscoverSidebar({
   return (
     <aside
       aria-label="发现导航"
-      className="hidden lg:block lg:w-[310px] lg:shrink-0 sticky top-0 self-start py-7 space-y-5"
+      className="hidden lg:block lg:w-[310px] lg:shrink-0 lg:h-full lg:overflow-y-auto py-5 space-y-4"
     >
+      {/* Top Search Box */}
+      <form onSubmit={onSearchSubmit} className="relative">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Input
+          value={searchInput}
+          onChange={(e) => onSearchInputChange(e.target.value)}
+          placeholder="搜索关键词、#话题或动态..."
+          aria-label="搜索动态"
+          className="h-10 rounded-full border-slate-200/80 bg-white pl-10 pr-9 text-sm shadow-card focus:border-blue-500"
+        />
+        {(searchInput || activeQuery) && (
+          <button
+            type="button"
+            onClick={onClearSearch}
+            aria-label="清除搜索"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </form>
+
       {/* Trending Topics Card */}
-      <section className="rounded-3xl border border-zinc-200/80 bg-white/95 p-5 shadow-card">
-        <div className="mb-3.5 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-extrabold text-zinc-900">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-rose-50 text-rose-500">
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
               <Flame className="h-3.5 w-3.5" />
             </span>
             <span>热门话题</span>
@@ -117,7 +160,7 @@ export function DiscoverSidebar({
             <button
               type="button"
               onClick={() => onSelectTag('')}
-              className="text-[11px] font-semibold text-rose-500 hover:text-rose-600"
+              className="text-[11px] font-semibold text-blue-600 hover:text-blue-700"
             >
               重置筛选
             </button>
@@ -125,9 +168,9 @@ export function DiscoverSidebar({
         </div>
 
         {topicsLoading ? (
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-10 animate-pulse rounded-2xl bg-zinc-100" />
+              <div key={i} className="h-9 animate-pulse rounded-xl bg-slate-100" />
             ))}
           </div>
         ) : topicsError ? (
@@ -139,9 +182,9 @@ export function DiscoverSidebar({
             </Button>
           </div>
         ) : topics.length === 0 ? (
-          <p className="py-4 text-center text-xs text-zinc-400">暂无热门话题</p>
+          <p className="py-4 text-center text-xs text-slate-400">暂无热门话题</p>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {topics.map((topic, idx) => {
               const isSelected = activeTag === topic.tag;
               return (
@@ -150,19 +193,19 @@ export function DiscoverSidebar({
                   type="button"
                   onClick={() => onSelectTag(isSelected ? '' : topic.tag)}
                   className={cn(
-                    'flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-left transition',
+                    'flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left transition',
                     isSelected
-                      ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-200'
-                      : 'hover:bg-zinc-50 text-zinc-800'
+                      ? 'bg-blue-50 text-blue-600 ring-1 ring-blue-200'
+                      : 'hover:bg-slate-50 text-slate-800'
                   )}
                 >
                   <div className="min-w-0 flex items-center gap-2.5">
                     <span
                       className={cn(
-                        'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold',
+                        'flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[11px] font-bold',
                         idx < 3
-                          ? 'bg-rose-100 text-rose-600'
-                          : 'bg-zinc-100 text-zinc-500'
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-500'
                       )}
                     >
                       {idx + 1}
@@ -172,7 +215,7 @@ export function DiscoverSidebar({
                       <span className="truncate">{topic.tag}</span>
                     </span>
                   </div>
-                  <span className="shrink-0 text-[11px] text-zinc-400 tabular-nums">
+                  <span className="shrink-0 text-[11px] text-slate-400 tabular-nums">
                     {topic.postsCount > 0 ? `${topic.postsCount} 篇动态` : '推荐'}
                   </span>
                 </button>
@@ -183,10 +226,10 @@ export function DiscoverSidebar({
       </section>
 
       {/* Recommended Users Card */}
-      <section className="rounded-3xl border border-zinc-200/80 bg-white/95 p-5 shadow-card">
-        <div className="mb-3.5 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-extrabold text-zinc-900">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
               <Users className="h-3.5 w-3.5" />
             </span>
             <span>推荐关注</span>
@@ -197,10 +240,10 @@ export function DiscoverSidebar({
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-center gap-3">
-                <div className="h-9 w-9 animate-pulse rounded-full bg-zinc-200" />
+                <div className="h-9 w-9 animate-pulse rounded-full bg-slate-200" />
                 <div className="flex-1 space-y-1.5">
-                  <div className="h-3.5 w-24 animate-pulse rounded bg-zinc-200" />
-                  <div className="h-3 w-36 animate-pulse rounded bg-zinc-100" />
+                  <div className="h-3.5 w-24 animate-pulse rounded bg-slate-200" />
+                  <div className="h-3 w-36 animate-pulse rounded bg-slate-100" />
                 </div>
               </div>
             ))}
@@ -214,7 +257,7 @@ export function DiscoverSidebar({
             </Button>
           </div>
         ) : users.length === 0 ? (
-          <p className="py-4 text-center text-xs text-zinc-400">暂无更多推荐创作者</p>
+          <p className="py-4 text-center text-xs text-slate-400">暂无更多推荐作者</p>
         ) : (
           <ul className="space-y-3">
             {users.map((u) => {
@@ -233,8 +276,8 @@ export function DiscoverSidebar({
                       size="md"
                     />
                     <div className="min-w-0">
-                      <p className="truncate text-xs font-bold text-zinc-900">{u.nickname}</p>
-                      <p className="truncate text-[11px] text-zinc-400">
+                      <p className="truncate text-xs font-bold text-slate-900">{u.nickname}</p>
+                      <p className="truncate text-[11px] text-slate-400">
                         {u.bio || `${u.followersCount} 粉丝 · ${u.postsCount} 动态`}
                       </p>
                     </div>
@@ -248,7 +291,7 @@ export function DiscoverSidebar({
                     onClick={() => handleToggleFollow(u.id)}
                     className={cn(
                       'h-7 shrink-0 rounded-full px-3 text-[11px] font-semibold',
-                      !u.isFollowing && 'bg-zinc-900 text-white hover:bg-zinc-800'
+                      !u.isFollowing && 'bg-slate-900 text-white hover:bg-slate-800'
                     )}
                   >
                     {pending ? (

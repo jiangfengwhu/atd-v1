@@ -1,9 +1,26 @@
-import type { DirectMessageItem, NotificationItem } from '@/lib/api';
+import type {
+  DirectMessageItem,
+  NotificationItem,
+  NotificationType,
+  UnreadByType,
+} from '@/lib/api';
 
 export type RealtimeEvent =
   | { type: 'connected'; userId: string; timestamp: string }
-  | { type: 'notification:new'; notification: NotificationItem; unreadCount: number }
-  | { type: 'notification:read'; unreadCount: number; ids?: string[]; all?: boolean }
+  | {
+      type: 'notification:new';
+      notification: NotificationItem;
+      unreadCount: number;
+      unreadByType?: UnreadByType;
+    }
+  | {
+      type: 'notification:read';
+      unreadCount: number;
+      unreadByType?: UnreadByType;
+      ids?: string[];
+      all?: boolean;
+      category?: NotificationType;
+    }
   | {
       type: 'dm:new';
       message: DirectMessageItem & { conversationKey?: string };

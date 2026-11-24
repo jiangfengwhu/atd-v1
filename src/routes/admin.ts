@@ -15,7 +15,7 @@ import {
   sha256Hex,
   verifyPasswordPBKDF2,
 } from '../lib/crypto';
-import { isValidFromEmail, maskApiKey } from '../lib/validation';
+import { isValidFromEmail, makeContentPreview, maskApiKey } from '../lib/validation';
 import {
   getUnreadNotificationRecipientsForPost,
   pushNotificationReadSyncForUsers,
@@ -277,7 +277,7 @@ adminRoutes.get('/posts', async (c) => {
   }
 
   const rows = await c.env.DB.prepare(
-    `SELECT p.id, p.title, p.content, p.image_url, p.likes_count, p.comments_count, p.created_at,
+    `SELECT p.id, p.content, p.image_url, p.likes_count, p.comments_count, p.created_at,
             u.id AS author_id, u.nickname AS author_nickname, u.email AS author_email
      FROM posts p
      JOIN users u ON u.id = p.author_id
@@ -285,7 +285,6 @@ adminRoutes.get('/posts', async (c) => {
      LIMIT 50`
   ).all<{
     id: string;
-    title: string;
     content: string;
     image_url: string;
     likes_count: number;
@@ -299,8 +298,8 @@ adminRoutes.get('/posts', async (c) => {
   return c.json({
     posts: (rows.results ?? []).map((r) => ({
       id: r.id,
-      title: r.title,
       content: r.content,
+      contentPreview: makeContentPreview(r.content, 80),
       imageUrl: r.image_url,
       likesCount: Number(r.likes_count),
       commentsCount: Number(r.comments_count),
