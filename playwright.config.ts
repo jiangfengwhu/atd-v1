@@ -1,4 +1,27 @@
-import { defineConfig } from '@playwright/test';
+import fs from 'node:fs';
+import { chromium, defineConfig } from '@playwright/test';
+
+function resolveChromiumExecutable(): string | undefined {
+  try {
+    const defaultPath = chromium.executablePath();
+    if (defaultPath && fs.existsSync(defaultPath)) {
+      return undefined;
+    }
+  } catch {
+    // Fall back to system Chromium binary when Playwright browser cache is absent
+  }
+
+  const candidates = [
+    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/google-chrome',
+  ].filter((p): p is string => Boolean(p));
+
+  return candidates.find((p) => fs.existsSync(p));
+}
+
+const fallbackExecutablePath = resolveChromiumExecutable();
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -13,6 +36,9 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:8787',
     trace: 'on-first-retry',
+    ...(fallbackExecutablePath
+      ? { launchOptions: { executablePath: fallbackExecutablePath } }
+      : {}),
   },
   webServer: {
     command:
