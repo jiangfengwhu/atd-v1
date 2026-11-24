@@ -1245,7 +1245,8 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45015013560",
       "branch": "main",
       "occurredAt": "2026-11-22T11:00:56Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "error",
+      "analysisError": "{\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\"status\":\"UNAVAILABLE\"}}"
     },
     {
       "id": "inc-9b83ebb1",
@@ -1653,5 +1654,5 @@
       "lastAppliedAt": "2026-11-24T02:07:27.471Z"
     }
   ],
-  "lastSyncedAt": "2026-11-23T16:30:28.991Z"
+  "lastSyncedAt": "2026-11-24T02:33:11.586Z"
 }

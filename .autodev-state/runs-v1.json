@@ -493,7 +493,7 @@
       "source": "estimated",
       "model": "gemini-4-neon-high"
     },
-    "status": "pr_created",
+    "status": "approved",
     "checkedCriteriaIds": [],
     "draftPr": {
       "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/13",
@@ -538,6 +538,18 @@
         "source": "reported",
         "model": "gemini-4-hydrogen-high"
       }
+    },
+    "approvalNote": "同意上线",
+    "approvedAt": "2026-11-24T02:33:09.434Z",
+    "mergedRelease": {
+      "mergedAt": "2026-11-24T02:33:14.615Z",
+      "mergeCommitSha": "9fc10831430f66c88002f0aae5381478adf8407f",
+      "baseBranch": "main",
+      "prNumber": 13,
+      "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/13",
+      "commitUrl": "https://github.com/jiangfengwhu/atd-v1/commit/9fc10831430f66c88002f0aae5381478adf8407f",
+      "mergeMethod": "squash",
+      "branchDeleted": true
     }
   },
   {
