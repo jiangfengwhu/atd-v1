@@ -1191,6 +1191,19 @@
   ],
   "incidents": [
     {
+      "id": "inc-1ea9e5c4",
+      "sourceRefKey": "deploy-production:main:1795488766687",
+      "source": "deploy_error",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "title": "Cloudflare 生产部署失败（main）",
+      "errorSummary": "Command failed: npm run build:client\n> atd-v1-community@1.0.0 build:client\n> vite build\nvite v6.4.6 building for production...\ntransforming...",
+      "rawEvidence": "Command failed: npm run build:client\n> atd-v1-community@1.0.0 build:client\n> vite build\nvite v6.4.6 building for production...\ntransforming...",
+      "relatedRunId": "run-aec3b8f5",
+      "branch": "main",
+      "occurredAt": "2026-11-24T02:52:46.687Z",
+      "analysisStatus": "analyzing"
+    },
+    {
       "id": "inc-1903069d",
       "sourceRefKey": "actions:45217521906",
       "source": "deploy_error",

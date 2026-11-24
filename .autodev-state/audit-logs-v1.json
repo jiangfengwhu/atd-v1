@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-77912ef9",
+    "timestamp": "2026-11-24T02:52:46.686Z",
+    "category": "execution",
+    "action": "production_deployed",
+    "label": "部署正式生产环境",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-aec3b8f5",
+    "prdTitle": "发布功能优化+bugfix",
+    "branch": "main",
+    "prNumber": 13,
+    "status": "failed",
+    "detail": "重新部署生产环境失败：Command failed: npm run build:client\n> atd-v1-community@1.0.0 build:client\n> vite build\nvite v6.4.6 building for production...\ntransforming..."
+  },
+  {
     "id": "aud-5e0b0bbb",
     "timestamp": "2026-11-24T02:45:07.085Z",
     "category": "approval",
