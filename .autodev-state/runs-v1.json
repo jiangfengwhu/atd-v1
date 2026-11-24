@@ -513,6 +513,31 @@
       "archivedSpecPath": "docs/iterations/run-aec3b8f5-spec.json",
       "createdAt": "2026-11-24T02:17:34.006Z",
       "initializedEmptyRepo": false
+    },
+    "lastAgySession": {
+      "sessionId": "f6e7e4b9-7852-41cb-979f-bd301c2949fd",
+      "branchName": "autodev/feat-20261124-021727",
+      "actionsRunId": 45311332287,
+      "exitCode": 0,
+      "reused": true,
+      "consecutiveReuseCount": 0,
+      "updatedAt": "2026-11-24T02:32:30.027Z"
+    },
+    "latestCodingOutput": {
+      "content": "Updated `playwright.config.ts` to fall back to the system Chromium binary when the Playwright browser cache is missing, and running the full E2E suite across all 5 spec files now. Waiting for completion.\nRunning all 20 E2E tests across the 5 spec files after updating the legacy test-script assumptions and `playwright.config.ts` Chromium fallback. Waiting for completion.\nRunning the full 20-test Playwright E2E suite on a clean local D1 state. Waiting for completion.\n已完成 Round 1 自动修复与全量 E2E 回归验证，代码已提交并推送至 `autodev/feat-20261124-021727`。\n\n### 根因分析与修复明细\n\n1. **Playwright 浏览器启动失败（影响全部 5 个测试套件的根因 — 测试运行环境配置问题）**\n   - **根因**：CI/本地运行环境中 `/data/home/.cache/ms-playwright/chromium_headless_shell-1255/...` 未下载安装，而系统已安装 `/usr/bin/chromium`，但 [playwright.config.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/playwright.config.ts) 未配置系统 Chromium 回退路径。\n   - **修复**：在 [playwright.config.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/playwright.config.ts) 中新增 `resolveChromiumExecutable()`：优先使用 Playwright 默认缓存浏览器，若不存在则自动回退到环境变量 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 或系统路径 `/usr/bin/chromium`（未修改应用逻辑）。\n\n2. **历史测试脚本与新无标题动态模型冲突（测试脚本过时假设 — 非应用缺陷）**\n   启用系统 Chromium 全量运行 5 个 E2E 套件后，[run-aec3b8f5.spec.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-aec3b8f5.spec.ts)（3/3）直接通过；另外 4 个历史测试文件中存在以下针对旧版 `posts.title` 与旧版「发布图文」弹窗的过时断言：\n   - [run-f8b35bdc.spec.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-f8b35bdc.spec.ts)（测试 3）：仍校验 `title: '   '` 返回 400 并查找已移除的标题输入框。已更新为校验空正文 `{ content: '   ' }` 返回 400，并在发布弹窗 `dialog` 内通过正文输入、传图与搜索验证持久化闭环。\n   - [run-96e1a2ad.spec.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-96e1a2ad.spec.ts)（测试 2、4）：通过 `title` 字段定位个人主页帖子，且在测试 4 中仅匹配旧按钮文案 `/发布图文/i` 并尝试填写已移除的标题框。已更新为通过 `content` 唯一标识验证主页四维展示，兼容 `/发布图文|发布动态|发布/i` 并限定在 `dialog` 内完成裁剪与无标题发布验证。\n   - [run-7026568c.spec.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-7026568c.spec.ts)（测试 5）：仅通过 `title` 在列表和详情弹窗中定位帖子。已将唯一标识写入 `content`，保留双栏几何、评论提交与移动端溢出全部真实断言。\n   - [run-9b961baa.spec.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-9b961baa.spec.ts)（测试 1、2）：通过 `title` 过滤卡片，且在个人主页定位「收藏」Tab 时未限定 `main` 范围，导致可能命中左侧全局导航栏的「收藏」按钮。已将唯一标识写入 `content` 并将个人主页「收藏」Tab 定位器限定在 `page.locator('main')` 内。\n\n### 验证结果\n\n- `npx playwright test --retries=0`（覆盖全部 5 个 E2E 套件）：**20 passed (42.1s)**。\n- `npx tsc --noEmit && npm run build`：零错误通过。\n- `git push origin HEAD:autodev/feat-20261124-021727` 推送成功（commit `60a7886`），`git status` 工作区干净。",
+      "commitSha": "60a7886",
+      "model": "gemini-4-hydrogen-high",
+      "actionsRunId": 45311332287,
+      "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45311332287",
+      "repairRounds": 1,
+      "capturedAt": "2026-11-24T02:32:30.027Z",
+      "tokenUsage": {
+        "inputTokens": 1012965,
+        "outputTokens": 199504,
+        "totalTokens": 1212469,
+        "source": "reported",
+        "model": "gemini-4-hydrogen-high"
+      }
     }
   },
   {
