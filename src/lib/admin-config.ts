@@ -27,7 +27,7 @@ export async function ensureAdminConfig(db: D1Database): Promise<AdminConfigRow>
     .prepare(
       `INSERT OR IGNORE INTO admin_config
        (id, password_hash, is_default_password, resend_api_key, resend_from_email, site_name, failed_attempts, locked_until, updated_at)
-       VALUES (1, ?, 1, '', 'onboarding@resend.dev', '拾光集 · 轻图文社区', 0, NULL, ?)`
+       VALUES (1, ?, 1, '', 'onboarding@resend.dev', 'dev社区', 0, NULL, ?)`
     )
     .bind(defaultHash, now)
     .run();

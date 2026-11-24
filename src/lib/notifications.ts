@@ -1,8 +1,15 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Bindings } from '../types';
 import { pushUserEvent } from './realtime';
+import { makeContentPreview } from './validation';
 
 export type NotificationType = 'comment' | 'like' | 'follow';
+
+export interface UnreadByType {
+  comment: number;
+  like: number;
+  follow: number;
+}
 
 export interface NotificationRow {
   id: string;
@@ -18,11 +25,12 @@ export interface NotificationRow {
   actor_avatar_seed: string;
   actor_avatar_url: string | null;
   joined_post_id: string | null;
-  post_title: string | null;
+  post_content: string | null;
   post_image_url: string | null;
 }
 
 export function serializeNotification(row: NotificationRow) {
+  const postContent = row.post_content ?? '';
   return {
     id: row.id,
     type: row.type,
@@ -38,7 +46,8 @@ export function serializeNotification(row: NotificationRow) {
     post: row.joined_post_id
       ? {
           id: row.joined_post_id,
-          title: row.post_title ?? '',
+          content: postContent,
+          contentPreview: makeContentPreview(postContent, 80),
           imageUrl: row.post_image_url ?? '',
         }
       : null,
@@ -46,15 +55,39 @@ export function serializeNotification(row: NotificationRow) {
   };
 }
 
+export async function getNotificationsUnreadByType(
+  db: D1Database,
+  userId: string
+): Promise<UnreadByType> {
+  const rows = await db
+    .prepare(
+      `SELECT type, COUNT(*) AS cnt
+       FROM notifications
+       WHERE recipient_id = ? AND is_read = 0
+       GROUP BY type`
+    )
+    .bind(userId)
+    .all<{ type: NotificationType; cnt: number }>();
+
+  const summary: UnreadByType = { comment: 0, like: 0, follow: 0 };
+  for (const row of rows.results ?? []) {
+    if (row.type === 'comment' || row.type === 'like' || row.type === 'follow') {
+      summary[row.type] = Number(row.cnt ?? 0);
+    }
+  }
+  return summary;
+}
+
+export function sumUnreadByType(unreadByType: UnreadByType): number {
+  return unreadByType.comment + unreadByType.like + unreadByType.follow;
+}
+
 export async function getNotificationsUnreadCount(
   db: D1Database,
   userId: string
 ): Promise<number> {
-  const row = await db
-    .prepare('SELECT COUNT(*) AS cnt FROM notifications WHERE recipient_id = ? AND is_read = 0')
-    .bind(userId)
-    .first<{ cnt: number }>();
-  return Number(row?.cnt ?? 0);
+  const unreadByType = await getNotificationsUnreadByType(db, userId);
+  return sumUnreadByType(unreadByType);
 }
 
 export async function fetchSerializedNotification(db: D1Database, notificationId: string) {
@@ -64,7 +97,7 @@ export async function fetchSerializedNotification(db: D1Database, notificationId
               n.content_preview, n.is_read, n.created_at,
               u.nickname AS actor_nickname, u.avatar_seed AS actor_avatar_seed,
               COALESCE(up.avatar_url, '') AS actor_avatar_url,
-              p.id AS joined_post_id, p.title AS post_title, p.image_url AS post_image_url
+              p.id AS joined_post_id, p.content AS post_content, p.image_url AS post_image_url
        FROM notifications n
        JOIN users u ON u.id = n.actor_id
        LEFT JOIN user_profiles up ON up.user_id = u.id
@@ -145,16 +178,17 @@ export async function createOrUpdateNotification(
       .run();
   }
 
-  const [notification, unreadCount] = await Promise.all([
+  const [notification, unreadByType] = await Promise.all([
     fetchSerializedNotification(env.DB, notificationId),
-    getNotificationsUnreadCount(env.DB, recipientId),
+    getNotificationsUnreadByType(env.DB, recipientId),
   ]);
 
   if (notification) {
     await pushUserEvent(env, recipientId, {
       type: 'notification:new',
       notification,
-      unreadCount,
+      unreadCount: sumUnreadByType(unreadByType),
+      unreadByType,
     });
   }
 }
@@ -172,10 +206,11 @@ export async function clearUnreadLikeNotification(
     .run();
 
   if (res.meta.changes && res.meta.changes > 0) {
-    const unreadCount = await getNotificationsUnreadCount(env.DB, params.recipientId);
+    const unreadByType = await getNotificationsUnreadByType(env.DB, params.recipientId);
     await pushUserEvent(env, params.recipientId, {
       type: 'notification:read',
-      unreadCount,
+      unreadCount: sumUnreadByType(unreadByType),
+      unreadByType,
     });
   }
 }
@@ -193,10 +228,11 @@ export async function clearUnreadFollowNotification(
     .run();
 
   if (res.meta.changes && res.meta.changes > 0) {
-    const unreadCount = await getNotificationsUnreadCount(env.DB, params.recipientId);
+    const unreadByType = await getNotificationsUnreadByType(env.DB, params.recipientId);
     await pushUserEvent(env, params.recipientId, {
       type: 'notification:read',
-      unreadCount,
+      unreadCount: sumUnreadByType(unreadByType),
+      unreadByType,
     });
   }
 }
@@ -218,10 +254,11 @@ export async function pushNotificationReadSyncForUsers(
 ): Promise<void> {
   await Promise.all(
     userIds.map(async (uid) => {
-      const unreadCount = await getNotificationsUnreadCount(env.DB, uid);
+      const unreadByType = await getNotificationsUnreadByType(env.DB, uid);
       await pushUserEvent(env, uid, {
         type: 'notification:read',
-        unreadCount,
+        unreadCount: sumUnreadByType(unreadByType),
+        unreadByType,
       });
     })
   );

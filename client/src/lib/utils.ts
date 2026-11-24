@@ -6,12 +6,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 const AVATAR_GRADIENTS = [
-  'from-rose-400 via-fuchsia-500 to-indigo-500',
-  'from-amber-400 via-orange-500 to-rose-500',
-  'from-emerald-400 via-teal-500 to-cyan-500',
-  'from-sky-400 via-blue-500 to-indigo-500',
-  'from-violet-400 via-purple-500 to-pink-500',
-  'from-lime-400 via-emerald-500 to-teal-500',
+  'from-slate-700 to-slate-900',
+  'from-blue-600 to-sky-500',
+  'from-emerald-600 to-teal-500',
+  'from-cyan-600 to-blue-600',
+  'from-amber-500 to-orange-500',
+  'from-teal-600 to-emerald-500',
 ];
 
 export function getAvatarGradient(seed: string): string {

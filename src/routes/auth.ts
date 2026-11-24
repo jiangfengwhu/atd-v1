@@ -216,7 +216,7 @@ authRoutes.post('/send-code', async (c) => {
     config.resend_from_email.trim() ||
     (c.env.RESEND_FROM_EMAIL ?? '').trim() ||
     'onboarding@resend.dev';
-  const siteName = config.site_name.trim() || '拾光集 · 轻图文社区';
+  const siteName = config.site_name.trim() || 'dev社区';
 
   if (resendApiKey) {
     const html = `

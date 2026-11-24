@@ -2,7 +2,13 @@ import { Hono } from 'hono';
 import type { AppEnv } from '../types';
 import { getSessionUser } from './auth';
 import { ensureAdminConfig } from '../lib/admin-config';
-import { escapeSqlLike, isValidImageUrl, sanitizeTags } from '../lib/validation';
+import {
+  escapeSqlLike,
+  isValidImageUrl,
+  makeContentPreview,
+  mergePostTags,
+  sanitizeTags,
+} from '../lib/validation';
 import {
   clearUnreadLikeNotification,
   createOrUpdateNotification,
@@ -13,7 +19,6 @@ import {
 export interface PostRow {
   id: string;
   author_id: string;
-  title: string;
   content: string;
   image_url: string;
   tags_json: string;
@@ -67,7 +72,6 @@ function parseTagsJson(raw: string): string[] {
 export function serializePost(row: PostRow) {
   return {
     id: row.id,
-    title: row.title,
     content: row.content,
     imageUrl: row.image_url,
     tags: parseTagsJson(row.tags_json),
@@ -106,23 +110,32 @@ postRoutes.get('/', async (c) => {
     limit > 50 ||
     !Number.isInteger(offset) ||
     offset < 0 ||
-    (sort !== 'latest' && sort !== 'hot')
+    (sort !== 'latest' && sort !== 'hot' && sort !== 'following')
   ) {
     return c.json({ error: '分页或排序参数无效' }, 400);
   }
 
   const user = await getSessionUser(c.env.DB, c.req.header('cookie'));
+  if (sort === 'following' && !user) {
+    return c.json({ error: '请先登录后再查看我的关注动态' }, 401);
+  }
+
   const config = await ensureAdminConfig(c.env.DB);
 
   const conditions: string[] = [];
   const filterParams: (string | number)[] = [];
 
+  if (sort === 'following' && user) {
+    conditions.push(
+      'EXISTS (SELECT 1 FROM user_follows uf WHERE uf.follower_id = ? AND uf.following_id = p.author_id)'
+    );
+    filterParams.push(user.id);
+  }
+
   if (q) {
     const pattern = `%${escapeSqlLike(q)}%`;
-    conditions.push(
-      "(p.title LIKE ? ESCAPE '\\' OR p.content LIKE ? ESCAPE '\\' OR p.tags_json LIKE ? ESCAPE '\\')"
-    );
-    filterParams.push(pattern, pattern, pattern);
+    conditions.push("(p.content LIKE ? ESCAPE '\\' OR p.tags_json LIKE ? ESCAPE '\\')");
+    filterParams.push(pattern, pattern);
   }
 
   if (tag) {
@@ -141,7 +154,7 @@ postRoutes.get('/', async (c) => {
     .first<{ total: number }>();
 
   const listQuery = user
-    ? `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
+    ? `SELECT p.id, p.author_id, p.content, p.image_url, p.tags_json,
               p.likes_count, p.comments_count, p.created_at,
               COALESCE(pm.views_count, 0) AS views_count,
               COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
@@ -159,7 +172,7 @@ postRoutes.get('/', async (c) => {
        ${whereSql}
        ${orderSql}
        LIMIT ? OFFSET ?`
-    : `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
+    : `SELECT p.id, p.author_id, p.content, p.image_url, p.tags_json,
               p.likes_count, p.comments_count, p.created_at,
               COALESCE(pm.views_count, 0) AS views_count,
               COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
@@ -194,42 +207,39 @@ postRoutes.get('/', async (c) => {
 postRoutes.post('/', async (c) => {
   const user = await getSessionUser(c.env.DB, c.req.header('cookie'));
   if (!user) {
-    return c.json({ error: '请先登录后再发布图文' }, 401);
+    return c.json({ error: '请先登录后再发布动态' }, 401);
   }
 
   const body = await c.req
-    .json<{ title?: unknown; content?: unknown; imageUrl?: unknown; tags?: unknown }>()
+    .json<{ content?: unknown; imageUrl?: unknown; tags?: unknown }>()
     .catch(() => null);
   if (!body || typeof body !== 'object') {
     return c.json({ error: '请求格式错误' }, 400);
   }
 
-  const title = typeof body.title === 'string' ? body.title.trim() : '';
   const content = typeof body.content === 'string' ? body.content.trim() : '';
   const imageUrl = typeof body.imageUrl === 'string' ? body.imageUrl.trim() : '';
-  const tags = sanitizeTags(body.tags);
+  const extraTags = sanitizeTags(body.tags);
 
-  if (title.length < 1 || title.length > 120) {
-    return c.json({ error: '标题长度需在 1 到 120 个字符之间' }, 400);
-  }
   if (content.length < 1 || content.length > 5000) {
     return c.json({ error: '正文长度需在 1 到 5000 个字符之间' }, 400);
   }
   if (!isValidImageUrl(imageUrl)) {
     return c.json({ error: '图片链接仅支持站内上传路径或 http/https 地址' }, 400);
   }
-  if (tags === null) {
+  if (extraTags === null) {
     return c.json({ error: '话题标签格式无效' }, 400);
   }
 
+  const tags = mergePostTags(content, extraTags);
   const postId = crypto.randomUUID();
   const nowIso = new Date().toISOString();
 
   await c.env.DB.prepare(
-    `INSERT INTO posts (id, author_id, title, content, image_url, tags_json, likes_count, comments_count, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?)`
+    `INSERT INTO posts (id, author_id, content, image_url, tags_json, likes_count, comments_count, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?)`
   )
-    .bind(postId, user.id, title, content, imageUrl, JSON.stringify(tags), nowIso, nowIso)
+    .bind(postId, user.id, content, imageUrl, JSON.stringify(tags), nowIso, nowIso)
     .run();
 
   return c.json(
@@ -237,7 +247,6 @@ postRoutes.post('/', async (c) => {
       ok: true,
       post: {
         id: postId,
-        title,
         content,
         imageUrl,
         tags,
@@ -266,7 +275,7 @@ postRoutes.get('/:id', async (c) => {
   const user = await getSessionUser(c.env.DB, c.req.header('cookie'));
 
   const postQuery = user
-    ? `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
+    ? `SELECT p.id, p.author_id, p.content, p.image_url, p.tags_json,
               p.likes_count, p.comments_count, p.created_at,
               COALESCE(pm.views_count, 0) AS views_count,
               COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
@@ -283,7 +292,7 @@ postRoutes.get('/:id', async (c) => {
        LEFT JOIN post_bookmarks pb ON pb.post_id = p.id AND pb.user_id = ?
        WHERE p.id = ?
        LIMIT 1`
-    : `SELECT p.id, p.author_id, p.title, p.content, p.image_url, p.tags_json,
+    : `SELECT p.id, p.author_id, p.content, p.image_url, p.tags_json,
               p.likes_count, p.comments_count, p.created_at,
               COALESCE(pm.views_count, 0) AS views_count,
               COALESCE(pm.bookmarks_count, 0) AS bookmarks_count,
@@ -433,9 +442,9 @@ postRoutes.post('/:id/like', async (c) => {
   }
 
   const postId = c.req.param('id');
-  const post = await c.env.DB.prepare('SELECT id, author_id, title FROM posts WHERE id = ? LIMIT 1')
+  const post = await c.env.DB.prepare('SELECT id, author_id, content FROM posts WHERE id = ? LIMIT 1')
     .bind(postId)
-    .first<{ id: string; author_id: string; title: string }>();
+    .first<{ id: string; author_id: string; content: string }>();
 
   if (!post) {
     return c.json({ error: '帖子不存在' }, 404);
@@ -482,7 +491,7 @@ postRoutes.post('/:id/like', async (c) => {
         actorId: user.id,
         type: 'like',
         postId,
-        contentPreview: post.title,
+        contentPreview: makeContentPreview(post.content, 80),
       });
     }
     liked = true;
@@ -636,9 +645,9 @@ postRoutes.post('/:id/comments', async (c) => {
   }
 
   const postId = c.req.param('id');
-  const post = await c.env.DB.prepare('SELECT id, author_id, title FROM posts WHERE id = ? LIMIT 1')
+  const post = await c.env.DB.prepare('SELECT id, author_id, content FROM posts WHERE id = ? LIMIT 1')
     .bind(postId)
-    .first<{ id: string; author_id: string; title: string }>();
+    .first<{ id: string; author_id: string; content: string }>();
 
   if (!post) {
     return c.json({ error: '帖子不存在' }, 404);

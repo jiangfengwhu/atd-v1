@@ -374,9 +374,9 @@ test.describe.serial('通知接入、主流导航栏、Instagram双栏详情与W
     const { url: imageUrl } = await uploadRes.json();
 
     const postTitle = `Instagram双栏美学-${Date.now()}`;
-    const postContent = '桌面端左侧沉浸式展示图片，右侧独立滚动正文与评论，底部固定互动输入栏。';
+    const postContent = `${postTitle} 桌面端左侧沉浸式展示图片，右侧独立滚动正文与评论，底部固定互动输入栏。`;
     const createRes = await page.request.post('/api/posts', {
-      data: { title: postTitle, content: postContent, imageUrl, tags: ['摄影美学'] },
+      data: { content: postContent, imageUrl, tags: ['摄影美学'] },
     });
     expect(createRes.status()).toBe(201);
 

@@ -172,48 +172,43 @@ test.describe.serial('图文文字社区全链路加固盲测 E2E 套件', () =>
     expect(imgGetRes.headers()['content-type']).toContain('image/png');
     expect((imgGetRes.headers()['x-content-type-options'] || '').toLowerCase()).toBe('nosniff');
 
-    // 校验恶意 javascript: imageUrl 与空标题被拦截
+    // 校验恶意 javascript: imageUrl 与空正文被拦截
     const xssPostRes = await page.request.post('/api/posts', {
       data: {
-        title: 'XSS测试',
         content: '测试非法图片协议拦截',
         imageUrl: 'javascript:alert(1)',
       },
     });
     expect(xssPostRes.status()).toBe(400);
 
-    const emptyTitleRes = await page.request.post('/api/posts', {
-      data: { title: '   ', content: '无标题内容' },
+    const emptyContentRes = await page.request.post('/api/posts', {
+      data: { content: '   ' },
     });
-    expect(emptyTitleRes.status()).toBe(400);
+    expect(emptyContentRes.status()).toBe(400);
 
-    // 通过 UI 入口打开图文发布弹窗并提交（兼容上传或填入 URL）
-    const postTitle = `年轻人的周末灵感-${Date.now()}`;
-    const postBody = '记录一杯冰美式和落日余晖，首版图文社区真好用！';
+    // 通过 UI 入口打开图文发布弹窗并提交（兼容无标题 X.com 风格发布器）
+    const postTag = `年轻人的周末灵感-${Date.now()}`;
+    const postBody = `${postTag} 记录一杯冰美式和落日余晖，dev社区真好用！`;
     const commentText = `太赞了同款机位-${Date.now()}`;
 
     await page.goto('/');
     const composeBtn = page
-      .getByRole('button', { name: /发布图文|发布|写图文|发帖/i })
+      .getByRole('button', { name: /发布图文|发布动态|发布|写图文|发帖/i })
       .first();
     await expect(composeBtn).toBeVisible({ timeout: 10000 });
     await composeBtn.click();
 
-    const titleInput = page
-      .getByPlaceholder(/标题|起个标题/i)
-      .or(page.getByLabel(/标题/i))
-      .first();
-    await expect(titleInput).toBeVisible({ timeout: 10000 });
-    await titleInput.fill(postTitle);
+    const composeDialog = page.getByRole('dialog').first();
+    await expect(composeDialog).toBeVisible({ timeout: 10000 });
 
-    const contentInput = page
-      .getByPlaceholder(/正文|内容|分享|此刻|想说/i)
-      .or(page.locator('textarea'))
+    const contentInput = composeDialog
+      .getByPlaceholder(/正文|内容|分享|此刻|想说|灵感/i)
+      .or(composeDialog.locator('textarea'))
       .first();
-    await expect(contentInput).toBeVisible();
+    await expect(contentInput).toBeVisible({ timeout: 10000 });
     await contentInput.fill(postBody);
 
-    const fileInput = page.locator('input[type="file"]').first();
+    const fileInput = composeDialog.locator('input[type="file"]').first();
     if ((await fileInput.count()) > 0) {
       await fileInput.setInputFiles({
         name: 'community-card.png',
@@ -225,7 +220,7 @@ test.describe.serial('图文文字社区全链路加固盲测 E2E 套件', () =>
     const createPostPromise = page.waitForResponse(
       (res) => res.url().endsWith('/api/posts') && res.request().method() === 'POST'
     );
-    const publishBtn = page
+    const publishBtn = composeDialog
       .getByRole('button', { name: /立即发布|确认发布|发布帖子|提交|发布/i })
       .last();
     await publishBtn.click();
@@ -238,10 +233,10 @@ test.describe.serial('图文文字社区全链路加固盲测 E2E 套件', () =>
 
     // 刷新页面验证图文持久化可见
     await page.reload();
-    await expect(page.getByText(postTitle).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(postTag).first()).toBeVisible({ timeout: 10000 });
 
     // 验证搜索接口命中
-    const searchRes = await page.request.get(`/api/posts?q=${encodeURIComponent(postTitle)}`);
+    const searchRes = await page.request.get(`/api/posts?q=${encodeURIComponent(postTag)}`);
     expect(searchRes.status()).toBe(200);
     const searchJson = await searchRes.json();
     expect(searchJson.posts.some((p: { id: string }) => p.id === postId)).toBe(true);

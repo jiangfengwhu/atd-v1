@@ -58,17 +58,17 @@ test.describe.serial('动态改版（X.com列表流、点击/收藏/分享直达
 
       const tag = `动态改版${Date.now().toString().slice(-4)}`;
       const title1 = `X风格单列动态一-${Date.now()}`;
-      const content1 = '第一条正文内容，用于校验列表流展示、点击、收藏与分享直达。';
+      const content1 = `${title1} 第一条正文内容，用于校验列表流展示、点击、收藏与分享直达。`;
       const title2 = `X风格单列动态二-${Date.now()}`;
 
       const p1Res = await page.request.post('/api/posts', {
-        data: { title: title1, content: content1, tags: [tag] },
+        data: { content: content1, tags: [tag] },
       });
       expect(p1Res.status()).toBe(201);
       const postId = (await p1Res.json()).post.id as string;
 
       const p2Res = await page.request.post('/api/posts', {
-        data: { title: title2, content: '第二条动态用于验证纵向单列排列', tags: [tag] },
+        data: { content: `${title2} 第二条动态用于验证纵向单列排列`, tags: [tag] },
       });
       expect(p2Res.status()).toBe(201);
 
@@ -166,8 +166,9 @@ test.describe.serial('动态改版（X.com列表流、点击/收藏/分享直达
         .first()
         .click();
       const bookmarksTab = page
+        .locator('main')
         .getByRole('tab', { name: /收藏/ })
-        .or(page.getByRole('button', { name: /收藏/ }))
+        .or(page.locator('main').getByRole('button', { name: /收藏/ }))
         .first();
       await expect(bookmarksTab).toBeVisible({ timeout: 10000 });
       await bookmarksTab.click();
@@ -205,15 +206,14 @@ test.describe.serial('动态改版（X.com列表流、点击/收藏/分享直达
       for (let i = 0; i < 3; i += 1) {
         const res = await ctxCreator.request.post('/api/posts', {
           data: {
-            title: i === 0 ? hotPostTitle : `${hotPostTitle}-${i}`,
-            content: '测试热门话题实时聚合排序', 
+            content: `${i === 0 ? hotPostTitle : `${hotPostTitle}-${i}`} 测试热门话题实时聚合排序`,
             tags: [hotTag],
           },
         });
         expect(res.status()).toBe(201);
       }
       await ctxCreator.request.post('/api/posts', {
-        data: { title: otherPostTitle, content: '用于验证点击热门话题筛选隔离', tags: [otherTag] },
+        data: { content: `${otherPostTitle} 用于验证点击热门话题筛选隔离`, tags: [otherTag] },
       });
 
       const viewer = await loginUser(page.request, makeEmail('discover-viewer'), '探索用户');

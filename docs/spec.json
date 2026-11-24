@@ -1,418 +1,325 @@
 {
   "schemaVersion": "1.1",
   "generatedBy": "AutoDev Studio",
-  "runId": "run-9b961baa",
-  "createdAt": "2026-11-23T16:14:00.121Z",
+  "runId": "run-aec3b8f5",
+  "createdAt": "2026-11-24T02:15:06.814Z",
   "repository": "jiangfengwhu/atd-v1",
   "baseBranch": "main",
-  "baseCommitSha": "1159063e8340895661f5b55bfc45cb302cc4e605",
-  "e2eTestPath": "tests/e2e/run-9b961baa.spec.ts",
-  "e2eVaultPath": ".autodev-e2e-vault/run-9b961baa/e2e.spec.ts",
+  "baseCommitSha": "1382237ba1d68bc155a2708e608e5463b8bd7657",
+  "e2eTestPath": "tests/e2e/run-aec3b8f5.spec.ts",
+  "e2eVaultPath": ".autodev-e2e-vault/run-aec3b8f5/e2e.spec.ts",
   "blindE2eVerification": false,
-  "archivedSpecPath": "docs/iterations/run-9b961baa-spec.json",
-  "prdTitle": "动态改版",
+  "archivedSpecPath": "docs/iterations/run-aec3b8f5-spec.json",
+  "prdTitle": "发布功能优化+bugfix",
   "architecture": {
-    "summary": "在现有 Cloudflare Workers + Hono + D1 + Durable Objects + React/Vite 轻图文社区架构上进行严格增量演进，完全保留既有 0001~0003 迁移、通知中心、私信实时推送、图片裁剪及隐藏 /admin 管理后台。\n1. 数据层：新增幂等迁移 migrations/0004_feed_revamp_bookmarks_accounts.sql，通过独立 post_metrics 表（存储 views_count、bookmarks_count、shares_count）与 post_bookmarks 表实现零侵入扩展，避免对既有 posts 表执行非幂等 ALTER TABLE；并在用户删帖与后台删帖事务中级联清理关联统计与收藏记录。\n2. 业务接口层：扩展 src/routes/posts.ts 序列化输出及新增点击（POST /api/posts/:id/view）、收藏切换（POST /api/posts/:id/bookmark）、分享记录（POST /api/posts/:id/share）接口；扩展 src/routes/users.ts 支持本人专属收藏列表（tab=bookmarks）；新增 src/routes/discover.ts 提供基于 D1 json_each 实时聚合的热门话题（GET /api/discover/topics）与推荐关注（GET /api/discover/recommended-users）；扩展 src/routes/auth.ts 与 src/lib/cookies.ts，采用纯 HttpOnly 多账号会话托管 Cookie（session_vault，上限 5 个已验证会话令牌，绝不向前端脚本暴露凭证）实现账号列表查询（GET /api/auth/accounts）、安全无感切换（POST /api/auth/switch）与分级退出（POST /api/auth/logout）。\n3. 前端与路由层：将 CommunityPage.tsx 升级为 X.com 风格三栏布局（左侧主导航 <aside> + 居中单列动态信息流 <main> + 右侧发现导航 <aside>），严格保持左侧导航与主内容区紧凑间距以兼容既往布局契约；重构 PostCard.tsx 为单列时间线形态并内置评论/点赞/收藏/点击数/分享互动栏；新增 /posts/:id 前端直达路由与 PostDetailDialog 联动，支持分享链接直接打开目标动态并记录点击；左下角账号菜单集成多账号列表、即时切换、添加其他账号（复用 AuthDialog OTP 流程）与账号切换时自动断开重连 WebSocket（UserRealtimeHub）及全视图状态刷新。",
+    "summary": "基于现有 Cloudflare Workers + Hono + D1 + Durable Objects（WebSocket 实时推送）+ React/Vite/Tailwind 架构执行增量演进：1）通过原子化增量迁移 0005 合并 posts 表存量 title 与 content 并删除 title 列，同时平滑迁移默认站点名称为「dev社区」；2）扩展 POST /api/posts 为 X.com 风格纯正文发帖并内置正文 #话题 自动解析，扩展 GET /api/posts 支持 sort=following 关注流查询；3）扩展通知接口提供分类型未读统计 unreadByType 与按分类批量已读 POST /api/notifications/read({ type })，并经由现有 Durable Objects WebSocket 通道实时同步多端未读角标；4）前端重构为桌面端视口锁定（h-screen）三栏独立滚动布局与全局隐形滚动条，去除红紫渐变 AI 风格并切换为清爽克制的开发者社区 Slate + Tech Blue 视觉体系，将搜索框移至右栏顶部、顶部「最新/最热/我的关注」升级为同宽吸顶 Tab 栏、动态卡片排布更紧凑，左侧导航新增直达 /bookmarks 的独立收藏页，发布器重构为支持拖拽与剪贴板粘贴图片的 X.com 无标题编辑器。",
     "techDecisions": [
-      "遵循 Cloudflare D1 迁移幂等与原子性规范：保留 0001~0003 既有迁移不变，0004 迁移仅使用 CREATE TABLE IF NOT EXISTS 与 CREATE INDEX IF NOT EXISTS 新建 post_metrics 和 post_bookmarks 表，避免 ALTER TABLE 重复列风险；部署前需确认 wrangler.toml 的 database_id 绑定配置及 CI 环境中 CLOUDFLARE_API_TOKEN、CLOUDFLARE_ACCOUNT_ID 凭证完整有效。",
-      "多账号切换采用全服务端 HttpOnly Cookie 托管方案（session_token 标记当前激活会话 + session_vault 托管最多 5 个已验证会话令牌），严禁在 localStorage 持久化凭证；切换接口强制校验目标 userId 归属当前浏览器有效托管会话，杜绝跨账号越权接管。",
-      "账号切换时主动调用 realtimeClient.disconnect() 后重新握手 /api/ws，确保 Durable Object UserRealtimeHub 立即切换至目标账号通道，并同步刷新动态流 likedByMe/bookmarkedByMe、未读通知私信数与右侧推荐关注列表。",
-      "动态详情直达 URL 采用 /posts/:id 路径，利用 wrangler.toml 既有的 single-page-application 回退机制直接加载应用并弹出 PostDetailDialog，既实现分享 URL 直达又保持既往点击卡片弹出双栏详情弹窗的交互与几何一致性。",
-      "三栏布局保持左侧导航为 DOM 中第一个 <aside>、居中动态流为 <main>、右侧热门话题与推荐关注为 <main> 之后的第二个 <aside>（lg 宽屏展示），确保既有左栏与主区紧凑间距不被破坏且小屏无横向溢出。",
-      "点击统计采用显式 POST /api/posts/:id/view 原子自增，保持 GET /api/posts/:id 纯只读无副作用；前端在单次打开动态详情或直达 /posts/:id 时防抖上报一次，避免 React 严格模式重复计数。"
+      "遵循 RSI Cloudflare D1 迁移规范：绝不修改已应用的 0001-0004 迁移脚本，新增原子化增量脚本 migrations/0005_publish_redesign_and_brand.sql；执行迁移前必须校验 wrangler.toml 的 database_id 配置及 CI 环境 CLOUDFLARE_API_TOKEN 凭据完备性。",
+      "数据库结构演进：0005 迁移先将存量 posts.title 与 posts.content 按换行安全合并（处理空值避免冗余换行），再执行 ALTER TABLE posts DROP COLUMN title 保留全部既有索引，并仅在 admin_config.site_name 为旧默认值时幂等更新为「dev社区」。",
+      "无标题动态与 #话题 统一解析：前后端共用一致的话题提取规则（正则匹配正文中的 #话题，支持中英文/数字/下划线/连字符，单标签上限 20 字符、单帖最多 8 个去重写入 tags_json），天然复用现有热门话题聚合 /api/discover/topics 与标签筛选 /api/posts?tag= 逻辑；卡片与详情正文高亮渲染可点击 #话题，并对未出现在正文中的历史存量标签保留底部兜底展示。",
+      "三栏独立滚动与吸顶架构：移除外层容器破坏 sticky 定位的 overflow-x-hidden，桌面端（md/lg）外层容器固定 h-screen overflow-hidden，左导航栏、中间内容流、右侧发现栏分别作为独立纵向滚动容器（左栏主体 nav 区独立滚动、底部账号菜单外置防裁切），动态区「最新/最热/我的关注」Tab 栏使用 sticky top-0 w-full 吸附在中间滚动容器顶部并与动态卡片严格同宽；通过全局 CSS scrollbar-width: none 与 ::-webkit-scrollbar { display: none } 隐藏全部滚动条。",
+      "去 AI 味开发者社区视觉体系：全面替换现有 rose/fuchsia/indigo 多段渐变与粉色光晕，采用中性浅灰底色（#F8FAFC）+ 纯白卡片 + 细灰描边 + 深石板黑（#0F172A）主操作与科技蓝（#2563EB）高亮交互色，保留点赞红心、收藏琥珀与未读红点等功能语义色；动态列表间距收紧为紧凑间隔（8px-10px）。",
+      "通知分类红点与无竞态批量已读：后端 getNotificationsUnreadByType 汇总 comment/like/follow 分项未读数并随列表、未读统计与 WebSocket 事件下发；前端点击分类 Tab 时串行先完成 POST /api/notifications/read({ type }) 再刷新该分类列表（防止请求乱序回写旧未读态），一键清零对应分类红点并同步左侧导航总未读数。"
     ]
   },
   "ambiguities": [
     {
       "id": "AMB-1",
       "severity": "medium",
-      "title": "动态点击统计的计数口径（累计点击与去重规则）",
-      "detail": "PRD 提出添加动态点击统计，但未明确同一用户多次打开同一条动态是每次打开均累计（PV 口径），还是按用户/浏览器在时间窗口内去重（UV 口径）。",
-      "clarificationSuggestion": "建议首期采用原子累加 PV 口径：每次用户点击进入动态详情或通过分享链接直接访问该动态时计数加一，并在前端避免开发模式下单次打开重复上报；后续如有防刷诉求再补充时间窗口去重。"
+      "title": "存量动态标题与正文的合并拼接规则及无标题摘要展示",
+      "detail": "现有 posts 表存在非空 title 与 content 字段，且通知中心、个人主页评论/回复记录与管理后台均依赖 post_title 展示引用摘要。移除 title 字段并将存量数据合并后，需要明确合并格式与摘要截取规则。",
+      "clarificationSuggestion": "存量迁移时当 title 与 content 均非空则以换行符拼接（trim(title) || char(10) || trim(content)），任一为空则保留非空项，避免出现多余空行；通知、个人互动记录及后台内容管理列表统一取 content 前 60-80 字符作为摘要展示。"
     },
     {
       "id": "AMB-2",
-      "severity": "medium",
-      "title": "收藏列表的查看入口与隐私可见范围",
-      "detail": "PRD 要求增加收藏功能，未说明用户收藏后的内容在何处集中查看，以及他人访问某用户主页时是否可以查看其收藏列表。",
-      "clarificationSuggestion": "建议参照 X.com 习惯：在个人主页新增「收藏」标签页集中展示已收藏动态，且收藏列表仅账号本人可见，防止泄露用户个人偏好隐私。"
+      "severity": "low",
+      "title": "通知中心首次进入是否自动清除全部未读红点",
+      "detail": "PRD 要求「通知红点点击对应分类就标为已读，不需要一个个点击」。若进入通知页默认选中「全部」即立刻自动标为全部已读，用户将看不到「评论」「点赞」「关注」各分类上的未读红点。",
+      "clarificationSuggestion": "首次进入通知中心时保留各分类未读红点及计数展示，仅在用户主动点击「评论」「点赞」「关注」或「全部」分类标签时，自动将该分类下所有未读通知批量标记为已读，同时保留「全部标为已读」快捷按钮。"
     },
     {
       "id": "AMB-3",
       "severity": "low",
-      "title": "右侧热门话题与推荐关注的排序规则与冷启动兜底",
-      "detail": "PRD 要求主页右侧增加类似 X.com 的热门话题与推荐关注模块，未约定热度计算权重及社区内容较少时的冷启动展示策略。",
-      "clarificationSuggestion": "建议热门话题优先基于真实动态标签的发帖数与互动量（点赞、评论、点击）加权排序，标签不足时以社区预设推荐话题补齐；推荐关注排除当前登录用户本人及已关注对象，按粉丝数与活跃发帖数降序推荐。"
+      "title": "未登录用户访问「我的关注」Tab 与左侧「收藏」页面的交互表现",
+      "detail": "「我的关注」动态流与「收藏」列表均属于用户强绑定数据，未登录状态下无法查询。",
+      "clarificationSuggestion": "未登录用户切换到「我的关注」Tab 或点击「收藏」导航时，在主内容区展示友好的登录引导卡片（附「立即登录」按钮）或直接触发登录弹窗；同时后端接口严格返回 401 拒绝未授权访问。"
     },
     {
       "id": "AMB-4",
-      "severity": "medium",
-      "title": "多账号切换的并发账号上限与退出登录行为",
-      "detail": "PRD 要求支持多账号切换，未明确同一浏览器允许同时保持登录的最大账号数，以及多账号登录状态下点击退出登录是仅退出当前账号还是退出全部账号。",
-      "clarificationSuggestion": "建议同一浏览器最多托管 5 个已验证账号会话；单账号登录时直接展示「退出登录」，多账号登录时提供「退出当前账号」（自动切换至剩余已登录账号）与「退出全部账号」两个选项。"
+      "severity": "low",
+      "title": "应用更名为「dev社区」与后台自定义站点名称的兼容性",
+      "detail": "当前站点名称同时存在于前端默认文案、HTML 标题以及数据库 admin_config.site_name 中，管理员可能已在后台自定义过名称。",
+      "clarificationSuggestion": "新建代码默认值全部改为「dev社区」，增量 SQL 迁移仅当 admin_config.site_name 仍为旧默认值「拾光集 · 轻图文社区」时将其更新为「dev社区」，保留管理员自定义站点名称的覆盖能力。"
     }
   ],
   "apiContracts": [
     {
       "id": "API-1",
-      "method": "POST",
-      "path": "/api/posts/:id/view",
-      "summary": "记录动态点击/浏览次数（支持访客与登录用户，原子累加 views_count）",
-      "requestSchema": "{}",
-      "responseSchema": "{ ok: true, viewsCount: number }",
+      "method": "GET",
+      "path": "/api/posts",
+      "summary": "获取动态流列表，新增 sort=following 我的关注流，适配无标题动态模型与默认 dev社区 站点名",
+      "requestSchema": "Query: { q?: string, tag?: string, sort?: 'latest' | 'hot' | 'following', limit?: number(1-50), offset?: number(>=0) }",
+      "responseSchema": "{ posts: Array<{ id, content, imageUrl, tags, likesCount, commentsCount, viewsCount, bookmarksCount, sharesCount, likedByMe, bookmarkedByMe, author, createdAt }>, total: number, siteName: string }",
       "errorCodes": [
-        "404"
+        "400",
+        "401"
       ]
     },
     {
       "id": "API-2",
       "method": "POST",
-      "path": "/api/posts/:id/bookmark",
-      "summary": "切换当前登录用户对指定动态的收藏/取消收藏状态并同步更新收藏计数",
-      "requestSchema": "{}",
-      "responseSchema": "{ ok: true, bookmarked: boolean, bookmarksCount: number }",
+      "path": "/api/posts",
+      "summary": "X.com 风格纯正文发布动态，无需 title，自动解析正文 #话题 并合并可选 tags 持久化",
+      "requestSchema": "Body: { content: string(1-5000), imageUrl?: string, tags?: string[] }",
+      "responseSchema": "201 { ok: true, post: { id, content, imageUrl, tags, likesCount, commentsCount, viewsCount, bookmarksCount, sharesCount, likedByMe, bookmarkedByMe, author, createdAt } }",
       "errorCodes": [
-        "401",
-        "404"
+        "400",
+        "401"
       ]
     },
     {
       "id": "API-3",
-      "method": "POST",
-      "path": "/api/posts/:id/share",
-      "summary": "记录动态分享次数并返回可直达的站内分享路径（支持访客与登录用户）",
-      "requestSchema": "{}",
-      "responseSchema": "{ ok: true, sharesCount: number, sharePath: string }",
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "summary": "获取当前登录用户的通知总未读数、按分类拆分的未读数及私信未读数",
+      "requestSchema": "Headers: Cookie(session)",
+      "responseSchema": "{ notificationsUnread: number, unreadByType: { comment: number, like: number, follow: number }, messagesUnread: number, totalUnread: number }",
       "errorCodes": [
-        "404"
+        "401"
       ]
     },
     {
       "id": "API-4",
       "method": "GET",
-      "path": "/api/posts/:id",
-      "summary": "获取单条动态详情及评论树（增量扩展返回点击数、收藏数、分享数及当前用户收藏态；GET /api/posts 列表同结构扩展）",
-      "requestSchema": "Path param: id (string)",
-      "responseSchema": "{ post: { id, title, content, imageUrl, tags, likesCount, commentsCount, viewsCount, bookmarksCount, sharesCount, likedByMe, bookmarkedByMe, author, createdAt }, comments: CommentItem[] }",
+      "path": "/api/notifications",
+      "summary": "分页按分类获取通知列表并返回分类型未读计数，关联动态摘要改由正文截取",
+      "requestSchema": "Query: { type?: 'all' | 'comment' | 'like' | 'follow', limit?: number(1-50), offset?: number(>=0) }",
+      "responseSchema": "{ notifications: Array<{ id, type, isRead, contentPreview, createdAt, actor, post: { id, content, contentPreview, imageUrl } | null, commentId }>, total: number, unreadCount: number, unreadByType: { comment: number, like: number, follow: number } }",
       "errorCodes": [
-        "404"
+        "400",
+        "401"
       ]
     },
     {
       "id": "API-5",
+      "method": "POST",
+      "path": "/api/notifications/read",
+      "summary": "标记通知已读，新增按分类批量已读 { type }，并实时推送最新分项未读计数",
+      "requestSchema": "Body: { all: true } | { ids: string[] } | { type: 'all' | 'comment' | 'like' | 'follow' }",
+      "responseSchema": "{ ok: true, unreadCount: number, unreadByType: { comment: number, like: number, follow: number } }",
+      "errorCodes": [
+        "400",
+        "401"
+      ]
+    },
+    {
+      "id": "API-6",
       "method": "GET",
-      "path": "/api/users/:id/activity",
-      "summary": "个人主页活动记录增量支持 tab=bookmarks 查询收藏动态列表（收藏列表仅本人有权读取）",
-      "requestSchema": "Query: tab=posts|likes|comments|replies|bookmarks, limit?: 1..50, offset?: >=0",
-      "responseSchema": "{ tab: string, items: PostItem[] | CommentActivityItem[] | ReplyActivityItem[], total: number }",
+      "path": "/api/users/me/activity",
+      "summary": "供左侧「收藏」独立页面读取当前用户收藏列表（tab=bookmarks），适配无标题动态返回结构与隐私隔离",
+      "requestSchema": "Query: { tab: 'bookmarks' | 'posts' | 'likes' | 'comments' | 'replies', limit?: number(1-50), offset?: number(>=0) }",
+      "responseSchema": "{ tab: string, items: Array<PostItem | CommentActivityItem | ReplyActivityItem>, total: number }",
       "errorCodes": [
         "400",
         "401",
         "403",
         "404"
       ]
-    },
-    {
-      "id": "API-6",
-      "method": "GET",
-      "path": "/api/discover/topics",
-      "summary": "获取右侧导航热门话题列表（按真实动态标签发帖数与互动热度加权排序，冷启动补齐预设话题）",
-      "requestSchema": "Query: limit?: integer (1..12, default 6)",
-      "responseSchema": "{ topics: Array<{ tag: string, postsCount: number, heatScore: number }> }",
-      "errorCodes": [
-        "400"
-      ]
-    },
-    {
-      "id": "API-7",
-      "method": "GET",
-      "path": "/api/discover/recommended-users",
-      "summary": "获取右侧导航推荐关注创作者列表（排除当前用户本人与已关注对象，严禁返回用户邮箱）",
-      "requestSchema": "Query: limit?: integer (1..10, default 5)",
-      "responseSchema": "{ users: Array<{ id: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string, followersCount: number, postsCount: number, isFollowing: boolean }> }",
-      "errorCodes": [
-        "400"
-      ]
-    },
-    {
-      "id": "API-8",
-      "method": "GET",
-      "path": "/api/auth/accounts",
-      "summary": "获取当前浏览器多账号托管列表中全部有效已登录账号及当前激活账号 ID",
-      "requestSchema": "Cookie: session_token, session_vault (HttpOnly)",
-      "responseSchema": "{ activeUserId: string | null, accounts: Array<{ id: string, email: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string, createdAt: string, isActive: boolean }> }",
-      "errorCodes": []
-    },
-    {
-      "id": "API-9",
-      "method": "POST",
-      "path": "/api/auth/switch",
-      "summary": "将当前激活登录态切换为本浏览器已验证托管的其他账号",
-      "requestSchema": "{ userId: string }",
-      "responseSchema": "{ ok: true, user: AuthUser, accounts: AccountSummary[] }",
-      "errorCodes": [
-        "400",
-        "401",
-        "403"
-      ]
-    },
-    {
-      "id": "API-10",
-      "method": "POST",
-      "path": "/api/auth/logout",
-      "summary": "扩展退出登录：支持退出当前账号（若仍有其他已登录账号则自动切换至下一个有效账号）、移除指定托管账号或一键退出全部账号",
-      "requestSchema": "{ userId?: string, all?: boolean } (optional body)",
-      "responseSchema": "{ ok: true, activeUser: AuthUser | null, accounts: AccountSummary[] }",
-      "errorCodes": [
-        "403"
-      ]
     }
   ],
   "tasks": [
     {
       "id": "T-01",
-      "title": "新增动态统计与收藏增量数据库迁移",
-      "module": "database",
-      "description": "创建幂等、原子的增量迁移文件 migrations/0004_feed_revamp_bookmarks_accounts.sql（不改动 0001~0003 既有迁移）：使用 CREATE TABLE IF NOT EXISTS 建立 post_metrics（post_id 主键、views_count、bookmarks_count、shares_count、updated_at）与 post_bookmarks（post_id 与 user_id 联合主键、created_at）及相关查询索引。同步核验 wrangler.toml 的 D1 database_id 绑定规范与本地/CI 迁移执行流程（wrangler d1 migrations apply DB --local 及部署工作流 CLOUDFLARE_API_TOKEN 校验），确保新旧数据平滑兼容且可重复安全执行。",
+      "title": "数据库增量迁移、无标题动态模型与关注流/品牌后端接口改造",
+      "module": "backend/db",
+      "description": "1. 校验 wrangler.toml D1 配置后新增原子化增量迁移 migrations/0005_publish_redesign_and_brand.sql：先将 posts 存量记录的 title 与 content 合并写回 content（避免空值多余空行），再删除 posts.title 列，并幂等将默认 admin_config.site_name 由旧品牌名更新为「dev社区」。2. 更新 src/lib/admin-config.ts 默认站点名为「dev社区」。3. 在 src/lib/validation.ts 新增正文 #话题 提取工具函数 extractHashtagsFromContent。4. 改造 src/routes/posts.ts：POST /api/posts 取消 title 校验、强制校验 content（1-5000字）并自动提取正文 #话题 合并去重写入 tags_json；GET /api/posts 扩展 sort=following（未登录返回 401，已登录通过 user_follows 过滤关注作者并按时间倒序）且搜索仅匹配 content 与 tags_json；移除点赞/评论/详情 SQL 中对 p.title 的引用。5. 同步更新 src/routes/users.ts、src/routes/admin.ts、src/lib/notifications.ts 中所有对 p.title 的 SQL 查询，改用 p.content 截取摘要。",
       "dependsOn": [],
       "acceptanceCriteria": [
-        "社区升级后，原有历史动态、评论、点赞、关注、私信与通知数据完整保留，不会丢失或损坏",
-        "任意历史动态与新发布动态默认具备点击数、收藏数与分享数统计能力，且初始数值准确显示为零",
-        "用户收藏或浏览动态后刷新页面或重新打开站点，相关统计数据与收藏记录保持持久不丢失"
+        "历史已发布的动态在升级后标题与正文完整合并显示，原有内容、配图、点赞数与评论数均无丢失",
+        "用户发布新动态时无需填写标题，仅输入正文即可成功发布，正文中以 #话题 形式书写的标签会被自动识别并同步计入对应话题与热门话题榜",
+        "已登录用户在首页切换到「我的关注」后，列表仅展示其已关注作者发布的动态，且按发布时间从新到旧排列",
+        "社区默认站点名称更新为「dev社区」，且不影响管理员在后台自定义站点名称"
       ],
-      "estimatedComplexity": "S"
+      "estimatedComplexity": "M"
     },
     {
       "id": "T-02",
-      "title": "实现动态点击统计、收藏、分享与本人收藏列表后端能力",
-      "module": "backend",
-      "description": "增量扩展 src/routes/posts.ts：更新 PostRow 与 serializePost，在 GET /api/posts、POST /api/posts 与 GET /api/posts/:id 中左连接 post_metrics 与 post_bookmarks 返回 viewsCount、bookmarksCount、sharesCount、bookmarkedByMe；新增 POST /api/posts/:id/view（访客/登录均可原子自增点击数）、POST /api/posts/:id/bookmark（需登录，事务式防并发切换收藏状态并维护计数）、POST /api/posts/:id/share（访客/登录均可累加分享数并返回 sharePath: /posts/:id）。在 src/routes/posts.ts（DELETE /:id）与 src/routes/admin.ts（DELETE /posts/:id）删帖批处理中同步清理 post_bookmarks 与 post_metrics。扩展 src/routes/users.ts：GET /:id 对本人返回 bookmarksCount，GET /:id/activity 新增 tab=bookmarks 仅允许账号本人访问（未登录返回 401，跨用户访问返回 403）。",
+      "title": "通知分类型未读红点与点击分类一键标为已读",
+      "module": "notifications",
+      "description": "1. 在 src/lib/notifications.ts 新增 getNotificationsUnreadByType 统计 comment/like/follow 三类未读数，并随 GET /api/notifications、GET /api/notifications/unread-count、POST /api/notifications/read 及 WebSocket 推送事件返回 unreadByType。2. 扩展 POST /api/notifications/read 支持 { type: 'all' | 'comment' | 'like' | 'follow' } 参数（非法 type 返回 400），仅更新当前用户对应分类下的未读通知并广播实时同步事件。3. 升级 client/src/components/NotificationsView.tsx、client/src/lib/api.ts 与 realtime.ts：在「全部」「评论」「点赞」「关注」分类标签上展示各自未读红点/角标；用户点击某分类标签且该分类存在未读时，串行先调用分类已读再拉取列表，立即消除该分类红点并同步更新左侧导航总未读角标，同时将点赞/评论通知的动态摘要改为正文节选展示。",
       "dependsOn": [
         "T-01"
       ],
       "acceptanceCriteria": [
-        "用户或未登录访客每次打开动态详情后，该动态的点击次数准确加一并实时同步展示",
-        "已登录用户可以对任意动态点击收藏与取消收藏，收藏计数随之加一或减一，未登录用户尝试收藏时会收到登录引导",
-        "用户或未登录访客触发分享操作后，该动态的分享次数准确加一并生成可直接访问该动态的专属分享链接",
-        "已登录用户可在自己的个人主页查看按收藏时间倒序排列的全部收藏动态，其他用户无法查看或窃取他人的隐私收藏列表",
-        "当作者或管理员删除某条动态后，该动态不再出现在任何用户的收藏列表中，访问其分享链接也会友好提示内容不存在"
+        "用户收到新的评论、点赞或关注提醒后，进入通知中心可在对应的「评论」「点赞」「关注」分类标签上直观看到未读红点提示",
+        "用户直接点击「评论」「点赞」或「关注」任一分类标签后，该分类下的所有未读提醒立即批量标为已读且该分类红点消失，无需逐条点开",
+        "点击某一分类标为已读时，其他尚未查看的分类红点保持可见，左侧导航栏通知总未读角标同步扣减；全部查看完毕后总未读角标清零消失",
+        "通知中心列表中的动态摘要展示正文节选，点击通知条目仍可正常打开对应动态详情或访问用户主页"
       ],
       "estimatedComplexity": "M"
     },
     {
       "id": "T-03",
-      "title": "实现右侧发现导航后端接口（热门话题与推荐关注）",
-      "module": "backend",
-      "description": "新建 src/routes/discover.ts 并在 src/index.ts 挂载至 /api/discover：实现 GET /api/discover/topics（校验 limit 范围 1..12，利用 D1 json_each(p.tags_json) 结合 post_metrics 统计各话题发帖量与互动热度并排序，社区冷启动标签不足时用预设精选话题兜底补齐）；实现 GET /api/discover/recommended-users（校验 limit 范围 1..10，排除当前登录用户自身及已关注用户，按粉丝数与发帖数降序返回推荐创作者公开信息，严格剔除 email 字段保护隐私）。",
+      "title": "首页三栏独立滚动布局、dev社区品牌升级、吸顶Tab栏、右侧搜索与配色紧凑视觉重塑",
+      "module": "layout/theme",
+      "description": "1. 在 client/src/index.css 添加全局隐藏滚动条样式（html/body/* 设置 scrollbar-width: none 与 ::-webkit-scrollbar display: none），保持平滑滚动。2. 重构 client/src/pages/CommunityPage.tsx 与 DiscoverSidebar.tsx 桌面端三栏布局：移除破坏 sticky 的外层 overflow-x-hidden，桌面端采用视口高度三栏容器（md:h-screen md:overflow-hidden），使左侧导航区、中间动态流、右侧发现栏各自独立纵向滚动互不带动（左栏底部账号菜单独立挂载防止被裁切）。3. 将 client/index.html、CommunityPage.tsx、AdminPage.tsx 默认品牌名改为「dev社区」，彻底删除首页「轻图文 · 慢生活灵感角落」与「把日常瞬间写成光」Hero 区块。4. 将「最新」「最热」升级为全宽 X.com 风格吸顶 Tab 栏并新增「我的关注」Tab，宽度与动态栏完全一致，滚动时吸附在动态区顶部；未登录点击「我的关注」展示友好登录引导。5. 将搜索框迁移至右侧发现栏顶部（热门话题卡片上方），保留移动端紧凑搜索入口。6. 全站去除红紫渐变（rose/fuchsia/indigo）AI 味配色，统一为清爽克制的开发者社区中性 Slate + Tech Blue（#2563EB / #0F172A）主题；收紧动态卡片上下间距与内边距。",
       "dependsOn": [
         "T-01"
       ],
       "acceptanceCriteria": [
-        "首页右侧的热门话题榜单能够根据社区真实发布的话题标签与互动热度自动聚合排序，新发布带有热门标签的动态可即时反映在榜单中",
-        "首页右侧的推荐关注榜单会优先展示社区内活跃创作者的昵称、头像、简介与粉丝情况，不会向用户推荐自己或已经关注过的人",
-        "推荐关注列表展示的所有用户信息仅包含公开资料，严禁泄露任何用户的注册邮箱等隐私信息"
+        "桌面端首页呈三栏布局，用户上下滚动中间动态流时，左侧导航栏与右侧发现栏保持原地不动，且三栏各自可独立上下滚动",
+        "站点名称在浏览器标题与导航栏显示为「dev社区」，原「轻图文 · 慢生活灵感角落」与「把日常瞬间写成光」内容块已彻底删除",
+        "动态流顶部展示「最新」「最热」「我的关注」三项切换标签，整体宽度与下方动态卡片宽度一致，向下浏览动态时标签栏吸附固定在顶部",
+        "搜索框位于右侧导航栏顶部（热门话题上方），用户输入关键词并回车后可即时筛选中间动态流",
+        "全站界面采用清爽克制的开发者社区配色，彻底去除原有红紫渐变视觉风格，页面与弹窗内所有滚动区域均隐藏滚动条外观，动态卡片上下排列更加紧凑"
       ],
-      "estimatedComplexity": "M"
+      "estimatedComplexity": "L"
     },
     {
       "id": "T-04",
-      "title": "实现多账号安全会话托管与切换后端能力",
-      "module": "backend",
-      "description": "扩展 src/lib/cookies.ts 新增 USER_SESSION_VAULT_COOKIE（session_vault，HttpOnly、SameSite=Lax）与多令牌解析/序列化辅助函数；扩展 src/routes/auth.ts：1) verify-code 登录成功后在保留其他已登录账号会话的前提下将新令牌写入 session_vault（同用户自动去重，单浏览器上限 5 个账号）并置为当前 session_token；2) 新增 GET /api/auth/accounts 返回当前浏览器全部有效托管账号与 activeUserId；3) 新增 POST /api/auth/switch 校验目标 userId 必须归属当前浏览器有效托管会话（未登录返回 401，未托管账号返回 403，非法参数返回 400）后切换 session_token；4) 增强 POST /api/auth/logout，支持空请求体退出当前账号（有剩余有效账号时自动切回，无剩余时清空所有 Cookie，完全兼容单账号退出行为）以及 { all: true } 一次性退出并注销全部托管账号。",
-      "dependsOn": [],
-      "acceptanceCriteria": [
-        "用户在同一浏览器内可以依次验证并同时保持多个社区账号处于已登录状态，最多支持五个账号共存",
-        "用户在已登录的多个账号之间一键切换时，无需重复输入邮箱验证码即可立即以目标账号身份发帖、点赞、收藏、关注与收发私信",
-        "任何用户无法在未经邮箱验证的情况下冒充或切换到他人的账号，已退出的账号也无法被再次切回",
-        "多账号状态下用户可选择仅退出当前账号并自动切回其余已登录账号，或选择一键退出全部账号恢复访客状态；单账号退出体验与之前保持一致"
+      "title": "左侧导航栏新增「收藏」Tab 与专属收藏页面",
+      "module": "bookmarks",
+      "description": "1. 在 CommunityPage.tsx 左侧主导航栏与移动端底部导航栏新增「收藏」Tab（使用 Bookmark 图标），支持点击直接跳转至 /bookmarks 路由与浏览器前进后退同步。2. 新建 client/src/components/BookmarksView.tsx 专属收藏页，调用 GET /api/users/me/activity?tab=bookmarks 加载当前用户收藏动态列表，支持查看详情、点赞、分享、点击正文 #话题 跳转筛选，以及直接取消收藏后即时移出列表并同步动态流状态。3. 未登录访问 /bookmarks 展示登录引导卡片；切换或退出账号时正确刷新或回退视图；保留个人主页原有「收藏」Tab 兼容。",
+      "dependsOn": [
+        "T-01",
+        "T-03"
       ],
-      "estimatedComplexity": "M"
+      "acceptanceCriteria": [
+        "左侧导航栏与移动端底部导航均新增「收藏」入口，已登录用户点击后直接进入专属收藏页面展示自己收藏的全部动态",
+        "用户在收藏页面可直接取消收藏某条动态，该动态会立即从收藏列表中移除，并同步更新动态的收藏状态",
+        "未登录用户点击「收藏」入口时，页面引导用户登录，不会展示其他用户的私人收藏内容"
+      ],
+      "estimatedComplexity": "S"
     },
     {
       "id": "T-05",
-      "title": "重构 X.com 风格动态列表流、右侧导航、分享直达与多账号切换前端界面",
-      "module": "frontend",
-      "description": "1) 更新 client/src/lib/api.ts 补全动态统计/收藏/分享、发现接口、个人收藏标签及多账号切换 API 封装；2) 重构 client/src/pages/CommunityPage.tsx 为 X.com 风格三栏布局（保留左侧导航为首个 <aside> 且与居中 <main> 保持紧凑间距，动态流右侧在 lg 及以上宽屏渲染发现导航 <aside> 展示「热门话题」与「推荐关注」卡片，支持点击话题筛选动态与直接一键关注/取消关注推荐用户）；3) 重构 client/src/components/PostCard.tsx 与主页信息流容器，从瀑布流改为类似 X.com 的单列纵向列表卡片形态，底部操作栏提供评论、点赞、收藏、点击统计与分享按钮（分享支持复制直达链接并弹出清晰提示）；4) 支持 /posts/:id 分享链接直达路由与 history 同步，在 PostDetailDialog.tsx 中集成点击上报、收藏与分享操作，同时保持桌面端双栏详情弹窗与移动端适配；5) 在 ProfileView.tsx 为本人主页新增「收藏」标签页并同步采用清晰列表展示；6) 升级左下角账号菜单及移动端入口，展示已登录账号列表、当前账号标识、一键切换、「添加其他账号」（复用 AuthDialog）、「退出登录/退出当前账号」与「退出全部账号」，切换账号时主动断开重连 realtimeClient 并刷新全站状态。",
+      "title": "X.com 风格无标题发布器（拖拽/粘贴配图与正文 #话题 实时解析渲染）",
+      "module": "compose/feed",
+      "description": "1. 抽离通用无标题发布组件 client/src/components/PostComposer.tsx，同时用于首页动态流顶部快捷发布框与左侧按钮触发的 ComposeDialog.tsx：移除标题输入框与独立自定义标签表单，仅保留正文输入框、实时提取的 #话题 预览胶囊、本地选图与裁剪编辑。2. 为发布器实现拖拽图片（dragenter/dragover/dragleave/drop 高亮提示与文件校验）与剪贴板粘贴图片（onPaste 拦截图片文件自动预览并保留纯文本正常粘贴），支持超过 2MB 提示裁剪或拒绝非图片文件，并支持 Ctrl/Cmd+Enter 快捷发布。3. 改造 PostCard.tsx、PostDetailDialog.tsx、ProfileView.tsx 与 AdminPage.tsx：取消标题行展示，正文内联高亮渲染可点击的 #话题 令牌（点击触发话题筛选），并对未出现在正文中的历史标签保留紧凑兜底标签展示；无图详情页、评论记录与管理后台均改为基于正文摘要渲染。",
       "dependsOn": [
-        "T-02",
-        "T-03",
-        "T-04"
+        "T-01",
+        "T-03"
       ],
       "acceptanceCriteria": [
-        "用户打开社区首页时，中间主区域以类似 X.com 的单列纵向列表形式展示社区动态，每条动态清晰呈现作者信息、正文、配图、话题标签以及评论数、点赞数、收藏数、点击数和分享按钮",
-        "用户点击列表中的任意动态即可打开详情查看完整内容与评论，同时该动态的点击次数即时增加；在列表或详情中点击收藏按钮可即时切换收藏状态，在个人主页的收藏标签页可随时回看已收藏内容",
-        "用户点击动态上的分享按钮后，页面提示已复制分享链接且分享数增加；将分享链接发送给他人或在新窗口直接打开后，页面自动跳转并展示该条动态的完整详情，若动态不存在则友好提示并返回首页",
-        "用户在电脑宽屏浏览首页时，页面右侧展示热门话题与推荐关注模块；点击任意热门话题可快速筛选该话题下的动态，点击推荐用户旁的关注按钮可直接完成关注，点击用户名可进入其个人主页",
-        "用户点击左下角个人账号区域可查看当前已登录的所有账号列表，点击添加其他账号可登录新账号，点击列表中的其他账号可一键无感切换身份，切换后昵称头像、点赞收藏状态、通知私信未读数及实时消息通道立即同步为目标账号"
+        "用户在首页顶部快捷发布区或点击发布按钮打开的发布窗中创作动态时，仅需填写正文，界面不存在标题输入框",
+        "用户将图片文件拖拽到发布区域，或复制/截图图片后直接在输入框内粘贴时，界面立即识别并展示配图预览，支持裁剪或移除后随动态一起发布",
+        "用户在正文中直接输入 #话题 即可添加话题标签，发布后动态卡片与详情页会高亮展示正文中的话题，点击任意话题可直接按该话题筛选动态"
       ],
-      "estimatedComplexity": "L"
+      "estimatedComplexity": "M"
     }
   ],
   "qaSpec": {
     "coverageNotes": [
-      "覆盖主页 X.com 风格单列列表形态的纵向对齐校验、动态点击统计、收藏切换、分享计数与 /posts/:id 访客直达",
-      "覆盖主页右侧热门话题与推荐关注模块渲染及接口基础契约",
-      "覆盖同浏览器多账号登录、账号列表查询与左下角菜单一键切换身份"
+      "覆盖无标题动态发布与正文 #话题 自动解析持久化",
+      "覆盖首页改名 dev社区、移除旧标语、三栏结构、吸顶 Tab 与右侧搜索框展示",
+      "覆盖左侧导航栏独立「收藏」入口跳转及收藏列表展示",
+      "覆盖通知分类未读统计与点击分类批量标为已读核心流程"
     ],
-    "initialApiTestCount": 11
+    "initialApiTestCount": 7
   },
   "qaCritic": {
-    "reviewSummary": "初版 QA Spec 覆盖了三大核心功能的正向主流程，但在安全隔离（多账号越权切换防护、收藏列表 IDOR 隔离、推荐关注邮箱隐私脱敏）、非法输入边界（发现接口分页越界、空 userId 切换、不存在动态的点击/收藏/分享与直达 404 容错）、级联数据一致性（删帖后清理收藏与统计）、并发计数安全（并发点击与高频收藏防负数）、以及三栏布局几何与账号切换状态同步（点赞/收藏状态随身份切换即时更新、单账号退出与全部退出后防旧账号回切）方面存在明显缺口。同时依据历史 D1 迁移故障经验，需确保迁移脚本幂等与无侵入。已将全部 7 项审查发现加固至最终 API 测试清单与盲测 E2E 套件，并全量校验 Playwright 严格模式选择器规范（所有 .or() 均显式附加 .first()）。",
+    "reviewSummary": "初版 qa_spec 已覆盖主要正常路径，但在以下 5 个关键维度存在明显盲区：1）缺少 RSI 强约束要求的 Cloudflare D1 迁移幂等与存量数据兼容性边界检验；2）缺少正文 #话题 非法/超长/重复/XSS 清洗、非法图片协议与非法通知分类参数校验；3）缺少三栏真正独立滚动（滚轮后两侧导航 Y 坐标静止）、吸顶 Tab 宽度对齐与滚动吸附、全局隐形滚动条及去红紫渐变配色的可观测断言；4）缺少拖拽图片与剪贴板粘贴图片的真实交互事件验证及发布后图片持久化检查；5）缺少通知按分类已读的跨用户 IDOR 越权隔离、逐个分类独立消红点验证以及并发重复点击分类 Tab 的幂等防竞态测试。已在 finalApiTestChecklist 与 finalE2eTestCode 中全面加固并严格遵循 Playwright 严苛模式规范。",
     "findings": [
       {
         "id": "CRIT-01",
-        "category": "security",
+        "category": "boundary",
         "severity": "high",
-        "issue": "初版测试未验证多账号切换接口 /api/auth/switch 的越权接管风险（IDOR）：攻击者若携带自身合法会话尝试切换至未在当前浏览器验证过的其他用户 ID，或已退出登录的旧账号 ID，必须被服务端严格拒绝。",
-        "recommendation": "在隔离浏览器上下文创建第三方用户 C，验证当前会话请求 POST /api/auth/switch 传入 userC.id 必须返回 403；并在注销账号 B 后再次尝试切回 B 必须返回 403；同时校验未登录请求返回 401、缺失 userId 返回 400。"
+        "issue": "Cloudflare D1 增量迁移规范与存量合并边界未显式纳入验收清单：若 wrangler.toml database_id 或 CI CLOUDFLARE_API_TOKEN 异常、或 0005 迁移未妥善处理空标题/空正文/已有自定义站点名，可能导致迁移中断或覆盖线上配置。",
+        "recommendation": "实施前先核验 wrangler.toml database_id 与 CI 环境变量配置，确保 0005 迁移脚本原子且安全合并存量 title+content，仅当 site_name 为旧默认值时更新为 dev社区；测试端校验健康检查、默认站点名及新旧字段兼容访问。"
       },
       {
         "id": "CRIT-02",
-        "category": "security",
+        "category": "invalid_input",
         "severity": "high",
-        "issue": "初版测试未覆盖收藏列表隐私隔离与推荐关注隐私脱敏：他人访问 /api/users/:id/activity?tab=bookmarks 可能造成收藏隐私泄露；/api/discover/recommended-users 若直接透传用户表字段可能泄露注册邮箱。",
-        "recommendation": "增加未登录访问他人收藏返回 401、用户 B 访问用户 A 收藏返回 403 的强断言；对 /api/discover/recommended-users 原始响应文本断言严禁包含任意用户邮箱字符串。"
+        "issue": "初版测试未覆盖 #话题 解析边界（重复话题、标点紧邻、超长话题、超过上限 8 个、纯 # 符号）及恶意 imageUrl（javascript:）与超长正文（>5000字）的拦截校验。",
+        "recommendation": "在 API 与 E2E 用例中补充空正文、超长正文、非法图片协议返回 400，验证重复及紧邻标点的 #话题 正确提取去重且不超过 8 个，同时验证通知已读接口传入非法 type 返回 400。"
       },
       {
         "id": "CRIT-03",
-        "category": "invalid_input",
-        "severity": "medium",
-        "issue": "初版测试缺少对 /api/discover/topics、/api/discover/recommended-users 非法 limit 参数，以及 /api/posts/:id/bookmark、/api/posts/:id/share 对不存在动态 ID 的异常路径覆盖。",
-        "recommendation": "补充 limit=0、limit=99、limit=abc 返回 400 的参数边界测试，以及对不存在动态 ID 执行 view/bookmark/share 均返回 404 的契约测试；同时测试访问 /posts/non-existent-id 页面无前端未捕获异常且优雅提示不存在。"
+        "category": "security",
+        "severity": "high",
+        "issue": "初版用例未验证「我的关注」流未登录/空关注隔离、收藏页跨用户隐私隔离（403）以及通知按分类已读接口的跨用户 IDOR 防护。",
+        "recommendation": "新增多浏览器上下文安全隔离测试：匿名请求 sort=following 与 /api/notifications/read 返回 401；无关用户 C 调用 POST /api/notifications/read({ type: 'comment' }) 严禁影响用户 A 的未读数；他人查询用户 A 收藏列表必须返回 403；公开首页持续审计零 /admin 链接。"
       },
       {
         "id": "CRIT-04",
-        "category": "boundary",
-        "severity": "high",
-        "issue": "未验证删除动态后的级联清理边界：若删帖未同步清理 post_bookmarks 与 post_metrics，个人主页收藏列表将残留脏数据或导致页面异常；另需落实 RSI 历史经验（D1 迁移幂等与配置校验）。",
-        "recommendation": "补充「发帖 -> 点击/收藏/分享 -> 删帖 -> 验证收藏列表不再包含该动态且详情接口返回 404」闭环校验；并在技术约束中确保 0004 迁移采用全幂等 CREATE TABLE IF NOT EXISTS 建表，避免 ALTER TABLE 导致 D1 迁移中断。"
+        "category": "concurrency",
+        "severity": "medium",
+        "issue": "点击通知分类 Tab 同时触发「标为已读」与「拉取该分类列表」存在响应乱序竞态风险，且连续快速点击同一分类可能造成重复请求或计数异常。",
+        "recommendation": "要求前端先串行完成分类已读再拉取列表，并在 E2E 中增加对 POST /api/notifications/read 的并发幂等压测（同一分类并发提交 3 次已读后 unreadCount 与 unreadByType 保持准确非负），以及逐一点击评论/点赞/关注验证各分类互不误清。"
       },
       {
         "id": "CRIT-05",
         "category": "ui_interaction",
-        "severity": "high",
-        "issue": "初版测试仅断言「热门话题」「推荐关注」文本可见，未验证其位于中间动态流的右侧几何位置，也未验证点击热门话题实际过滤动态流、点击推荐关注按钮实际完成关注，以及公开页面仍严禁泄露 /admin 链接。",
-        "recommendation": "在 1440x900 视口下校验三栏相对几何关系（左侧导航在列表左侧、热门话题与推荐关注在列表右侧），实际点击热门话题校验筛选效果与不相关动态隐藏，实际点击推荐关注用户按钮校验 POST /api/users/:id/follow 成功并更新为已关注状态，并保留 /admin 零链接与零 pageerror 审计。"
-      },
-      {
-        "id": "CRIT-06",
-        "category": "concurrency",
         "severity": "medium",
-        "issue": "高并发场景下，多个访客同时打开同一条动态（并发调用 /view）或快速连点收藏可能导致计数丢失、重复插入报错或出现负数。",
-        "recommendation": "增加并发 Promise.all 调用 POST /api/posts/:id/view 验证计数准确累加无 500 报错，以及连续切换收藏状态确保 bookmarksCount 始终 >= 0 且与 bookmarked 状态严格一致。"
-      },
-      {
-        "id": "CRIT-07",
-        "category": "ui_interaction",
-        "severity": "medium",
-        "issue": "多账号切换后仅验证了 /api/auth/me 变更，未验证前端页面视图状态（如不同账号对同一条动态的收藏状态 bookmarkedByMe、点赞状态 likedByMe 及个人主页收藏页内容）以及「添加其他账号」UI 流程与单账号退出/全部退出状态清理。",
-        "recommendation": "增加账号 A 收藏某动态后切换至账号 B 验证该动态在 B 视角下呈未收藏状态、再切回 A 恢复已收藏状态的端到端校验，并覆盖 UI 内点击「添加其他账号」完成 OTP 登录及退出当前/全部账号闭环。"
+        "issue": "初版 E2E 仅断言元素可见，未真实验证三栏各自独立滚动、吸顶 Tab 滚动吸附与同宽对齐、搜索框位于右栏顶部且可筛选、拖拽/粘贴上传图片、全局隐藏滚动条、去红紫渐变配色以及动态卡片紧凑间距；同时若使用通用发布按钮定位器可能误点侧边栏按钮而非表单提交按钮。",
+        "recommendation": "在 finalE2eTestCode 中补充几何坐标与样式计算断言（滚动中心动态容器后验证左右两栏 Y 不变且 Tab 保持吸顶同宽、卡片间距紧凑 <=14px、无粉紫渐变色、滚动条样式隐藏），通过真实 DragEvent 与 ClipboardEvent 验证拖拽及粘贴图片上传闭环，并将所有复合定位器严格规范为 .or(...).first()。"
       }
     ],
     "finalApiTestChecklist": [
       {
         "id": "TC-01",
-        "endpoint": "/api/posts/:id/view",
+        "endpoint": "/api/posts",
         "method": "POST",
-        "scenario": "匿名访客与已登录用户连续及并发上报动态点击统计",
-        "expectedStatus": 200,
-        "assertion": "每次返回 ok: true 且 viewsCount 原子累加无并发 500，GET /api/posts/:id 返回一致点击数"
+        "scenario": "已登录用户不传 title，仅提交含多个 #话题（含重复与标点紧邻）的正文发布动态",
+        "expectedStatus": 201,
+        "assertion": "发布成功返回 201，post.content 完整保留，post.tags 自动提取并去重清洗，数量不超过 8 个"
       },
       {
         "id": "TC-02",
-        "endpoint": "/api/posts/:id/view",
+        "endpoint": "/api/posts",
         "method": "POST",
-        "scenario": "对不存在的动态 ID 上报点击",
-        "expectedStatus": 404,
-        "assertion": "返回 404 错误且不写入孤立统计记录"
+        "scenario": "非法输入边界：空/纯空白正文、超过 5000 字符正文、恶意 javascript: imageUrl、未登录发帖",
+        "expectedStatus": 400,
+        "assertion": "空正文/超长正文/恶意协议均返回 400 拒绝，未登录返回 401"
       },
       {
         "id": "TC-03",
-        "endpoint": "/api/posts/:id/bookmark",
-        "method": "POST",
-        "scenario": "未登录用户尝试收藏动态",
-        "expectedStatus": 401,
-        "assertion": "返回 401 提示请先登录"
+        "endpoint": "/api/posts?sort=following",
+        "method": "GET",
+        "scenario": "已登录用户查询「我的关注」动态流与未登录访问权限校验",
+        "expectedStatus": 200,
+        "assertion": "未登录返回 401；已登录未关注任何人时返回空列表；关注指定作者后仅返回被关注作者的动态，且不混入未关注作者动态"
       },
       {
         "id": "TC-04",
-        "endpoint": "/api/posts/:id/bookmark",
-        "method": "POST",
-        "scenario": "已登录用户对不存在的动态 ID 执行收藏",
-        "expectedStatus": 404,
-        "assertion": "返回 404 提示帖子不存在"
+        "endpoint": "/api/posts?sort=invalid",
+        "method": "GET",
+        "scenario": "传入非法排序参数查询动态列表",
+        "expectedStatus": 400,
+        "assertion": "返回 400 参数无效错误"
       },
       {
         "id": "TC-05",
-        "endpoint": "/api/posts/:id/bookmark",
-        "method": "POST",
-        "scenario": "已登录用户收藏 -> 取消收藏 -> 再次收藏状态切换与计数一致性",
+        "endpoint": "/api/discover/topics",
+        "method": "GET",
+        "scenario": "正文通过 #话题 发布后校验热门话题自动聚合",
         "expectedStatus": 200,
-        "assertion": "bookmarked 在 true/false 间准确切换，bookmarksCount 严格同步且永不为负"
+        "assertion": "新发布动态正文中的 #话题 自动出现在热门话题聚合列表中，且 GET /api/posts?tag= 可准确命中"
       },
       {
         "id": "TC-06",
-        "endpoint": "/api/users/:id/activity?tab=bookmarks",
+        "endpoint": "/api/notifications/unread-count",
         "method": "GET",
-        "scenario": "本人查询收藏动态列表与未登录/跨用户隐私隔离校验",
+        "scenario": "存在评论、点赞、关注三类未读通知时校验分类型未读计数",
         "expectedStatus": 200,
-        "assertion": "本人查询返回 200 且包含已收藏动态；未登录返回 401；其他用户越权查询返回 403"
+        "assertion": "未登录返回 401；已登录返回 notificationsUnread 与 unreadByType.{comment,like,follow} 且分项之和等于 notificationsUnread"
       },
       {
         "id": "TC-07",
-        "endpoint": "/api/posts/:id/share",
+        "endpoint": "/api/notifications/read",
         "method": "POST",
-        "scenario": "访客或登录用户触发分享及不存在动态 ID 边界校验",
+        "scenario": "按分类标记已读、非法分类校验、并发幂等与跨用户 IDOR 隔离",
         "expectedStatus": 200,
-        "assertion": "有效动态返回 200、sharesCount 递增与 sharePath=/posts/:id；不存在动态返回 404"
+        "assertion": "非法 type 返回 400；无关用户调用不得影响目标用户未读数；目标用户按 comment/like/follow 逐类标为已读时仅清除对应分类，并发重复调用保持结果幂等非负"
       },
       {
         "id": "TC-08",
-        "endpoint": "/api/posts/:id",
-        "method": "DELETE",
-        "scenario": "作者删除已被浏览、收藏、分享的动态后验证级联清理",
-        "expectedStatus": 200,
-        "assertion": "删除后 GET /api/posts/:id 返回 404，且原收藏用户的收藏列表中不再出现该动态"
-      },
-      {
-        "id": "TC-09",
-        "endpoint": "/api/discover/topics",
+        "endpoint": "/api/users/me/activity?tab=bookmarks",
         "method": "GET",
-        "scenario": "获取热门话题列表与非法 limit 参数校验",
+        "scenario": "收藏列表查询、取消收藏即时同步与跨用户隐私隔离",
         "expectedStatus": 200,
-        "assertion": "默认返回 topics 数组并包含真实高互动标签；limit=0 或 limit=99 返回 400"
-      },
-      {
-        "id": "TC-10",
-        "endpoint": "/api/discover/recommended-users",
-        "method": "GET",
-        "scenario": "获取推荐关注列表、排除本人/已关注、严禁泄露邮箱与非法 limit 校验",
-        "expectedStatus": 200,
-        "assertion": "返回 users 数组不含当前用户与已关注用户，原始响应文本不含任何邮箱地址；limit=0 或 limit=99 返回 400"
-      },
-      {
-        "id": "TC-11",
-        "endpoint": "/api/auth/accounts",
-        "method": "GET",
-        "scenario": "多账号登录后查询当前浏览器托管账号列表",
-        "expectedStatus": 200,
-        "assertion": "返回 activeUserId 及所有有效已登录账号摘要，且不泄露任何会话令牌"
-      },
-      {
-        "id": "TC-12",
-        "endpoint": "/api/auth/switch",
-        "method": "POST",
-        "scenario": "切换至已托管账号成功，未登录/空参数/未托管他人账号被严密拦截",
-        "expectedStatus": 200,
-        "assertion": "切换至本浏览器已登录账号返回 200 并更新 /api/auth/me；未登录返回 401；空 userId 返回 400；尝试切换至他人未托管账号返回 403"
-      },
-      {
-        "id": "TC-13",
-        "endpoint": "/api/auth/logout",
-        "method": "POST",
-        "scenario": "多账号状态下退出当前账号自动切回剩余账号、防回切已注销账号及一键退出全部账号",
-        "expectedStatus": 200,
-        "assertion": "退出当前账号后自动切回剩余有效账号且再次切回已退出账号返回 403；传入 all: true 后所有会话失效，/api/auth/me 返回 authenticated: false 且 accounts 为空"
+        "assertion": "未登录返回 401；他人查询目标用户收藏返回 403；本人查询准确返回已收藏动态且取消收藏后即时移出"
       }
     ]
   }

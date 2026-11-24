@@ -1,8 +1,26 @@
 import type { Bindings } from '../types';
 
+export interface RealtimeUnreadByType {
+  comment: number;
+  like: number;
+  follow: number;
+}
+
 export type RealtimeServerEvent =
-  | { type: 'notification:new'; notification: unknown; unreadCount: number }
-  | { type: 'notification:read'; unreadCount: number; ids?: string[]; all?: boolean }
+  | {
+      type: 'notification:new';
+      notification: unknown;
+      unreadCount: number;
+      unreadByType?: RealtimeUnreadByType;
+    }
+  | {
+      type: 'notification:read';
+      unreadCount: number;
+      unreadByType?: RealtimeUnreadByType;
+      ids?: string[];
+      all?: boolean;
+      category?: 'comment' | 'like' | 'follow';
+    }
   | {
       type: 'dm:new';
       message: {

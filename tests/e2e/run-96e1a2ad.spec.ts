@@ -215,13 +215,13 @@ test.describe.serial('社区初期迭代（个人主页、私信、图片裁剪�
       // 发帖、点赞、评论与二级回复全链路及边界校验
       const postTitle = `主页四维校验帖-${Date.now()}`;
       const postRes = await page.request.post('/api/posts', {
-        data: { title: postTitle, content: '测试历史发帖、点赞、评论和回复联动' },
+        data: { content: `${postTitle} 测试历史发帖、点赞、评论和回复联动` },
       });
       expect(postRes.status()).toBe(201);
       const postId = (await postRes.json()).post.id;
 
       const otherPostRes = await ctxB.request.post('/api/posts', {
-        data: { title: `另一篇帖子-${Date.now()}`, content: '用于校验跨帖回复隔离' },
+        data: { content: `另一篇帖子-${Date.now()} 用于校验跨帖回复隔离` },
       });
       const otherPostId = (await otherPostRes.json()).post.id;
 
@@ -402,11 +402,14 @@ test.describe.serial('社区初期迭代（个人主页、私信、图片裁剪�
     await loginUser(page.request, makeEmail('crop-e2e'), '构图达人');
     await page.goto('/');
 
-    const composeBtn = page.getByRole('button', { name: /发布图文/i }).first();
+    const composeBtn = page.getByRole('button', { name: /发布图文|发布动态|发布/i }).first();
     await expect(composeBtn).toBeVisible({ timeout: 10000 });
     await composeBtn.click();
 
-    const fileInput = page.locator('input[type="file"]').first();
+    const composeDialog = page.getByRole('dialog').first();
+    await expect(composeDialog).toBeVisible({ timeout: 10000 });
+
+    const fileInput = composeDialog.locator('input[type="file"]').first();
     await fileInput.setInputFiles({
       name: 'original-photo.png',
       mimeType: 'image/png',
@@ -414,7 +417,7 @@ test.describe.serial('社区初期迭代（个人主页、私信、图片裁剪�
     });
 
     // 打开裁剪/编辑弹窗，交互切换比例与旋转后确认裁剪
-    const cropBtn = page.getByRole('button', { name: /裁剪|编辑/i }).first();
+    const cropBtn = composeDialog.getByRole('button', { name: /裁剪|编辑/i }).first();
     await expect(cropBtn).toBeVisible({ timeout: 10000 });
     await cropBtn.click();
 
@@ -433,18 +436,13 @@ test.describe.serial('社区初期迭代（个人主页、私信、图片裁剪�
     await expect(confirmCropBtn).toBeVisible({ timeout: 10000 });
     await confirmCropBtn.click();
 
-    // 裁剪完成后填写标题与正文并发布，校验上传与帖子创建成功
+    // 裁剪完成后填写正文并发布，校验上传与帖子创建成功
     const postTitle = `裁剪构图发布-${Date.now()}`;
-    await page
-      .getByPlaceholder(/标题|起个/i)
-      .or(page.getByLabel(/标题/i))
+    await composeDialog
+      .getByPlaceholder(/正文|分享|想法|灵感/i)
+      .or(composeDialog.locator('textarea'))
       .first()
-      .fill(postTitle);
-    await page
-      .getByPlaceholder(/正文|分享|想法/i)
-      .or(page.locator('textarea'))
-      .first()
-      .fill('体验新版图片裁剪与旋转编辑后发布的第一篇图文');
+      .fill(`${postTitle} 体验新版图片裁剪与旋转编辑后发布的第一条动态`);
 
     const uploadPromise = page.waitForResponse(
       (res) => res.url().includes('/api/uploads') && res.request().method() === 'POST'
@@ -453,7 +451,7 @@ test.describe.serial('社区初期迭代（个人主页、私信、图片裁剪�
       (res) => res.url().endsWith('/api/posts') && res.request().method() === 'POST'
     );
 
-    await page.getByRole('button', { name: /立即发布/i }).last().click();
+    await composeDialog.getByRole('button', { name: /立即发布/i }).last().click();
     const uploadRes = await uploadPromise;
     expect(uploadRes.status()).toBe(201);
     const createRes = await createPostPromise;

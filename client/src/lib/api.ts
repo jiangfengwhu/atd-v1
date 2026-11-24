@@ -17,7 +17,6 @@ export interface PostAuthor {
 
 export interface PostItem {
   id: string;
-  title: string;
   content: string;
   imageUrl: string;
   tags: string[];
@@ -103,7 +102,7 @@ export interface FollowUserItem {
 export interface CommentActivityItem {
   id: string;
   postId: string;
-  postTitle: string;
+  postContentPreview: string;
   content: string;
   author: PostAuthor;
   createdAt: string;
@@ -113,7 +112,7 @@ export interface ReplyActivityItem {
   id: string;
   commentId: string;
   postId: string;
-  postTitle: string;
+  postContentPreview: string;
   parentCommentContent: string;
   content: string;
   direction: 'sent' | 'received';
@@ -150,6 +149,12 @@ export interface DirectMessageItem {
 
 export type NotificationType = 'comment' | 'like' | 'follow';
 
+export interface UnreadByType {
+  comment: number;
+  like: number;
+  follow: number;
+}
+
 export interface NotificationItem {
   id: string;
   type: NotificationType;
@@ -159,7 +164,8 @@ export interface NotificationItem {
   actor: PostAuthor;
   post: {
     id: string;
-    title: string;
+    content: string;
+    contentPreview: string;
     imageUrl: string;
   } | null;
   commentId: string | null;
@@ -180,8 +186,8 @@ export interface AdminSettings {
 
 export interface AdminPostItem {
   id: string;
-  title: string;
   content: string;
+  contentPreview: string;
   imageUrl: string;
   likesCount: number;
   commentsCount: number;
@@ -324,7 +330,7 @@ export const api = {
   listPosts: (params: {
     q?: string;
     tag?: string;
-    sort?: 'latest' | 'hot';
+    sort?: 'latest' | 'hot' | 'following';
     limit?: number;
     offset?: number;
   }) => {
@@ -344,7 +350,6 @@ export const api = {
     requestJson<{ post: PostItem; comments: CommentItem[] }>(`/api/posts/${encodeURIComponent(id)}`),
 
   createPost: (payload: {
-    title: string;
     content: string;
     imageUrl?: string;
     tags?: string[];
@@ -469,21 +474,28 @@ export const api = {
       notifications: NotificationItem[];
       total: number;
       unreadCount: number;
+      unreadByType: UnreadByType;
     }>(`/api/notifications${qs ? `?${qs}` : ''}`);
   },
 
   getUnreadCount: () =>
     requestJson<{
       notificationsUnread: number;
+      unreadByType: UnreadByType;
       messagesUnread: number;
       totalUnread: number;
     }>('/api/notifications/unread-count'),
 
-  markNotificationsRead: (payload: { all: true } | { ids: string[] }) =>
-    requestJson<{ ok: true; unreadCount: number }>('/api/notifications/read', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+  markNotificationsRead: (
+    payload: { all: true } | { ids: string[] } | { type: 'all' | NotificationType }
+  ) =>
+    requestJson<{ ok: true; unreadCount: number; unreadByType: UnreadByType }>(
+      '/api/notifications/read',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    ),
 
   // Admin
   adminMe: () =>
