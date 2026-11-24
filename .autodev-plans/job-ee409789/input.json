@@ -1,0 +1,16 @@
+{
+  "jobId": "job-ee409789",
+  "repoFullName": "jiangfengwhu/atd-v1",
+  "baseBranch": "main",
+  "prdTitle": "发布功能优化+bugfix",
+  "prdContent": "UI优化：\n1. 首页三栏结构各自滚动，现在feed流部分滚动会带动两侧导航栏，不对\n2. 应用改名叫dev社区，删除轻图文 · 慢生活灵感角落，把日常瞬间写成光这块儿的内容\n3. 最新，最热这块儿做成tab，然后再加一个我的关注，滚动吸附，宽度和动态栏宽度保持一致\n4. 搜索框转移到右导航栏顶部\n5. 配色修改一下，现在这种红紫渐变AI味儿有点重\n6. 全局隐藏滚动条\n7. 动态卡片上下间隔再稍微小点，紧凑一些\n\n功能：\n1. 左侧导航栏添加收藏tab，直接跳转收藏页面\n2. 发布优化：类似x.com的发布，仅有正文即可，不要标题，支持拖拽和粘贴的方式添加图片，话题直接在正文通过 #话题 添加，现有数据库改一下，然后存量数据直接合并标题和正文合并\n3. 通知红点 点击对应分类就标为已读，不需要一个个点击",
+  "effectiveTechStack": "React + Vite + TypeScript (Cloudflare Workers Static Assets) + Hono API on Cloudflare Workers + Cloudflare D1 (SQLite) + Cloudflare KV",
+  "isDefaultCloudflare": true,
+  "agyModel": "gemini-4-neon-high",
+  "createdAt": "2026-11-24T02:07:26.771Z",
+  "rsiSystemPrompts": {
+    "architect": "",
+    "qa_spec": "",
+    "qa_critic": "=== RSI 系统自进化强约束规则 (QA Critic 边界评审 · 已自动注入 1 条历史经验) ===\n以下规则均由系统经 Decision 门控筛选并从历史真实故障中提炼，本轮必须严格遵守以避免重复踩坑：\n1. [CRITICAL] (环境与网络异常 · 触发 2 次) Cloudflare D1 迁移规范：在执行 Cloudflare Workers D1 迁移前，必须先验证：1. wrangler.toml 中 database_id 已正确配置；2. 迁移脚本应保持原子性且具备幂等性；3. CI 环境环境变量已包含有效的 CLOUDFLARE_API_TOKEN 及对应的账户…"
+  }
+}
