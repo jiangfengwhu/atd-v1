@@ -1,0 +1,67 @@
+{
+  "apiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/api/posts",
+      "method": "POST",
+      "scenario": "已登录用户不传 title，仅提交带 #话题 的纯正文发布动态",
+      "expectedStatus": 201,
+      "assertion": "返回 post 对象不含必填 title 依赖，tags 数组自动包含从正文提取的去重话题，且持久化可查"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/api/posts",
+      "method": "POST",
+      "scenario": "提交空正文或纯空白正文发布动态",
+      "expectedStatus": 400,
+      "assertion": "返回 400 错误提示正文长度要求"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/posts?sort=following",
+      "method": "GET",
+      "scenario": "已登录用户查询「我的关注」动态流",
+      "expectedStatus": 200,
+      "assertion": "仅返回当前用户已关注作者发布的动态，不包含未关注用户动态，且返回 siteName 默认 dev社区"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/api/posts?sort=following",
+      "method": "GET",
+      "scenario": "未登录访客直接请求关注流接口",
+      "expectedStatus": 401,
+      "assertion": "返回 401 未登录错误"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/notifications/unread-count",
+      "method": "GET",
+      "scenario": "存在评论、点赞、关注三类未读通知时查询分类型未读计数",
+      "expectedStatus": 200,
+      "assertion": "返回 notificationsUnread 及 unreadByType.{comment,like,follow} 准确计数"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/api/notifications/read",
+      "method": "POST",
+      "scenario": "按分类传入 { type: 'comment' } 批量标为已读",
+      "expectedStatus": 200,
+      "assertion": "仅 comment 分类未读数清零，like 与 follow 未读数保持不变，总未读数精准扣减"
+    },
+    {
+      "id": "TC-07",
+      "endpoint": "/api/users/me/activity?tab=bookmarks",
+      "method": "GET",
+      "scenario": "已登录用户读取个人收藏列表",
+      "expectedStatus": 200,
+      "assertion": "返回当前用户已收藏的动态列表，取消收藏后对应条目不再返回"
+    }
+  ],
+  "e2eTestCode": "import { test, expect, type APIRequestContext } from '@playwright/test';\n\nconst TINY_PNG = Buffer.from(\n  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',\n  'base64'\n);\n\nfunction makeEmail(prefix: string): string {\n  const rand = Math.random().toString(36).slice(2, 7);\n  return `${prefix}-${Date.now()}-${rand}@example.com`;\n}\n\nasync function loginUser(\n  request: APIRequestContext,\n  email: string,\n  nickname: string\n): Promise<{ id: string; email: string; nickname: string }> {\n  const sendRes = await request.post('/api/auth/send-code', { data: { email } });\n  expect(sendRes.status()).toBe(200);\n  const sendJson = await sendRes.json();\n  const verifyRes = await request.post('/api/auth/verify-code', {\n    data: { email, code: sendJson.devCode, nickname },\n  });\n  expect(verifyRes.status()).toBe(200);\n  return (await verifyRes.json()).user;\n}\n\ntest.describe.serial('发布功能优化与UI改版基础E2E验证', () => {\n  test('1. 品牌更名dev社区、三栏布局与吸顶Tab及右侧搜索', async ({ page }) => {\n    await page.setViewportSize({ width: 1440, height: 900 });\n    await loginUser(page.request, makeEmail('ui-base'), '开发者甲');\n    await page.goto('/');\n\n    await expect(page.getByText(/dev社区/i).first()).toBeVisible();\n    await expect(page.getByText('轻图文 · 慢生活灵感角落')).toHaveCount(0);\n    await expect(page.getByText('把日常瞬间写成光')).toHaveCount(0);\n\n    const latestTab = page.getByRole('tab', { name: /最新/ }).or(page.getByRole('button', { name: /^最新$/ })).first();\n    const hotTab = page.getByRole('tab', { name: /最热/ }).or(page.getByRole('button', { name: /^最热$/ })).first();\n    const followTab = page.getByRole('tab', { name: /我的关注/ }).or(page.getByRole('button', { name: /我的关注/ })).first();\n    await expect(latestTab).toBeVisible();\n    await expect(hotTab).toBeVisible();\n    await expect(followTab).toBeVisible();\n\n    const rightAside = page.locator('aside').nth(1);\n    const searchInput = rightAside.locator('input').first();\n    await expect(searchInput).toBeVisible();\n  });\n\n  test('2. X.com 无标题发布、正文#话题解析与收藏导航跳转', async ({ page }) => {\n    await page.setViewportSize({ width: 1440, height: 900 });\n    await loginUser(page.request, makeEmail('compose-base'), '发帖开发者');\n    await page.goto('/');\n\n    const tag = `DevTag${Date.now().toString().slice(-4)}`;\n    const bodyText = `无标题纯正文发布测试 #${tag} 分享开发心得`;\n\n    const textarea = page.locator('textarea').first();\n    await expect(textarea).toBeVisible();\n    await expect(page.getByPlaceholder(/标题/)).toHaveCount(0);\n    await textarea.fill(bodyText);\n\n    const createPromise = page.waitForResponse(\n      (r) => r.url().endsWith('/api/posts') && r.request().method() === 'POST'\n    );\n    await page.getByRole('button', { name: /发布|发送/i }).first().click();\n    const res = await createPromise;\n    expect(res.status()).toBe(201);\n    const created = await res.json();\n    expect(created.post.tags).toContain(tag);\n\n    const card = page.locator('article').filter({ hasText: bodyText }).first();\n    await expect(card).toBeVisible();\n    await card.getByRole('button', { name: /收藏/i }).first().click();\n\n    const leftAside = page.locator('aside').first();\n    await leftAside.getByRole('button', { name: /收藏/ }).or(leftAside.getByRole('link', { name: /收藏/ })).first().click();\n    await expect(page.locator('article').filter({ hasText: bodyText }).first()).toBeVisible();\n  });\n\n  test('3. 通知红点点击对应分类自动标为已读', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1440, height: 900 });\n    const ctxB = await browser.newContext();\n    try {\n      const userA = await loginUser(page.request, makeEmail('notif-cat-a'), '通知作者A');\n      await loginUser(ctxB.request, makeEmail('notif-cat-b'), '互动用户B');\n\n      const pRes = await page.request.post('/api/posts', {\n        data: { content: `通知测试动态-${Date.now()}` },\n      });\n      const postId = (await pRes.json()).post.id;\n      await ctxB.request.post(`/api/users/${userA.id}/follow`);\n      await ctxB.request.post(`/api/posts/${postId}/like`);\n      await ctxB.request.post(`/api/posts/${postId}/comments`, { data: { content: '很棒的分享' } });\n\n      await page.goto('/');\n      const leftAside = page.locator('aside').first();\n      await leftAside.getByRole('button', { name: /通知/ }).or(leftAside.getByRole('link', { name: /通知/ })).first().click();\n\n      const commentTab = page.getByRole('tab', { name: /评论/ }).or(page.getByRole('button', { name: /评论/ })).first();\n      await commentTab.click();\n      await expect.poll(async () => {\n        const u = await (await page.request.get('/api/notifications/unread-count')).json();\n        return u.unreadByType.comment;\n      }).toBe(0);\n    } finally {\n      await ctxB.close();\n    }\n  });\n});\n",
+  "coverageNotes": [
+    "覆盖无标题动态发布与正文 #话题 自动解析持久化",
+    "覆盖首页改名 dev社区、移除旧标语、三栏结构、吸顶 Tab 与右侧搜索框展示",
+    "覆盖左侧导航栏独立「收藏」入口跳转及收藏列表展示",
+    "覆盖通知分类未读统计与点击分类批量标为已读核心流程"
+  ]
+}
