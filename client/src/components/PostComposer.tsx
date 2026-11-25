@@ -1,10 +1,16 @@
 import * as React from 'react';
-import { ImagePlus, Link2, Loader2, Hash, X, Crop } from 'lucide-react';
+import { ArrowUpRight, Crop, Globe, Hash, Loader2, X } from 'lucide-react';
 import { api, ApiError, type PostItem, type UserProfile } from '@/lib/api';
 import { extractHashtagsFromContent } from '@/lib/hashtags';
+import {
+  extractUrlsFromContent,
+  formatPastedTextWithUrls,
+  isLikelyImageUrl,
+  parseUrlMeta,
+} from '@/lib/urlParser';
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { Button } from '@/components/ui/button';
-import { Input, Textarea } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/input';
 import { ImageCropDialog } from '@/components/ImageCropDialog';
 import { cn } from '@/lib/utils';
 
@@ -17,10 +23,29 @@ const ALLOWED_IMAGE_TYPES = new Set([
 ]);
 
 function isSupportedImageFile(file: File): boolean {
-  if (file.type && ALLOWED_IMAGE_TYPES.has(file.type.toLowerCase())) {
-    return true;
+  const mime = (file.type || '').trim().toLowerCase();
+  if (mime) {
+    return ALLOWED_IMAGE_TYPES.has(mime);
   }
   return /\.(png|jpe?g|webp|gif)$/i.test(file.name || '');
+}
+
+function extractFilesFromTransfer(dt: DataTransfer | null | undefined): File[] {
+  if (!dt) return [];
+  if (dt.files && dt.files.length > 0) {
+    return Array.from(dt.files);
+  }
+  if (dt.items && dt.items.length > 0) {
+    const out: File[] = [];
+    for (const item of Array.from(dt.items)) {
+      if (item.kind === 'file') {
+        const f = item.getAsFile();
+        if (f) out.push(f);
+      }
+    }
+    return out;
+  }
+  return [];
 }
 
 interface PostComposerProps {
@@ -36,21 +61,25 @@ interface PostComposerProps {
 export function PostComposer({
   currentUser,
   compact = false,
-  placeholder = '有什么技术灵感或开发日常？输入 #话题 即可自动打标签，支持拖拽或粘贴图片...',
+  placeholder = '有什么技术灵感或开发日常？#话题 自动打标，拖拽图片或粘贴外链自动识别...',
   submitLabel = '发布',
   autoFocus = false,
   onCreated,
   onCancel,
 }: PostComposerProps) {
   const [content, setContent] = React.useState('');
-  const [imageUrl, setImageUrl] = React.useState('');
-  const [showUrlInput, setShowUrlInput] = React.useState(false);
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  const [dismissedImageUrls, setDismissedImageUrls] = React.useState<string[]>([]);
+  const [failedImageUrls, setFailedImageUrls] = React.useState<string[]>([]);
   const [cropOpen, setCropOpen] = React.useState(false);
   const [isDragging, setIsDragging] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const dragDepthRef = React.useRef(0);
+  const isHandlingPasteRef = React.useRef(false);
 
   React.useEffect(() => {
     return () => {
@@ -58,16 +87,41 @@ export function PostComposer({
     };
   }, [previewUrl]);
 
-  const extractedTags = React.useMemo(() => extractHashtagsFromContent(content), [content]);
+  const extractedTags = React.useMemo(
+    () => extractHashtagsFromContent(content),
+    [content]
+  );
+
+  const detectedUrls = React.useMemo(
+    () => extractUrlsFromContent(content),
+    [content]
+  );
+
+  const detectedUrlMetas = React.useMemo(
+    () => detectedUrls.map((url) => parseUrlMeta(url)),
+    [detectedUrls]
+  );
+
+  const autoImageUrl = React.useMemo(() => {
+    if (selectedFile) return '';
+    const candidate = detectedUrls.find(
+      (url) =>
+        isLikelyImageUrl(url) &&
+        !dismissedImageUrls.includes(url) &&
+        !failedImageUrls.includes(url)
+    );
+    return candidate ?? '';
+  }, [selectedFile, detectedUrls, dismissedImageUrls, failedImageUrls]);
 
   const resetForm = () => {
     setContent('');
-    setImageUrl('');
-    setShowUrlInput(false);
     setSelectedFile(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
+    setDismissedImageUrls([]);
+    setFailedImageUrls([]);
     setCropOpen(false);
+    dragDepthRef.current = 0;
     setIsDragging(false);
     setError(null);
   };
@@ -85,65 +139,108 @@ export function PostComposer({
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
-    setImageUrl('');
-    setShowUrlInput(false);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    acceptImageFile(file);
-    e.target.value = '';
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
+    if (isHandlingPasteRef.current) return;
     const dt = e.clipboardData;
     if (!dt) return;
 
-    let imageFile: File | null = null;
-    if (dt.files && dt.files.length > 0) {
-      for (const file of Array.from(dt.files)) {
-        if (file.type.startsWith('image/') || isSupportedImageFile(file)) {
-          imageFile = file;
-          break;
+    isHandlingPasteRef.current = true;
+    try {
+      const files = extractFilesFromTransfer(dt);
+      if (files.length > 0) {
+        const imageFile = files.find((file) => isSupportedImageFile(file)) ?? null;
+        if (imageFile) {
+          e.preventDefault();
+          e.stopPropagation();
+          acceptImageFile(imageFile);
+          return;
+        }
+        // Reject non-image pasted files if no plain text is present
+        const plainText = dt.getData('text/plain');
+        if (!plainText) {
+          e.preventDefault();
+          e.stopPropagation();
+          setError('仅支持粘贴 PNG、JPEG、WEBP 或 GIF 格式图片');
+          return;
         }
       }
-    }
-    if (!imageFile && dt.items) {
-      for (const item of Array.from(dt.items)) {
-        if (item.kind === 'file' && item.type.startsWith('image/')) {
-          const f = item.getAsFile();
-          if (f) {
-            imageFile = f;
-            break;
-          }
-        }
-      }
-    }
 
-    if (imageFile) {
+      const pastedText = dt.getData('text/plain');
+      if (!pastedText) return;
+
+      const urlsInPaste = extractUrlsFromContent(pastedText);
+      // Never intercept plain text without URLs — let native browser paste handle it cleanly
+      if (urlsInPaste.length === 0) {
+        return;
+      }
+
       e.preventDefault();
       e.stopPropagation();
-      acceptImageFile(imageFile);
+      setError(null);
+
+      const el = textareaRef.current;
+      const isFocused = Boolean(el && document.activeElement === el);
+      const start = isFocused && el ? (el.selectionStart ?? content.length) : content.length;
+      const end = isFocused && el ? (el.selectionEnd ?? content.length) : content.length;
+      const before = content.slice(0, start);
+      const after = content.slice(end);
+      const beforeChar = before.slice(-1);
+      const afterChar = after.slice(0, 1);
+
+      const formatted = formatPastedTextWithUrls(pastedText, beforeChar, afterChar);
+      const nextContent = `${before}${formatted}${after}`.slice(0, 5000);
+      const nextCaret = Math.min(before.length + formatted.length, 5000);
+
+      // Re-enable preview if user explicitly pastes a previously dismissed image URL
+      const pastedImageUrls = urlsInPaste.filter((u) => isLikelyImageUrl(u));
+      if (pastedImageUrls.length > 0) {
+        setDismissedImageUrls((prev) =>
+          prev.filter((u) => !pastedImageUrls.includes(u))
+        );
+        setFailedImageUrls((prev) =>
+          prev.filter((u) => !pastedImageUrls.includes(u))
+        );
+      }
+
+      setContent(nextContent);
+
+      if (el) {
+        window.requestAnimationFrame(() => {
+          if (textareaRef.current) {
+            textareaRef.current.selectionStart = nextCaret;
+            textareaRef.current.selectionEnd = nextCaret;
+          }
+        });
+      }
+    } finally {
+      isHandlingPasteRef.current = false;
     }
   };
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    dragDepthRef.current += 1;
     setIsDragging(true);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
     if (!isDragging) setIsDragging(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0 || !e.currentTarget.contains(e.relatedTarget as Node)) {
+      dragDepthRef.current = 0;
       setIsDragging(false);
     }
   };
@@ -151,18 +248,30 @@ export function PostComposer({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    dragDepthRef.current = 0;
     setIsDragging(false);
-    const file = e.dataTransfer?.files?.[0];
-    if (file) {
-      acceptImageFile(file);
+
+    const files = extractFilesFromTransfer(e.dataTransfer);
+    if (files.length === 0) return;
+
+    const imageFile = files.find((f) => isSupportedImageFile(f));
+    if (!imageFile) {
+      setError('仅支持拖入 PNG、JPEG、WEBP 或 GIF 格式图片');
+      return;
     }
+    acceptImageFile(imageFile);
   };
 
   const clearImage = () => {
-    setSelectedFile(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(null);
-    setImageUrl('');
+    if (selectedFile || previewUrl) {
+      setSelectedFile(null);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    } else if (autoImageUrl) {
+      setDismissedImageUrls((prev) =>
+        prev.includes(autoImageUrl) ? prev : [...prev, autoImageUrl]
+      );
+    }
   };
 
   const submitPost = async () => {
@@ -183,7 +292,7 @@ export function PostComposer({
 
     setSubmitting(true);
     try {
-      let finalImageUrl = imageUrl.trim();
+      let finalImageUrl = autoImageUrl;
       if (selectedFile) {
         const uploaded = await api.uploadImage(selectedFile);
         finalImageUrl = uploaded.url;
@@ -208,7 +317,7 @@ export function PostComposer({
     await submitPost();
   };
 
-  const activePreview = previewUrl || imageUrl.trim();
+  const activePreview = previewUrl || autoImageUrl;
 
   return (
     <>
@@ -219,10 +328,11 @@ export function PostComposer({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        data-testid="post-composer-form"
         className={cn(
           'relative transition-colors',
           compact
-            ? 'rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card'
+            ? 'rounded-2xl border border-slate-200/80 bg-white p-3.5 sm:p-4 shadow-card'
             : 'space-y-3',
           isDragging && 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-500/20'
         )}
@@ -248,6 +358,7 @@ export function PostComposer({
 
           <div className="min-w-0 flex-1 space-y-2.5">
             <Textarea
+              ref={textareaRef}
               id={compact ? 'inline-post-content' : 'dialog-post-content'}
               aria-label="动态正文"
               value={content}
@@ -264,7 +375,7 @@ export function PostComposer({
               rows={compact ? 3 : 5}
               className={cn(
                 'resize-none border-slate-200/80 bg-slate-50/50 text-sm leading-relaxed focus:bg-white',
-                compact ? 'min-h-[82px]' : 'min-h-[130px]'
+                compact ? 'min-h-[84px]' : 'min-h-[136px]'
               )}
             />
 
@@ -282,13 +393,52 @@ export function PostComposer({
               </div>
             )}
 
+            {detectedUrlMetas.length > 0 && (
+              <div
+                data-testid="composer-detected-links"
+                className="flex flex-wrap items-center gap-1.5"
+              >
+                {detectedUrlMetas.map((meta) => (
+                  <a
+                    key={meta.url}
+                    href={meta.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={meta.url}
+                    className="inline-flex max-w-full items-center gap-1.5 rounded-xl border border-blue-200/80 bg-blue-50/70 px-2.5 py-1 text-xs font-medium text-blue-700 transition hover:border-blue-300 hover:bg-blue-50"
+                  >
+                    <Globe className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+                    <span className="truncate">
+                      {meta.host}
+                      {meta.pathPreview ? (
+                        <span className="text-blue-500/80">{meta.pathPreview}</span>
+                      ) : null}
+                    </span>
+                    <ArrowUpRight className="h-3 w-3 shrink-0 text-blue-400" />
+                  </a>
+                ))}
+              </div>
+            )}
+
             {activePreview && (
               <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
                 <img
                   src={activePreview}
                   alt="配图预览"
+                  onError={() => {
+                    if (!previewUrl && autoImageUrl) {
+                      setFailedImageUrls((prev) =>
+                        prev.includes(autoImageUrl) ? prev : [...prev, autoImageUrl]
+                      );
+                    }
+                  }}
                   className="max-h-56 w-full object-cover"
                 />
+                {!previewUrl && autoImageUrl && (
+                  <span className="absolute left-2.5 top-2.5 rounded-full bg-slate-900/75 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
+                    已识别图片外链
+                  </span>
+                )}
                 <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5">
                   {previewUrl && (
                     <button
@@ -312,63 +462,21 @@ export function PostComposer({
               </div>
             )}
 
-            {showUrlInput && (
-              <div className="relative">
-                <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => {
-                    setSelectedFile(null);
-                    if (previewUrl) URL.revokeObjectURL(previewUrl);
-                    setPreviewUrl(null);
-                    setImageUrl(e.target.value);
-                  }}
-                  placeholder="填入图片链接 https://..."
-                  className="h-9 pl-9 text-xs"
-                />
-              </div>
-            )}
-
             {error && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
+              <div
+                role="alert"
+                className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-600"
+              >
                 {error}
               </div>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-              <div className="flex items-center gap-1.5">
-                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-600">
-                  <ImagePlus className="h-3.5 w-3.5" />
-                  <span>{selectedFile ? '更换图片' : '图片'}</span>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,image/gif"
-                    onChange={handleFileChange}
-                    className="sr-only"
-                  />
-                </label>
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-0.5">
+              <p className="text-[11px] leading-relaxed text-slate-400">
+                支持拖拽 / 粘贴图片 · 粘贴外链自动识别 · #话题
+              </p>
 
-                <button
-                  type="button"
-                  onClick={() => setShowUrlInput((prev) => !prev)}
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-xs font-medium transition',
-                    showUrlInput
-                      ? 'border-blue-200 bg-blue-50 text-blue-600'
-                      : 'border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-800'
-                  )}
-                >
-                  <Link2 className="h-3.5 w-3.5" />
-                  <span>外链</span>
-                </button>
-
-                <span className="hidden sm:inline text-[11px] text-slate-400 pl-1">
-                  支持拖拽 / Ctrl+V 粘贴图片 · #话题
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
+              <div className="ml-auto flex shrink-0 items-center gap-2">
                 <span className="text-[11px] text-slate-400 tabular-nums">
                   {content.length}/5000
                 </span>
