@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-7340f2c9",
+    "timestamp": "2026-11-25T04:18:36.086Z",
+    "category": "execution",
+    "action": "feedback_direct_dispatched",
+    "label": "用户反馈一键直派编码",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-fb-mwvm5j18-21b8",
+    "prdTitle": "发布界面精简化与增强交互体验",
+    "branch": "autodev/feat-20261125-041827",
+    "prNumber": 15,
+    "status": "success",
+    "detail": "已直接派发该反馈至 Issue #14 与 Draft PR #15，AGY 编码已启动"
+  },
+  {
     "id": "aud-a0b4cd98",
     "timestamp": "2026-11-25T03:51:49.934Z",
     "category": "planning",

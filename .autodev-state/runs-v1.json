@@ -1,5 +1,157 @@
 [
   {
+    "id": "run-fb-mwvm5j18-21b8",
+    "createdAt": "2026-11-25T04:18:25.820Z",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "defaultBranch": "main",
+    "prdTitle": "发布界面精简化与增强交互体验",
+    "prdContent": "# 发布界面精简化与增强交互体验\n> 来源：AutoDev 用户反馈每日直通迭代（跳过前置 3-Agent 重策划，由 AI 安全消毒后直通 AGY 编码）\n> 关联追踪 Issue：[#14](https://github.com/jiangfengwhu/atd-v1/issues/14)\n## 摘要与目标\n优化发布编辑器 UI，移除冗余的图片与外链按钮，支持图片直接拖拽及文本粘贴外链自动解析。\n## 背景与根因分析\n用户认为现有的发布界面布局过于繁琐，手动点击上传按钮的操作路径过长，影响信息发布效率。\n## 合并涵盖的信号清单（已脱敏与防注入消毒）\n- [`fb-mwvl7bn1-a45fbc`] (/) 发布的界面可以简洁些，不需要图片和外链的按钮，支持直接拖拽图片，或者在正文粘贴外链，自动识别\n## 明确改动边界（Non-Goals）\n- 不修改现有的后端内容存储结构\n- 不引入新的富文本编辑器依赖\n- 不更改后台数据入库逻辑\n## 验收核对标准\n1. 确认 toolbar 按钮已移除\n2. 测试从文件夹直接拖入图片上传功能\n3. 测试粘贴包含 URL 的文本是否被自动识别\n4. 检查在手机端或其它分辨率下的 UI 响应式表现",
+    "origin": "user_feedback_batch",
+    "linkedIssueNumbers": [
+      14
+    ],
+    "linkedIssueUrls": [
+      "https://github.com/jiangfengwhu/atd-v1/issues/14"
+    ],
+    "architect": {
+      "architectureSummary": "[用户反馈每日直通迭代] 优化发布编辑器 UI，移除冗余的图片与外链按钮，支持图片直接拖拽及文本粘贴外链自动解析。",
+      "techDecisions": [
+        "采用轻量 Micro-Spec 直通模式：保持最小化改动面，优先确保回归安全与构建通过。",
+        "粘贴功能需防范意外截获纯文本导致的解析逻辑死循环",
+        "拖拽处理需增加文件类型限制（仅限图片），防止非法文件上传"
+      ],
+      "ambiguities": [],
+      "apiContracts": [],
+      "tasks": [
+        {
+          "id": "UI-01",
+          "title": "精简编辑器 toolbar",
+          "module": "frontend",
+          "description": "移除发布界面的图片上传与外链插入的物理按钮，保留简洁的文本输入区域。（相关文件提示：src/components/Editor/Toolbar.tsx, src/styles/editor.css）",
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "界面上不再显示图片上传和外链图标",
+            "UI 整体视觉更加简洁，布局未被破坏"
+          ],
+          "estimatedComplexity": "S"
+        },
+        {
+          "id": "UI-02",
+          "title": "实现拖拽与粘贴处理逻辑",
+          "module": "frontend",
+          "description": "监听编辑框的 drop 事件处理图片上传，以及 paste 事件自动提取文本中的 URL 链接。（相关文件提示：src/components/Editor/ContentArea.tsx, src/utils/urlParser.ts）",
+          "dependsOn": [
+            "UI-01"
+          ],
+          "acceptanceCriteria": [
+            "拖拽本地图片到编辑区可触发自动上传",
+            "在正文粘贴包含链接的字符串时自动识别并格式化"
+          ],
+          "estimatedComplexity": "S"
+        }
+      ]
+    },
+    "qaSpec": {
+      "e2eTestCode": "",
+      "apiTestChecklist": [
+        {
+          "id": "AC-1",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "确认 toolbar 按钮已移除",
+          "expectedStatus": 200,
+          "assertion": "确认 toolbar 按钮已移除"
+        },
+        {
+          "id": "AC-2",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "测试从文件夹直接拖入图片上传功能",
+          "expectedStatus": 200,
+          "assertion": "测试从文件夹直接拖入图片上传功能"
+        },
+        {
+          "id": "AC-3",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "测试粘贴包含 URL 的文本是否被自动识别",
+          "expectedStatus": 200,
+          "assertion": "测试粘贴包含 URL 的文本是否被自动识别"
+        },
+        {
+          "id": "AC-4",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "检查在手机端或其它分辨率下的 UI 响应式表现",
+          "expectedStatus": 200,
+          "assertion": "检查在手机端或其它分辨率下的 UI 响应式表现"
+        }
+      ],
+      "coverageNotes": [
+        "由 用户反馈每日直通迭代 轻量规格自动生成，共 4 项核心验收核对标准。"
+      ]
+    },
+    "qaCritic": {
+      "reviewSummary": "已完成双层 AI 安全消毒与范围校验（跳过重策划），共拆解 2 项精简改动任务。",
+      "findings": [],
+      "finalE2eTestCode": "",
+      "finalApiTestChecklist": [
+        {
+          "id": "AC-1",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "确认 toolbar 按钮已移除",
+          "expectedStatus": 200,
+          "assertion": "确认 toolbar 按钮已移除"
+        },
+        {
+          "id": "AC-2",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "测试从文件夹直接拖入图片上传功能",
+          "expectedStatus": 200,
+          "assertion": "测试从文件夹直接拖入图片上传功能"
+        },
+        {
+          "id": "AC-3",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "测试粘贴包含 URL 的文本是否被自动识别",
+          "expectedStatus": 200,
+          "assertion": "测试粘贴包含 URL 的文本是否被自动识别"
+        },
+        {
+          "id": "AC-4",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "检查在手机端或其它分辨率下的 UI 响应式表现",
+          "expectedStatus": 200,
+          "assertion": "检查在手机端或其它分辨率下的 UI 响应式表现"
+        }
+      ]
+    },
+    "status": "pr_created",
+    "draftPr": {
+      "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/15",
+      "prNumber": 15,
+      "branchName": "autodev/feat-20261125-041827",
+      "baseBranch": "main",
+      "commitSha": "029216e1b1ae604afb381dfd9e05c25cd014da31",
+      "filesCommitted": [
+        "docs/spec.json",
+        "docs/iterations/run-fb-mwvm5j18-21b8-spec.json",
+        "docs/prd.md",
+        "docs/iterations/run-fb-mwvm5j18-21b8-prd.md",
+        "tests/e2e/run-fb-mwvm5j18-21b8.spec.ts"
+      ],
+      "e2eTestPath": "tests/e2e/run-fb-mwvm5j18-21b8.spec.ts",
+      "e2eVaultPath": ".autodev-e2e-vault/run-fb-mwvm5j18-21b8/e2e.spec.ts",
+      "archivedSpecPath": "docs/iterations/run-fb-mwvm5j18-21b8-spec.json",
+      "createdAt": "2026-11-25T04:18:34.060Z",
+      "initializedEmptyRepo": false
+    }
+  },
+  {
     "id": "run-aec3b8f5",
     "createdAt": "2026-11-24T02:15:06.814Z",
     "repoFullName": "jiangfengwhu/atd-v1",
