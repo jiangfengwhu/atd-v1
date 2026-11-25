@@ -1,0 +1,50 @@
+name: AutoDev Daily Feedback Triage
+
+on:
+  schedule:
+    # Runs daily at 01:00 UTC (09:00 Asia/Shanghai)
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: autodev-daily-feedback-triage
+  cancel-in-progress: false
+
+jobs:
+  trigger-daily-triage:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.actor == 'jiangfengwhu'
+    steps:
+      - name: Trigger AutoDev Studio Daily Feedback Triage
+        env:
+          STUDIO_URL: ${{ secrets.AUTODEV_STUDIO_URL }}
+          CRON_SECRET: ${{ secrets.AUTODEV_CRON_SECRET }}
+        run: |
+          if [ -z "$STUDIO_URL" ]; then
+            echo "::error::Missing repository secret AUTODEV_STUDIO_URL (your deployed AutoDev Studio base URL)"
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Missing repository secret AUTODEV_CRON_SECRET (must match Cloud Run AUTODEV_CRON_SECRET)"
+            exit 1
+          fi
+
+          BASE_URL="${STUDIO_URL%/}"
+          ENDPOINT="${BASE_URL}/api/triage/feedback/daily"
+          echo "Calling daily feedback triage endpoint: $ENDPOINT"
+
+          HTTP_CODE=$(curl -sS -o /tmp/triage_response.json -w "%{http_code}" \
+            --max-time 180 \
+            -X POST "$ENDPOINT" \
+            -H "Content-Type: application/json" \
+            -H "X-AutoDev-Cron-Secret: $CRON_SECRET" \
+            -d '{"trigger":"cron"}')
+
+          echo "HTTP status: $HTTP_CODE"
+          cat /tmp/triage_response.json || true
+          echo ""
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "::error::AutoDev daily feedback triage failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
