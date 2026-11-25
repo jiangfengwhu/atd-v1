@@ -1,5 +1,16 @@
 [
   {
+    "id": "aud-a0b4cd98",
+    "timestamp": "2026-11-25T03:51:49.934Z",
+    "category": "planning",
+    "action": "user_feedback_ingested",
+    "label": "采集线上用户反馈",
+    "actor": "atd-v1 线上应用",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "status": "success",
+    "detail": "收到用户反馈 fb-mwvl7bn1-a45fbc（路由 /）：发布的界面可以简洁些，不需要图片和外链的按钮，支持直接拖拽图片，或者在正文粘贴外链，自动识别"
+  },
+  {
     "id": "aud-987fa4f5",
     "timestamp": "2026-11-24T02:57:04.906Z",
     "category": "execution",
