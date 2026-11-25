@@ -24,11 +24,11 @@ export function ComposeDialog({
 }: ComposeDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg">发布动态</DialogTitle>
           <DialogDescription>
-            输入正文即可发布，通过 #话题 自动标记主题，支持拖拽或粘贴图片。
+            输入正文即可发布，通过 #话题 自动标记主题，支持直接拖拽/粘贴图片，粘贴外链自动识别。
           </DialogDescription>
         </DialogHeader>
 

@@ -409,12 +409,23 @@ test.describe.serial('社区初期迭代（个人主页、私信、图片裁剪�
     const composeDialog = page.getByRole('dialog').first();
     await expect(composeDialog).toBeVisible({ timeout: 10000 });
 
-    const fileInput = composeDialog.locator('input[type="file"]').first();
-    await fileInput.setInputFiles({
-      name: 'original-photo.png',
-      mimeType: 'image/png',
-      buffer: PNG_32X32,
-    });
+    const composerTextarea = composeDialog
+      .getByPlaceholder(/正文|分享|想法|灵感/i)
+      .or(composeDialog.locator('textarea'))
+      .first();
+    await expect(composerTextarea).toBeVisible({ timeout: 10000 });
+
+    // 通过拖拽本地图片触发配图预览（发布栏已精简移除物理图片按钮）
+    await composerTextarea.evaluate((el, base64Png) => {
+      const bin = atob(base64Png);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+      const file = new File([bytes], 'original-photo.png', { type: 'image/png' });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      el.dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }));
+      el.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    }, PNG_32X32.toString('base64'));
 
     // 打开裁剪/编辑弹窗，交互切换比例与旋转后确认裁剪
     const cropBtn = composeDialog.getByRole('button', { name: /裁剪|编辑/i }).first();
