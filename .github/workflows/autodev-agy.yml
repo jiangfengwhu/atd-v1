@@ -28,9 +28,9 @@ on:
         default: ''
         type: string
       agy_model:
-        description: 'AGY model ID configured on the VPS (supports Gemini 4 & live synced models)'
+        description: 'AGY model ID configured on the VPS (default: gemini-4-hydrogen-high)'
         required: false
-        default: 'gemini-4-neon-high'
+        default: 'gemini-4-hydrogen-high'
         type: string
       agy_mode:
         description: 'AGY execution mode (--mode: auto, accept-edits, plan)'
@@ -81,7 +81,7 @@ jobs:
         shell: bash
         run: |
           BRANCH="${{ inputs.pr_branch || github.head_ref }}"
-          MODEL="${{ inputs.agy_model || 'gemini-4-neon-high' }}"
+          MODEL="${{ inputs.agy_model || 'gemini-4-hydrogen-high' }}"
           MODE="${{ inputs.agy_mode || 'auto' }}"
           PR_NUM="${{ inputs.pr_number || github.event.pull_request.number || '' }}"
           E2E_PATH="${{ inputs.e2e_test_path || '' }}"
@@ -162,7 +162,7 @@ jobs:
           const repo = process.env.LIVE_REPO || '';
           const actionsRunId = Number(process.env.LIVE_RUN_ID || 0);
           const branch = process.env.LIVE_BRANCH || 'main';
-          const requestedModel = (process.env.LIVE_MODEL || 'gemini-4-neon-high').trim();
+          const requestedModel = (process.env.LIVE_MODEL || 'gemini-4-hydrogen-high').trim();
           const requestedMode = (process.env.LIVE_MODE || 'auto').trim();
           const prNumber = process.env.LIVE_PR_NUM ? Number(process.env.LIVE_PR_NUM) : undefined;
           const pipelineRunId = (process.env.LIVE_PIPELINE_ID || '').trim() || undefined;
