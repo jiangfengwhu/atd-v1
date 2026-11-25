@@ -1,0 +1,10 @@
+{
+  "geminiPrimaryModel": "gemini-4-hydrogen",
+  "geminiFallbackModel": "gemini-3.1-flash-lite",
+  "geminiDecisionModel": "gemini-decision-1",
+  "backupEnabled": true,
+  "backupProviderName": "书生·端砚",
+  "backupBaseUrl": "https://discovery-api.intern-ai.org.cn/v1",
+  "backupModel": "deepseek-v4.1-flash-1017",
+  "updatedAt": "2026-11-25T05:28:40.779Z"
+}

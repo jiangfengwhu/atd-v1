@@ -1,5 +1,16 @@
 [
   {
+    "id": "aud-9fed9c6b",
+    "timestamp": "2026-11-25T05:28:41.556Z",
+    "category": "execution",
+    "action": "ai_model_config_updated",
+    "label": "更新 AI 模型与容灾配置",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "status": "success",
+    "detail": "更新 AI 模型配置：Gemini(gemini-4-hydrogen / gemini-3.1-flash-lite / gemini-decision-1) · 备用(书生·端砚 · deepseek-v4.1-flash-1017)"
+  },
+  {
     "id": "aud-a3f30e46",
     "timestamp": "2026-11-25T04:28:33.792Z",
     "category": "approval",
