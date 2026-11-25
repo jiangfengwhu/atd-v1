@@ -18,7 +18,7 @@ on:
         default: 'autodev-plan-channel'
         type: string
       agy_model:
-        description: 'AGY model ID configured on the VPS (supports Gemini 4 & live synced models)'
+        description: 'AGY model ID configured on the VPS (default: gemini-4-neon-high)'
         required: false
         default: 'gemini-4-neon-high'
         type: string
