@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "1.1",
+  "generatedBy": "AutoDev Studio",
+  "runId": "run-fb-mwvm5j18-21b8",
+  "createdAt": "2026-11-25T04:18:25.820Z",
+  "repository": "jiangfengwhu/atd-v1",
+  "baseBranch": "main",
+  "e2eTestPath": "tests/e2e/run-fb-mwvm5j18-21b8.spec.ts",
+  "e2eVaultPath": ".autodev-e2e-vault/run-fb-mwvm5j18-21b8/e2e.spec.ts",
+  "blindE2eVerification": false,
+  "archivedSpecPath": "docs/iterations/run-fb-mwvm5j18-21b8-spec.json",
+  "prdTitle": "发布界面精简化与增强交互体验",
+  "architecture": {
+    "summary": "[用户反馈每日直通迭代] 优化发布编辑器 UI，移除冗余的图片与外链按钮，支持图片直接拖拽及文本粘贴外链自动解析。",
+    "techDecisions": [
+      "采用轻量 Micro-Spec 直通模式：保持最小化改动面，优先确保回归安全与构建通过。",
+      "粘贴功能需防范意外截获纯文本导致的解析逻辑死循环",
+      "拖拽处理需增加文件类型限制（仅限图片），防止非法文件上传"
+    ]
+  },
+  "ambiguities": [],
+  "apiContracts": [],
+  "tasks": [
+    {
+      "id": "UI-01",
+      "title": "精简编辑器 toolbar",
+      "module": "frontend",
+      "description": "移除发布界面的图片上传与外链插入的物理按钮，保留简洁的文本输入区域。（相关文件提示：src/components/Editor/Toolbar.tsx, src/styles/editor.css）",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "界面上不再显示图片上传和外链图标",
+        "UI 整体视觉更加简洁，布局未被破坏"
+      ],
+      "estimatedComplexity": "S"
+    },
+    {
+      "id": "UI-02",
+      "title": "实现拖拽与粘贴处理逻辑",
+      "module": "frontend",
+      "description": "监听编辑框的 drop 事件处理图片上传，以及 paste 事件自动提取文本中的 URL 链接。（相关文件提示：src/components/Editor/ContentArea.tsx, src/utils/urlParser.ts）",
+      "dependsOn": [
+        "UI-01"
+      ],
+      "acceptanceCriteria": [
+        "拖拽本地图片到编辑区可触发自动上传",
+        "在正文粘贴包含链接的字符串时自动识别并格式化"
+      ],
+      "estimatedComplexity": "S"
+    }
+  ],
+  "qaSpec": {
+    "coverageNotes": [
+      "由 用户反馈每日直通迭代 轻量规格自动生成，共 4 项核心验收核对标准。"
+    ],
+    "initialApiTestCount": 4
+  },
+  "qaCritic": {
+    "reviewSummary": "已完成双层 AI 安全消毒与范围校验（跳过重策划），共拆解 2 项精简改动任务。",
+    "findings": [],
+    "finalApiTestChecklist": [
+      {
+        "id": "AC-1",
+        "endpoint": "FEEDBACK-VERIFY",
+        "method": "VERIFY",
+        "scenario": "确认 toolbar 按钮已移除",
+        "expectedStatus": 200,
+        "assertion": "确认 toolbar 按钮已移除"
+      },
+      {
+        "id": "AC-2",
+        "endpoint": "FEEDBACK-VERIFY",
+        "method": "VERIFY",
+        "scenario": "测试从文件夹直接拖入图片上传功能",
+        "expectedStatus": 200,
+        "assertion": "测试从文件夹直接拖入图片上传功能"
+      },
+      {
+        "id": "AC-3",
+        "endpoint": "FEEDBACK-VERIFY",
+        "method": "VERIFY",
+        "scenario": "测试粘贴包含 URL 的文本是否被自动识别",
+        "expectedStatus": 200,
+        "assertion": "测试粘贴包含 URL 的文本是否被自动识别"
+      },
+      {
+        "id": "AC-4",
+        "endpoint": "FEEDBACK-VERIFY",
+        "method": "VERIFY",
+        "scenario": "检查在手机端或其它分辨率下的 UI 响应式表现",
+        "expectedStatus": 200,
+        "assertion": "检查在手机端或其它分辨率下的 UI 响应式表现"
+      }
+    ]
+  }
+}
