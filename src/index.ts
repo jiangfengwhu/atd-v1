@@ -9,12 +9,17 @@ import { userRoutes } from './routes/users';
 import { messageRoutes } from './routes/messages';
 import { notificationRoutes } from './routes/notifications';
 import { discoverRoutes } from './routes/discover';
+import { captureServerErrorToAutoDev, signalsRoutes } from './routes/signals';
 
 export { UserRealtimeHub } from './realtime/user-hub';
 
 const app = new Hono<AppEnv>();
 
-function isSameOriginWebSocketRequest(reqUrlStr: string, originHeader: string, hostHeader?: string): boolean {
+function isSameOriginWebSocketRequest(
+  reqUrlStr: string,
+  originHeader: string,
+  hostHeader?: string
+): boolean {
   try {
     const reqUrl = new URL(reqUrlStr);
     const originUrl = new URL(originHeader);
@@ -27,6 +32,18 @@ function isSameOriginWebSocketRequest(reqUrlStr: string, originHeader: string, h
 
 app.onError((err, c) => {
   console.error('Unhandled Worker error:', err);
+  let execCtx;
+  try {
+    execCtx = c.executionCtx;
+  } catch {
+    execCtx = undefined;
+  }
+  captureServerErrorToAutoDev({
+    env: c.env,
+    executionCtx: execCtx,
+    err,
+    reqUrl: c.req.url,
+  });
   return c.json({ error: '服务器内部错误，请稍后重试' }, 500);
 });
 
@@ -52,6 +69,7 @@ app.route('/api/users', userRoutes);
 app.route('/api/messages', messageRoutes);
 app.route('/api/notifications', notificationRoutes);
 app.route('/api/discover', discoverRoutes);
+app.route('/api', signalsRoutes);
 
 app.get('/api/ws', async (c) => {
   const user = await getSessionUser(c.env.DB, c.req.header('cookie'));
@@ -88,6 +106,7 @@ app.get('/api/ws', async (c) => {
       headers: c.req.raw.headers,
     }) as unknown as CfRequest
   );
+
   return res as unknown as globalThis.Response;
 });
 

@@ -11,6 +11,8 @@ export interface Bindings {
   RESEND_API_KEY?: string;
   RESEND_FROM_EMAIL?: string;
   ALLOW_DEV_OTP_FALLBACK?: string;
+  AUTODEV_STUDIO_URL?: string;
+  AUTODEV_INGEST_TOKEN?: string;
 }
 
 export interface AuthUser {

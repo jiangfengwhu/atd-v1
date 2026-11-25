@@ -21,6 +21,7 @@ import {
   X,
   Bookmark,
   Users,
+  MessageSquarePlus,
 } from 'lucide-react';
 import {
   api,
@@ -39,6 +40,7 @@ import { DiscoverSidebar } from '@/components/DiscoverSidebar';
 import { BookmarksView } from '@/components/BookmarksView';
 import { AuthDialog } from '@/components/AuthDialog';
 import { ComposeDialog } from '@/components/ComposeDialog';
+import { FeedbackDialog } from '@/components/FeedbackDialog';
 import { PostDetailDialog } from '@/components/PostDetailDialog';
 import { ProfileDialog } from '@/components/ProfileDialog';
 import { ProfileView } from '@/components/ProfileView';
@@ -115,6 +117,7 @@ export function CommunityPage() {
   const [authMode, setAuthMode] = React.useState<'login' | 'add'>('login');
   const [pendingAction, setPendingAction] = React.useState<(() => void) | null>(null);
   const [composeOpen, setComposeOpen] = React.useState(false);
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
   const [detailPostId, setDetailPostId] = React.useState<string | null>(
     initialRoute.detailPostId
@@ -675,6 +678,16 @@ export function CommunityPage() {
               <Plus className="h-4 w-4" />
               <span>发布动态</span>
             </Button>
+
+            {/* User Feedback Trigger */}
+            <button
+              type="button"
+              onClick={() => setFeedbackOpen(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-slate-200/90 bg-white/90 px-4 py-2 text-xs font-semibold text-slate-600 shadow-xs transition hover:border-slate-300 hover:bg-white hover:text-slate-900"
+            >
+              <MessageSquarePlus className="h-3.5 w-3.5 text-blue-600" />
+              <span>意见反馈</span>
+            </button>
           </div>
 
           {/* Bottom Profile Trigger & Multi-Account Popover Menu (outside scrollable nav so never clipped) */}
@@ -860,6 +873,15 @@ export function CommunityPage() {
             </button>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setFeedbackOpen(true)}
+                aria-label="意见反馈"
+                title="意见反馈"
+                className="rounded-full border border-slate-200 bg-white p-1.5 text-slate-600 hover:text-blue-600"
+              >
+                <MessageSquarePlus className="h-4 w-4" />
+              </button>
               <Button variant="gradient" size="sm" onClick={handleOpenCompose} className="h-8 px-3">
                 <Plus className="h-3.5 w-3.5" />
                 发布动态
@@ -1399,6 +1421,12 @@ export function CommunityPage() {
         currentUser={user}
         onOpenChange={setComposeOpen}
         onCreated={handlePostCreated}
+      />
+
+      <FeedbackDialog
+        open={feedbackOpen}
+        onOpenChange={setFeedbackOpen}
+        onSubmitted={() => showToast('反馈已收到，感谢你的建议！')}
       />
 
       <PostDetailDialog
