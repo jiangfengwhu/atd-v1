@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-a3f30e46",
+    "timestamp": "2026-11-25T04:28:33.792Z",
+    "category": "approval",
+    "action": "release_approved",
+    "label": "验收通过并批准上线",
+    "actor": "验收审批人",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-fb-mwvm5j18-21b8",
+    "prdTitle": "发布界面精简化与增强交互体验",
+    "branch": "autodev/feat-20261125-041827",
+    "prNumber": 15,
+    "status": "success",
+    "detail": "验收通过并合入 main（Commit 5f40842），已自动部署生产：https://atd-v1-community.809740942.workers.dev"
+  },
+  {
     "id": "aud-7340f2c9",
     "timestamp": "2026-11-25T04:18:36.086Z",
     "category": "execution",
