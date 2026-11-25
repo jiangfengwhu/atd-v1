@@ -1,0 +1,8 @@
+{
+  "branchName": "autodev/feat-20261125-041827",
+  "prNumber": 15,
+  "e2eTestPath": "tests/e2e/run-fb-mwvm5j18-21b8.spec.ts",
+  "e2eVaultPath": ".autodev-e2e-vault/run-fb-mwvm5j18-21b8/e2e.spec.ts",
+  "prTitle": "[AutoDev 用户反馈直派] 发布界面精简化与增强交互体验",
+  "createdAt": "2026-11-25T04:18:32.817Z"
+}
