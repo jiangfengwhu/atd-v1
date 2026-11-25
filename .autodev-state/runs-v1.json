@@ -130,7 +130,7 @@
         }
       ]
     },
-    "status": "pr_created",
+    "status": "approved",
     "draftPr": {
       "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/15",
       "prNumber": 15,
@@ -149,7 +149,10 @@
       "archivedSpecPath": "docs/iterations/run-fb-mwvm5j18-21b8-spec.json",
       "createdAt": "2026-11-25T04:18:34.060Z",
       "initializedEmptyRepo": false
-    }
+    },
+    "checkedCriteriaIds": [],
+    "approvalNote": "",
+    "approvedAt": "2026-11-25T04:27:41.799Z"
   },
   {
     "id": "run-aec3b8f5",
