@@ -3,7 +3,7 @@
     {
       "id": "fb-mwvl7bn1-a45fbc",
       "createdAt": "2026-11-25T03:51:49.933Z",
-      "updatedAt": "2026-11-25T03:52:40.567Z",
+      "updatedAt": "2026-11-25T03:53:15.863Z",
       "repoFullName": "jiangfengwhu/atd-v1",
       "content": "发布的界面可以简洁些，不需要图片和外链的按钮，支持直接拖拽图片，或者在正文粘贴外链，自动识别",
       "categoryHint": "feature",
@@ -14,7 +14,7 @@
         "sourceApp": "atd-v1-community",
         "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36"
       },
-      "status": "needs_manual_prd",
+      "status": "accepted_queued",
       "decisionScores": {
         "injectionProb": 0.01,
         "maliciousProb": 0.01,
