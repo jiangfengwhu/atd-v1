@@ -1,72 +1,17 @@
 {
-  "records": [
-    {
-      "id": "fb-mwvl7bn1-a45fbc",
-      "createdAt": "2026-11-25T03:51:49.933Z",
-      "updatedAt": "2026-11-25T04:18:36.085Z",
-      "repoFullName": "jiangfengwhu/atd-v1",
-      "content": "发布的界面可以简洁些，不需要图片和外链的按钮，支持直接拖拽图片，或者在正文粘贴外链，自动识别",
-      "categoryHint": "feature",
-      "pageRoute": "/",
-      "appVersion": "1.0.0",
-      "reporterHash": "u_5f76bdd01cf8",
-      "metadata": {
-        "sourceApp": "atd-v1-community",
-        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36"
-      },
-      "status": "dispatched",
-      "decisionScores": {
-        "injectionProb": 0.01,
-        "maliciousProb": 0.01,
-        "actionableProb": 0.9133201634072565,
-        "scopeChoice": "needs_full_prd",
-        "scopeConfidence": 0.5609817526962833,
-        "priorityScore": 1.9627771136211911,
-        "evaluatedAt": "2026-11-25T03:52:40.567Z"
-      },
-      "triageReason": "人工一键直派成功（Issue #14 / PR #15）",
-      "triageBatchId": "fb-direct-mwvm56wm-de97",
-      "linkedIssueNumber": 14,
-      "linkedIssueUrl": "https://github.com/jiangfengwhu/atd-v1/issues/14",
-      "linkedRunId": "run-fb-mwvm5j18-21b8",
-      "linkedPrNumber": 15,
-      "linkedPrUrl": "https://github.com/jiangfengwhu/atd-v1/pull/15"
-    }
-  ],
+  "records": [],
   "batches": [
     {
-      "id": "fb-direct-mwvm56wm-de97",
-      "createdAt": "2026-11-25T04:18:10.102Z",
-      "trigger": "manual",
-      "scannedCount": 1,
-      "acceptedCount": 1,
-      "rejectedMaliciousCount": 0,
-      "rejectedInvalidCount": 0,
-      "needsManualPrdCount": 0,
-      "summary": "已直接派发该反馈至 Issue #14 与 Draft PR #15，AGY 编码已启动",
-      "feedbackIds": [
-        "fb-mwvl7bn1-a45fbc"
-      ],
-      "status": "dispatched",
-      "linkedIssueNumber": 14,
-      "linkedIssueUrl": "https://github.com/jiangfengwhu/atd-v1/issues/14",
-      "linkedRunId": "run-fb-mwvm5j18-21b8",
-      "linkedPrNumber": 15,
-      "linkedPrUrl": "https://github.com/jiangfengwhu/atd-v1/pull/15"
-    },
-    {
-      "id": "fb-batch-mwvl8cbf-189b",
-      "createdAt": "2026-11-25T03:52:37.467Z",
-      "trigger": "manual",
-      "scannedCount": 1,
+      "id": "fb-batch-mwxby7em-2089",
+      "createdAt": "2026-11-26T09:08:20.350Z",
+      "trigger": "cron",
+      "scannedCount": 0,
       "acceptedCount": 0,
       "rejectedMaliciousCount": 0,
       "rejectedInvalidCount": 0,
-      "needsManualPrdCount": 1,
-      "summary": "已巡检 1 条反馈：拦截恶意/注入 0 条、过滤无效 0 条、转大型 PRD 人工评估 1 条，无须发起直通编码",
-      "feedbackIds": [
-        "fb-mwvl7bn1-a45fbc"
-      ],
+      "needsManualPrdCount": 0,
+      "summary": "今日暂无待巡检的用户反馈",
+      "feedbackIds": [],
       "status": "completed_empty"
     }
   ]
