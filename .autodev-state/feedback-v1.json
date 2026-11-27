@@ -3,7 +3,7 @@
     {
       "id": "fb-mwyviz95-72de77",
       "createdAt": "2026-11-27T11:04:08.441Z",
-      "updatedAt": "2026-11-27T11:04:08.441Z",
+      "updatedAt": "2026-11-27T11:05:05.181Z",
       "repoFullName": "jiangfengwhu/atd-v1",
       "content": "1. 删除意见反馈按钮，因为以后都是通过@ 来进行反馈，\n2. 在确认反馈以及上线时候在原帖下进行评论回复，告诉反馈者当前的工单状态\n3. 修一下现在@官方账号 发帖没有触发反馈\n4. 在发帖时候 @用户 UI应该和普通不一样，现在没有区分度，然后在hover @用户的时候 展开用户的资料卡",
       "categoryHint": "feature",
@@ -14,7 +14,14 @@
         "sourceApp": "atd-v1-community",
         "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36"
       },
-      "status": "pending"
+      "status": "dispatched",
+      "triageReason": "人工一键直派成功（Issue #18 / PR #19）",
+      "triageBatchId": "fb-direct-mwyvjogb-0c16",
+      "linkedIssueNumber": 18,
+      "linkedIssueUrl": "https://github.com/jiangfengwhu/atd-v1/issues/18",
+      "linkedRunId": "run-fb-mwyvk07p-94af",
+      "linkedPrNumber": 19,
+      "linkedPrUrl": "https://github.com/jiangfengwhu/atd-v1/pull/19"
     },
     {
       "id": "fb-mwyuoylz-675737",
@@ -50,6 +57,26 @@
     }
   ],
   "batches": [
+    {
+      "id": "fb-direct-mwyvjogb-0c16",
+      "createdAt": "2026-11-27T11:04:41.099Z",
+      "trigger": "manual",
+      "scannedCount": 1,
+      "acceptedCount": 1,
+      "rejectedMaliciousCount": 0,
+      "rejectedInvalidCount": 0,
+      "needsManualPrdCount": 0,
+      "summary": "已直接派发该反馈至 Issue #18 与 Draft PR #19，AGY 编码已启动",
+      "feedbackIds": [
+        "fb-mwyviz95-72de77"
+      ],
+      "status": "dispatched",
+      "linkedIssueNumber": 18,
+      "linkedIssueUrl": "https://github.com/jiangfengwhu/atd-v1/issues/18",
+      "linkedRunId": "run-fb-mwyvk07p-94af",
+      "linkedPrNumber": 19,
+      "linkedPrUrl": "https://github.com/jiangfengwhu/atd-v1/pull/19"
+    },
     {
       "id": "fb-direct-mwyuqcqr-43bb",
       "createdAt": "2026-11-27T10:41:52.899Z",
