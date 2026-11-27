@@ -177,7 +177,17 @@
     },
     "checkedCriteriaIds": [],
     "approvalNote": "",
-    "approvedAt": "2026-11-27T15:00:05.423Z"
+    "approvedAt": "2026-11-27T15:00:05.423Z",
+    "mergedRelease": {
+      "mergedAt": "2026-11-27T15:00:11.686Z",
+      "mergeCommitSha": "80d81a202b4c0bce5f57e696a034b9db51fc2f0d",
+      "baseBranch": "main",
+      "prNumber": 21,
+      "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/21",
+      "commitUrl": "https://github.com/jiangfengwhu/atd-v1/commit/80d81a202b4c0bce5f57e696a034b9db51fc2f0d",
+      "mergeMethod": "squash",
+      "branchDeleted": true
+    }
   },
   {
     "id": "run-fb-mwyvk07p-94af",
