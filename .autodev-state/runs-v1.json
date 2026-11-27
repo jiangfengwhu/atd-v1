@@ -163,6 +163,31 @@
       "archivedSpecPath": "docs/iterations/run-fb-mwyuql5l-e8a0-spec.json",
       "createdAt": "2026-11-27T10:42:10.893Z",
       "initializedEmptyRepo": false
+    },
+    "lastAgySession": {
+      "sessionId": "4fd3e680-645b-453a-9fa5-6810a5308c45",
+      "branchName": "autodev/feat-20261127-104205",
+      "actionsRunId": 45984316367,
+      "exitCode": 0,
+      "reused": false,
+      "consecutiveReuseCount": 0,
+      "updatedAt": "2026-11-27T10:51:08.936Z"
+    },
+    "latestCodingOutput": {
+      "content": "TypeScript typecheck and Vite client build succeeded. Playwright is currently starting the local Wrangler server, applying D1 migrations, and executing the E2E verification suite (`tests/e2e/run-fb-mwyuql5l-e8a0.spec.ts`). I will wait for the test run to complete.\nFixed the caret-positioning race condition in [PostComposer.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/PostComposer.tsx) by moving selection restoration into `useLayoutEffect`. Typecheck and Vite production build succeeded, and the full Playwright E2E test suite is now running. I will wait for the test run to complete.\nImplemented post `@` user mentions and the official feedback account MVP for `autodev/feat-20261127-104205`.\n\n### Summary of Changes\n\n1. **Database & Official Feedback Account (T-01)**\n   - Added idempotent D1 migration [0007_mentions_and_official_account.sql](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/migrations/0007_mentions_and_official_account.sql) defining `official_accounts` and `post_mentions`, and seeding the `official_feedback` (`官方反馈`) account.\n   - Added [official.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/lib/official.ts) (`ensureOfficialFeedbackAccount`, `isOfficialAccountEmail`, `isOfficialUserId`, `isReservedOfficialNickname`) and enforced permission isolation in [auth.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/auth.ts) so the official account cannot log in via OTP or be modified/impersonated by normal users.\n\n2. **Backend `@` Mention Parsing, Search & Persistence (T-02)**\n   - Added [mentions.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/lib/mentions.ts) (`extractMentionTokens`, `resolveMentionedUsers`, `fetchMentionsForPostIds`) to parse `@username` mentions safely while ignoring email addresses (e.g., `user@example.com`), URLs, and unknown `@` handles without failing post creation.\n   - Added `GET /api/users/mention-candidates` and official flags in [users.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/users.ts), pinning the official feedback account at the top of mention results.\n   - Updated [posts.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/posts.ts), [admin.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/admin.ts), [discover.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/discover.ts), and [types.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/types.ts) to persist and return resolved `mentions` and `isOfficial` / `officialBadge` metadata.\n\n3. **Frontend `@` Autocomplete & Highlight Rendering (T-03)**\n   - Added [mentions.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/lib/mentions.ts) and [OfficialBadge.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/OfficialBadge.tsx), and updated API types in [api.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/lib/api.ts).\n   - Updated [PostComposer.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/PostComposer.tsx) with an `@` mention popover (official account pinned first, keyboard navigation with `ArrowUp`/`ArrowDown`/`Enter`/`Tab`/`Escape`, click insertion, and synchronous `useLayoutEffect` caret restoration).\n   - Updated [HashtagText.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/HashtagText.tsx), [PostCard.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/PostCard.tsx), [PostDetailDialog.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/PostDetailDialog.tsx), [ProfileView.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/ProfileView.tsx), and [DiscoverSidebar.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/DiscoverSidebar.tsx) to highlight resolved `@` mentions (with official badges) and navigate to the mentioned user's profile on click.\n\n4. **E2E Tests & Verification**\n   - Added E2E acceptance tests for AC-1 through AC-4 in [run-fb-mwyuql5l-e8a0.spec.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-fb-mwyuql5l-e8a0.spec.ts).\n   - Ran `npx tsc --noEmit`, `npm run build`, and `npx playwright test` (all **28 passed** across the full E2E suite).\n   - Committed and pushed commit `147fcae` to `origin/autodev/feat-20261127-104205` with a clean working tree (`nothing to commit, working tree clean`).",
+      "commitSha": "147fcae",
+      "model": "gemini-4-hydrogen-high",
+      "actionsRunId": 45984316367,
+      "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45984316367",
+      "repairRounds": 0,
+      "capturedAt": "2026-11-27T10:51:08.936Z",
+      "tokenUsage": {
+        "inputTokens": 282244,
+        "outputTokens": 62999,
+        "totalTokens": 345243,
+        "source": "reported",
+        "model": "gemini-4-hydrogen-high"
+      }
     }
   },
   {

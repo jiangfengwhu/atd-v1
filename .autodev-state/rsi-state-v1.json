@@ -1,6 +1,249 @@
 {
   "testReports": [
     {
+      "id": "tr-gh-45984316367",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "actionsRunId": 45984316367,
+      "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45984316367",
+      "workflowName": "AutoDev AGY Coding Runner",
+      "branch": "autodev/feat-20261127-104205",
+      "pipelineRunId": "run-fb-mwyuql5l-e8a0",
+      "prNumber": 17,
+      "kind": "e2e",
+      "status": "passed",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "passRate": 100,
+      "durationMs": 57139,
+      "executedAt": "2026-11-27T10:51:08.936Z",
+      "summary": "自动化 E2E 验收（gemini-4-hydrogen-high / auto）：30 通过 / 0 失败 / 0 跳过",
+      "cases": [
+        {
+          "id": "check-type",
+          "title": "TypeScript / Lint 静态检查 (typecheck)",
+          "status": "passed",
+          "durationMs": 3781
+        },
+        {
+          "id": "check-build",
+          "title": "生产构建检查 (npm run build)",
+          "status": "passed",
+          "durationMs": 2428
+        },
+        {
+          "id": "pw-2",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 1. 宽屏左侧导航栏改版、居中紧凑间距几何审计与通知入口验证",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 773
+        },
+        {
+          "id": "pw-3",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 2. 通知模块全链路 API 契约、防自发、参数边界、跨用户隔离与删帖清理",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 658
+        },
+        {
+          "id": "pw-4",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 3. WebSocket 握手安全边界、通知实时推送与零 HTTP 轮询网络审计",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 9176
+        },
+        {
+          "id": "pw-5",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 4. 私信 WebSocket 实时收发、已读接口校验与聊天窗零轮询审计",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 9333
+        },
+        {
+          "id": "pw-6",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 5. 动态详情页 Instagram 风格左右双栏几何结构、互动闭环与移动端适配",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 1034
+        },
+        {
+          "id": "pw-7",
+          "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 1. 健康检查、左右分栏几何结构、左侧导航项与底部个人资料退出登录",
+          "file": "run-96e1a2ad.spec.ts",
+          "status": "passed",
+          "durationMs": 952
+        },
+        {
+          "id": "pw-8",
+          "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 2. 个人主页资料修改、安全边界、关注粉丝与评论二级回复闭环",
+          "file": "run-96e1a2ad.spec.ts",
+          "status": "passed",
+          "durationMs": 1198
+        },
+        {
+          "id": "pw-9",
+          "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 3. 私信权限隔离、边界校验、未读已读回执与 UI 聊天交互",
+          "file": "run-96e1a2ad.spec.ts",
+          "status": "passed",
+          "durationMs": 1178
+        },
+        {
+          "id": "pw-10",
+          "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 4. 发布图文集成图片裁剪编辑（比例/旋转/确认裁剪）与持久化发布",
+          "file": "run-96e1a2ad.spec.ts",
+          "status": "passed",
+          "durationMs": 1564
+        },
+        {
+          "id": "pw-11",
+          "title": "run-9b961baa.spec.ts › 动态改版（X.com列表流、点击/收藏/分享直达、右侧导航、多账号切换）加固盲测套件 › 1. 主页单列列表形态、点击统计并发累加、收藏隐私隔离、分享 URL 直达与删帖级联清理",
+          "file": "run-9b961baa.spec.ts",
+          "status": "passed",
+          "durationMs": 1740
+        },
+        {
+          "id": "pw-12",
+          "title": "run-9b961baa.spec.ts › 动态改版（X.com列表流、点击/收藏/分享直达、右侧导航、多账号切换）加固盲测套件 › 2. 右侧导航（热门话题、推荐关注）接口契约、隐私脱敏、三栏几何布局与交互闭环",
+          "file": "run-9b961baa.spec.ts",
+          "status": "passed",
+          "durationMs": 817
+        },
+        {
+          "id": "pw-13",
+          "title": "run-9b961baa.spec.ts › 动态改版（X.com列表流、点击/收藏/分享直达、右侧导航、多账号切换）加固盲测套件 › 3. 多账号安全切换、防越权接管、UI 身份状态同步、添加账号与分级退出闭环",
+          "file": "run-9b961baa.spec.ts",
+          "status": "passed",
+          "durationMs": 1467
+        },
+        {
+          "id": "pw-14",
+          "title": "run-aec3b8f5.spec.ts › 发布功能优化、三栏独立滚动、收藏直达与通知分类已读加固盲测套件 › 1. 品牌改名dev社区、三栏独立滚动、吸顶Tab同宽对齐、右侧搜索、紧凑卡片与配色/隐形滚动条审计",
+          "file": "run-aec3b8f5.spec.ts",
+          "status": "passed",
+          "durationMs": 1079
+        },
+        {
+          "id": "pw-15",
+          "title": "run-aec3b8f5.spec.ts › 发布功能优化、三栏独立滚动、收藏直达与通知分类已读加固盲测套件 › 2. X.com 风格无标题发布、拖拽/粘贴图片、正文 #话题 解析边界与左侧独立收藏页闭环",
+          "file": "run-aec3b8f5.spec.ts",
+          "status": "passed",
+          "durationMs": 1363
+        },
+        {
+          "id": "pw-16",
+          "title": "run-aec3b8f5.spec.ts › 发布功能优化、三栏独立滚动、收藏直达与通知分类已读加固盲测套件 › 3. 通知红点按分类点击即已读、分项独立扣减、安全隔离与并发幂等校验",
+          "file": "run-aec3b8f5.spec.ts",
+          "status": "passed",
+          "durationMs": 1052
+        },
+        {
+          "id": "pw-17",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 1. 健康检查、首页渲染与隐藏路由 /admin 入口审计",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 398
+        },
+        {
+          "id": "pw-18",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 2. 邮箱验证码登录安全边界（非法邮箱、冷却、错误码、UI 登录与防重放）",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 880
+        },
+        {
+          "id": "pw-19",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 3. 图文发布、图片上传、搜索、点赞、评论与持久化闭环",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 1014
+        },
+        {
+          "id": "pw-20",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 4. 未登录拦截与跨用户越权删帖权限隔离",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 157
+        },
+        {
+          "id": "pw-21",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 5. 隐藏路由 /admin 全流程：鉴权、Resend 密钥脱敏配置、改密与状态回滚",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 807
+        },
+        {
+          "id": "pw-22",
+          "title": "run-fb-mwvm5j18-21b8.spec.ts › 发布界面精简化与增强交互体验 E2E 验收套件 › AC-1: 确认内联与弹窗发布编辑器均已移除图片上传与外链按钮",
+          "file": "run-fb-mwvm5j18-21b8.spec.ts",
+          "status": "passed",
+          "durationMs": 574
+        },
+        {
+          "id": "pw-23",
+          "title": "run-fb-mwvm5j18-21b8.spec.ts › 发布界面精简化与增强交互体验 E2E 验收套件 › AC-2: 拖拽本地图片自动预览上传，并拦截非图片非法文件",
+          "file": "run-fb-mwvm5j18-21b8.spec.ts",
+          "status": "passed",
+          "durationMs": 841
+        },
+        {
+          "id": "pw-24",
+          "title": "run-fb-mwvm5j18-21b8.spec.ts › 发布界面精简化与增强交互体验 E2E 验收套件 › AC-3: 正文粘贴包含 URL 文本自动识别与格式化，纯文本粘贴不受干扰且发布后链接可点击",
+          "file": "run-fb-mwvm5j18-21b8.spec.ts",
+          "status": "passed",
+          "durationMs": 605
+        },
+        {
+          "id": "pw-25",
+          "title": "run-fb-mwvm5j18-21b8.spec.ts › 发布界面精简化与增强交互体验 E2E 验收套件 › AC-4: 手机端 (375px) 与平板端 (768px) 发布界面响应式布局无溢出",
+          "file": "run-fb-mwvm5j18-21b8.spec.ts",
+          "status": "passed",
+          "durationMs": 1274
+        },
+        {
+          "id": "pw-26",
+          "title": "run-fb-mwyuql5l-e8a0.spec.ts › 发帖支持@用户提及与官方反馈账号MVP E2E 验收套件 › AC-1: 首页发帖框输入 @ 展示官方反馈账号并置顶，支持选择插入且邮箱前缀不误触发",
+          "file": "run-fb-mwyuql5l-e8a0.spec.ts",
+          "status": "passed",
+          "durationMs": 1020
+        },
+        {
+          "id": "pw-27",
+          "title": "run-fb-mwyuql5l-e8a0.spec.ts › 发帖支持@用户提及与官方反馈账号MVP E2E 验收套件 › AC-2: 发布包含 @官方反馈 的帖子，列表与详情高亮渲染、可跳转官方主页且官方账号受权限保护",
+          "file": "run-fb-mwyuql5l-e8a0.spec.ts",
+          "status": "passed",
+          "durationMs": 1255
+        },
+        {
+          "id": "pw-28",
+          "title": "run-fb-mwyuql5l-e8a0.spec.ts › 发帖支持@用户提及与官方反馈账号MVP E2E 验收套件 › AC-3: 在帖子中 @普通已注册用户，后端正确关联且前端列表和详情页均高亮可点击",
+          "file": "run-fb-mwyuql5l-e8a0.spec.ts",
+          "status": "passed",
+          "durationMs": 1302
+        },
+        {
+          "id": "pw-29",
+          "title": "run-fb-mwyuql5l-e8a0.spec.ts › 发帖支持@用户提及与官方反馈账号MVP E2E 验收套件 › AC-4: 输入不存在的 @用户名 与邮箱地址发帖，不报错、不崩溃且不误解析为有效提及",
+          "file": "run-fb-mwyuql5l-e8a0.spec.ts",
+          "status": "passed",
+          "durationMs": 965
+        }
+      ],
+      "rawLogExcerpt": "es transformed.\nrendering chunks...\ncomputing gzip size...\n\u001b[2m../dist/client/\u001b[22m\u001b[32mindex.html                 \u001b[39m\u001b[1m\u001b[2m  0.78 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   0.47 kB\u001b[22m\n\u001b[2m../dist/client/\u001b[22m\u001b[2massets/\u001b[22m\u001b[35mindex-BCs4X3wA.css  \u001b[39m\u001b[1m\u001b[2m 43.66 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   7.82 kB\u001b[22m\n\u001b[2m../dist/client/\u001b[22m\u001b[2massets/\u001b[22m\u001b[36mindex-CNL7zCDI.js   \u001b[39m\u001b[1m\u001b[2m424.75 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip: 125.25 kB\u001b[22m\n\u001b[32m✓ built in 2.16s\u001b[39m\n=== Playwright E2E Verification ===\n                ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"a3eca1948a651e44a0b6-90097d93708d0857f702\",\n              \"file\": \"run-fb-mwyuql5l-e8a0.spec.ts\",\n              \"line\": 165,\n              \"column\": 3\n            },\n            {\n              \"title\": \"AC-4: 输入不存在的 @用户名 与邮箱地址发帖，不报错、不崩溃且不误解析为有效提及\",\n              \"ok\": true,\n              \"tags\": [\n                \"用户提及与官方反馈账号MVP\",\n                \"用户名\"\n              ],\n              \"tests\": [\n                {\n                  \"timeout\": 45000,\n                  \"annotations\": [\n                    {\n                      \"type\": \"serial\",\n                      \"location\": {\n                        \"file\": \"/data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-fb-mwyuql5l-e8a0.spec.ts\",\n                        \"line\": 40,\n                        \"column\": 15\n                      }\n                    }\n                  ],\n                  \"expectedStatus\": \"passed\",\n                  \"projectId\": \"\",\n                  \"projectName\": \"\",\n                  \"results\": [\n                    {\n                      \"workerIndex\": 0,\n                      \"parallelIndex\": 0,\n                      \"status\": \"passed\",\n                      \"duration\": 965,\n                      \"errors\": [],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-27T10:51:07.762Z\",\n                      \"annotations\": [\n                        {\n                          \"type\": \"serial\",\n                          \"location\": {\n                            \"file\": \"/data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-fb-mwyuql5l-e8a0.spec.ts\",\n                            \"line\": 40,\n                            \"column\": 15\n                          }\n                        }\n                      ],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"a3eca1948a651e44a0b6-e24fca20d71679526e25\",\n              \"file\": \"run-fb-mwyuql5l-e8a0.spec.ts\",\n              \"line\": 248,\n              \"column\": 3\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"errors\": [],\n  \"stats\": {\n    \"startTime\": \"2026-11-27T10:50:18.514Z\",\n    \"duration\": 50391.204,\n    \"expected\": 28,\n    \"skipped\": 0,\n    \"unexpected\": 0,\n    \"flaky\": 0\n  }\n}\n",
+      "agySessionId": "4fd3e680-645b-453a-9fa5-6810a5308c45",
+      "agySessionReused": false,
+      "agyExitCode": 0,
+      "codingFinalOutput": "TypeScript typecheck and Vite client build succeeded. Playwright is currently starting the local Wrangler server, applying D1 migrations, and executing the E2E verification suite (`tests/e2e/run-fb-mwyuql5l-e8a0.spec.ts`). I will wait for the test run to complete.\nFixed the caret-positioning race condition in [PostComposer.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/PostComposer.tsx) by moving selection restoration into `useLayoutEffect`. Typecheck and Vite production build succeeded, and the full Playwright E2E test suite is now running. I will wait for the test run to complete.\nImplemented post `@` user mentions and the official feedback account MVP for `autodev/feat-20261127-104205`.\n\n### Summary of Changes\n\n1. **Database & Official Feedback Account (T-01)**\n   - Added idempotent D1 migration [0007_mentions_and_official_account.sql](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/migrations/0007_mentions_and_official_account.sql) defining `official_accounts` and `post_mentions`, and seeding the `official_feedback` (`官方反馈`) account.\n   - Added [official.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/lib/official.ts) (`ensureOfficialFeedbackAccount`, `isOfficialAccountEmail`, `isOfficialUserId`, `isReservedOfficialNickname`) and enforced permission isolation in [auth.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/auth.ts) so the official account cannot log in via OTP or be modified/impersonated by normal users.\n\n2. **Backend `@` Mention Parsing, Search & Persistence (T-02)**\n   - Added [mentions.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/lib/mentions.ts) (`extractMentionTokens`, `resolveMentionedUsers`, `fetchMentionsForPostIds`) to parse `@username` mentions safely while ignoring email addresses (e.g., `user@example.com`), URLs, and unknown `@` handles without failing post creation.\n   - Added `GET /api/users/mention-candidates` and official flags in [users.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/users.ts), pinning the official feedback account at the top of mention results.\n   - Updated [posts.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/posts.ts), [admin.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/admin.ts), [discover.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/discover.ts), and [types.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/types.ts) to persist and return resolved `mentions` and `isOfficial` / `officialBadge` metadata.\n\n3. **Frontend `@` Autocomplete & Highlight Rendering (T-03)**\n   - Added [mentions.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/lib/mentions.ts) and [OfficialBadge.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/OfficialBadge.tsx), and updated API types in [api.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/lib/api.ts).\n   - Updated [PostComposer.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/PostComposer.tsx) with an `@` mention popover (official account pinned first, keyboard navigation with `ArrowUp`/`ArrowDown`/`Enter`/`Tab`/`Escape`, click insertion, and synchronous `useLayoutEffect` caret restoration).\n   - Updated [HashtagText.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/HashtagText.tsx), [PostCard.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/PostCard.tsx), [PostDetailDialog.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/PostDetailDialog.tsx), [ProfileView.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/ProfileView.tsx), and [DiscoverSidebar.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/DiscoverSidebar.tsx) to highlight resolved `@` mentions (with official badges) and navigate to the mentioned user's profile on click.\n\n4. **E2E Tests & Verification**\n   - Added E2E acceptance tests for AC-1 through AC-4 in [run-fb-mwyuql5l-e8a0.spec.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-fb-mwyuql5l-e8a0.spec.ts).\n   - Ran `npx tsc --noEmit`, `npm run build`, and `npx playwright test` (all **28 passed** across the full E2E suite).\n   - Committed and pushed commit `147fcae` to `origin/autodev/feat-20261127-104205` with a clean working tree (`nothing to commit, working tree clean`).",
+      "repairRounds": 0,
+      "tokenUsage": {
+        "inputTokens": 282244,
+        "outputTokens": 62999,
+        "totalTokens": 345243,
+        "source": "reported",
+        "model": "gemini-4-hydrogen-high"
+      }
+    },
+    {
       "id": "tr-gh-45311332287",
       "repoFullName": "jiangfengwhu/atd-v1",
       "actionsRunId": 45311332287,
