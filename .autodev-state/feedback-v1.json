@@ -1,5 +1,22 @@
 {
-  "records": [],
+  "records": [
+    {
+      "id": "fb-mwyuoylz-675737",
+      "createdAt": "2026-11-27T10:40:47.927Z",
+      "updatedAt": "2026-11-27T10:40:47.927Z",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "content": "1. 发帖支持@人\n2. 做一个官方账号，然后反馈可以直接@官方号 通过发帖的方式来进行",
+      "categoryHint": "feature",
+      "pageRoute": "/",
+      "appVersion": "1.0.0",
+      "reporterHash": "u_5f76bdd01cf8",
+      "metadata": {
+        "sourceApp": "atd-v1-community",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36"
+      },
+      "status": "pending"
+    }
+  ],
   "batches": [
     {
       "id": "fb-batch-mwyryb4l-6310",
