@@ -130,7 +130,7 @@
         }
       ]
     },
-    "status": "pr_created",
+    "status": "approved",
     "draftPr": {
       "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/21",
       "prNumber": 21,
@@ -174,7 +174,10 @@
         "source": "reported",
         "model": "gemini-4-hydrogen-high"
       }
-    }
+    },
+    "checkedCriteriaIds": [],
+    "approvalNote": "",
+    "approvedAt": "2026-11-27T15:00:05.423Z"
   },
   {
     "id": "run-fb-mwyvk07p-94af",
