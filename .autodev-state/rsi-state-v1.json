@@ -1884,7 +1884,7 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45540172631",
       "branch": "main",
       "occurredAt": "2026-11-25T03:28:33Z",
-      "analysisStatus": "pending"
+      "analysisStatus": "analyzing"
     },
     {
       "id": "inc-c3696f97",
@@ -1898,7 +1898,36 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45546936401",
       "branch": "main",
       "occurredAt": "2026-11-25T04:28:03Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "env_infra",
+        "rootCauseSummary": "Cloudflare D1 数据库迁移失败，初步判断为 CI 运行环境中缺少必要环境变量（如 CLOUDFLARE_API_TOKEN 或 CLOUDFLARE_ACCOUNT_ID），或配置的 database_id 在当前环境下不可访问/未定义。",
+        "shouldCodifyAsRule": true,
+        "decisionRationale": "Decision 门控判定与现有规则语义重叠（重复度 99%），执行合并强化而非新增条目。 该错误属于典型的 Cloudflare D1 CI 部署配置缺失问题，已有相关规则模板，建议强化检查流程以确保自动化部署的健壮性。",
+        "confidence": 0.98,
+        "suggestedRule": {
+          "title": "Cloudflare D1 迁移规范",
+          "targetStage": "qa_critic",
+          "severity": "critical",
+          "promptDirective": "在执行 Cloudflare Workers D1 迁移前，必须先验证：1. wrangler.toml 中 database_id 已正确配置；2. 迁移脚本应保持原子性且具备幂等性；3. CI 环境环境变量已包含有效的 CLOUDFLARE_API_TOKEN 及对应的账户…",
+          "dedupeKey": "cloudflare-d1-idempotent-migrations"
+        },
+        "decisionGate": {
+          "model": "gemini-decision-1",
+          "generalizableProb": 0.9625,
+          "duplicateProb": 0.99,
+          "generalityScore": 2.355,
+          "chosenAction": "merge_existing",
+          "actionConfidence": 0.9815,
+          "matchedRuleId": "rsi-619c6524",
+          "matchedRuleConfidence": 0.9986,
+          "evaluatedAt": "2026-11-27T10:52:47.140Z"
+        },
+        "appliedOutcome": "merged",
+        "mergedIntoRuleId": "rsi-619c6524",
+        "analyzedAt": "2026-11-27T10:52:47.140Z",
+        "model": "gemini-3.1-flash-lite + gemini-decision-1"
+      }
     },
     {
       "id": "inc-1ea9e5c4",
@@ -2412,12 +2441,13 @@
       "sourceIncidentIds": [
         "inc-66a7a222",
         "inc-2dcaf204",
-        "inc-1903069d"
+        "inc-1903069d",
+        "inc-c3696f97"
       ],
-      "hitCount": 3,
+      "hitCount": 4,
       "appliedCount": 5,
       "createdAt": "2026-11-22T09:38:01.968Z",
-      "updatedAt": "2026-11-24T02:33:01.907Z",
+      "updatedAt": "2026-11-27T10:52:47.140Z",
       "lastAppliedAt": "2026-11-24T02:07:27.471Z"
     }
   ],
