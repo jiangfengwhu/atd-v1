@@ -13,6 +13,7 @@ import { extractHashtagsFromContent } from '@/lib/hashtags';
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { HashtagText } from '@/components/HashtagText';
 import { OfficialBadge } from '@/components/OfficialBadge';
+import { TicketStatusBadge } from '@/components/TicketStatusBadge';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
 interface PostCardProps {
@@ -101,6 +102,9 @@ export function PostCard({
                 · {formatRelativeTime(post.createdAt)}
               </span>
             </button>
+            {post.feedbackTicket && (
+              <TicketStatusBadge status={post.feedbackTicket.status} />
+            )}
           </div>
 
           {/* Post Body with inline clickable #hashtags and @mentions */}

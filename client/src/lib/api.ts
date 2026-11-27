@@ -24,7 +24,35 @@ export interface PostMentionItem {
   nickname: string;
   matchedText: string;
   isOfficial: boolean;
+  isFeedbackAccount?: boolean;
   officialBadge?: string;
+}
+
+export type FeedbackTicketStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'in_progress'
+  | 'launched'
+  | 'closed';
+
+export interface FeedbackTicketSummary {
+  id: string;
+  postId: string;
+  feedbackQueueId: string;
+  status: FeedbackTicketStatus;
+  statusLabel: string;
+  statusNote: string;
+  updatedByAdmin: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommentTicketEvent {
+  ticketId: string;
+  fromStatus: FeedbackTicketStatus;
+  toStatus: FeedbackTicketStatus;
+  fromStatusLabel: string;
+  toStatusLabel: string;
 }
 
 export interface MentionCandidateItem {
@@ -44,6 +72,7 @@ export interface PostItem {
   imageUrl: string;
   tags: string[];
   mentions?: PostMentionItem[];
+  feedbackTicket?: FeedbackTicketSummary | null;
   likesCount: number;
   commentsCount: number;
   viewsCount: number;
@@ -92,6 +121,7 @@ export interface CommentItem {
   id: string;
   content: string;
   author: PostAuthor;
+  ticketEvent?: CommentTicketEvent | null;
   replies?: CommentReplyItem[];
   createdAt: string;
 }
@@ -223,6 +253,22 @@ export interface AdminPostItem {
   likesCount: number;
   commentsCount: number;
   createdAt: string;
+  author: {
+    id: string;
+    nickname: string;
+    email: string;
+  };
+}
+
+export interface AdminFeedbackTicketItem extends FeedbackTicketSummary {
+  content: string;
+  post: {
+    id: string;
+    content: string;
+    contentPreview: string;
+    commentsCount: number;
+    createdAt: string;
+  };
   author: {
     id: string;
     nickname: string;
@@ -428,14 +474,23 @@ export const api = {
       { method: 'POST' }
     ),
 
-  addComment: (id: string, content: string) =>
-    requestJson<{ ok: true; comment: CommentItem & { postId: string } }>(
-      `/api/posts/${encodeURIComponent(id)}/comments`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ content }),
-      }
-    ),
+  addComment: (
+    id: string,
+    content: string,
+    options?: { ticketStatus?: FeedbackTicketStatus; asOfficial?: boolean }
+  ) =>
+    requestJson<{
+      ok: true;
+      comment: CommentItem & { postId: string };
+      feedbackTicket?: FeedbackTicketSummary;
+    }>(`/api/posts/${encodeURIComponent(id)}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({
+        content,
+        ...(options?.ticketStatus ? { ticketStatus: options.ticketStatus } : {}),
+        ...(options?.asOfficial !== undefined ? { asOfficial: options.asOfficial } : {}),
+      }),
+    }),
 
   addReply: (
     postId: string,
@@ -578,5 +633,25 @@ export const api = {
   adminDeletePost: (id: string) =>
     requestJson<{ ok: true }>(`/api/admin/posts/${encodeURIComponent(id)}`, {
       method: 'DELETE',
+    }),
+
+  adminListFeedbackTickets: (status?: FeedbackTicketStatus | 'all') => {
+    const qs = status && status !== 'all' ? `?status=${encodeURIComponent(status)}` : '';
+    return requestJson<{ tickets: AdminFeedbackTicketItem[] }>(
+      `/api/admin/feedback-tickets${qs}`
+    );
+  },
+
+  adminReplyFeedbackTicket: (
+    ticketId: string,
+    payload: { status: FeedbackTicketStatus; content: string }
+  ) =>
+    requestJson<{
+      ok: true;
+      ticket: FeedbackTicketSummary;
+      comment: CommentItem & { postId: string };
+    }>(`/api/admin/feedback-tickets/${encodeURIComponent(ticketId)}/reply`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
     }),
 };

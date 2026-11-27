@@ -8,6 +8,7 @@ import {
 } from '../lib/notifications';
 import { makeContentPreview, escapeSqlLike } from '../lib/validation';
 import { fetchMentionsForPostIds } from '../lib/mentions';
+import { fetchFeedbackTicketsForPostIds } from '../lib/feedback-tickets';
 import { ensureOfficialFeedbackAccount } from '../lib/official';
 
 interface UserProfileRow {
@@ -95,9 +96,9 @@ userRoutes.get('/mention-candidates', async (c) => {
   if (q) {
     const likePattern = `%${escapeSqlLike(q)}%`;
     whereConditions.push(
-      "(u.nickname LIKE ? ESCAPE '\\' OR COALESCE(oa.handle, '') LIKE ? ESCAPE '\\' OR COALESCE(oa.badge_label, '') LIKE ? ESCAPE '\\')"
+      "(u.nickname LIKE ? ESCAPE '\\' OR COALESCE(oa.handle, '') LIKE ? ESCAPE '\\' OR COALESCE(oa.badge_label, '') LIKE ? ESCAPE '\\' OR COALESCE(oa.description, '') LIKE ? ESCAPE '\\')"
     );
-    filterParams.push(likePattern, likePattern, likePattern);
+    filterParams.push(likePattern, likePattern, likePattern, likePattern);
   }
 
   const whereSql = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
@@ -503,14 +504,17 @@ userRoutes.get('/:id/activity', async (c) => {
       .all<PostRow>();
 
     const postResults = rows.results ?? [];
-    const mentionsMap = await fetchMentionsForPostIds(
-      c.env.DB,
-      postResults.map((r) => r.id)
-    );
+    const postIds = postResults.map((r) => r.id);
+    const [mentionsMap, ticketsMap] = await Promise.all([
+      fetchMentionsForPostIds(c.env.DB, postIds),
+      fetchFeedbackTicketsForPostIds(c.env.DB, postIds),
+    ]);
 
     return c.json({
       tab,
-      items: postResults.map((r) => serializePost(r, mentionsMap.get(r.id) ?? [])),
+      items: postResults.map((r) =>
+        serializePost(r, mentionsMap.get(r.id) ?? [], ticketsMap.get(r.id) ?? null)
+      ),
       total: Number(countRow?.total ?? 0),
     });
   }
@@ -573,14 +577,17 @@ userRoutes.get('/:id/activity', async (c) => {
           .all<PostRow>();
 
     const postResults = rows.results ?? [];
-    const mentionsMap = await fetchMentionsForPostIds(
-      c.env.DB,
-      postResults.map((r) => r.id)
-    );
+    const postIds = postResults.map((r) => r.id);
+    const [mentionsMap, ticketsMap] = await Promise.all([
+      fetchMentionsForPostIds(c.env.DB, postIds),
+      fetchFeedbackTicketsForPostIds(c.env.DB, postIds),
+    ]);
 
     return c.json({
       tab,
-      items: postResults.map((r) => serializePost(r, mentionsMap.get(r.id) ?? [])),
+      items: postResults.map((r) =>
+        serializePost(r, mentionsMap.get(r.id) ?? [], ticketsMap.get(r.id) ?? null)
+      ),
       total: Number(countRow?.total ?? 0),
     });
   }
@@ -648,14 +655,17 @@ userRoutes.get('/:id/activity', async (c) => {
           .all<PostRow>();
 
     const postResults = rows.results ?? [];
-    const mentionsMap = await fetchMentionsForPostIds(
-      c.env.DB,
-      postResults.map((r) => r.id)
-    );
+    const postIds = postResults.map((r) => r.id);
+    const [mentionsMap, ticketsMap] = await Promise.all([
+      fetchMentionsForPostIds(c.env.DB, postIds),
+      fetchFeedbackTicketsForPostIds(c.env.DB, postIds),
+    ]);
 
     return c.json({
       tab,
-      items: postResults.map((r) => serializePost(r, mentionsMap.get(r.id) ?? [])),
+      items: postResults.map((r) =>
+        serializePost(r, mentionsMap.get(r.id) ?? [], ticketsMap.get(r.id) ?? null)
+      ),
       total: Number(countRow?.total ?? 0),
     });
   }

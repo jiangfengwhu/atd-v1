@@ -76,7 +76,7 @@ function resolveAutoDevStudioBaseUrl(env: Bindings): string | null {
   return raw;
 }
 
-async function tryPushToAutoDevStudio(params: {
+export async function tryPushToAutoDevStudio(params: {
   env: Bindings;
   endpointPath: '/api/ingest/feedback' | '/api/ingest/errors';
   table: 'autodev_feedback_queue' | 'autodev_error_queue';

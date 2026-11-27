@@ -8,13 +8,16 @@ export const OFFICIAL_FEEDBACK_BADGE = '官方';
 export const OFFICIAL_FEEDBACK_BIO =
   'dev社区官方反馈与建议受理账号，发帖 @官方反馈 即可提交产品建议或问题反馈。';
 
-const RESERVED_OFFICIAL_NAMES = new Set([
+export const OFFICIAL_FEEDBACK_ALIASES = [
   OFFICIAL_FEEDBACK_USER_ID.toLowerCase(),
   OFFICIAL_FEEDBACK_HANDLE.toLowerCase(),
   OFFICIAL_FEEDBACK_NICKNAME.toLowerCase(),
   '官方',
+  '官方账号',
   'official',
-]);
+];
+
+const RESERVED_OFFICIAL_NAMES = new Set(OFFICIAL_FEEDBACK_ALIASES);
 
 /**
  * Check if a requested nickname collides with a reserved official account identifier.
