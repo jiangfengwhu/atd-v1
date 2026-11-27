@@ -1,0 +1,8 @@
+{
+  "branchName": "autodev/feat-20261127-144434",
+  "prNumber": 21,
+  "e2eTestPath": "tests/e2e/run-fb-mwz3eeyd-e431.spec.ts",
+  "e2eVaultPath": ".autodev-e2e-vault/run-fb-mwz3eeyd-e431/e2e.spec.ts",
+  "prTitle": "[AutoDev 用户反馈直派] 社区动态展示优化与深色模式支持",
+  "createdAt": "2026-11-27T14:44:39.424Z"
+}
