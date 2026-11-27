@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-dc2d1e10",
+    "timestamp": "2026-11-27T11:17:05.848Z",
+    "category": "approval",
+    "action": "release_approved",
+    "label": "验收通过并批准上线",
+    "actor": "验收审批人",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-fb-mwyvk07p-94af",
+    "prdTitle": "交互体验优化：反馈机制与@提醒功能增强",
+    "branch": "autodev/feat-20261127-110458",
+    "prNumber": 19,
+    "status": "success",
+    "detail": "验收通过并合入 main（Commit 2596960），已自动部署生产：https://atd-v1-community.809740942.workers.dev"
+  },
+  {
     "id": "aud-b5620886",
     "timestamp": "2026-11-27T11:05:05.182Z",
     "category": "execution",
