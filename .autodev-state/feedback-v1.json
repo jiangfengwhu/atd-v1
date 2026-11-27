@@ -3,7 +3,7 @@
     {
       "id": "fb-mwz32zkh-8c4a5a",
       "createdAt": "2026-11-27T14:35:39.281Z",
-      "updatedAt": "2026-11-27T14:44:42.811Z",
+      "updatedAt": "2026-11-27T16:26:54.716Z",
       "repoFullName": "jiangfengwhu/atd-v1",
       "content": "@官方反馈 \n1. feed正文的@ 用户不要框了，整体需要居中，包括官方的label，认证的label使用icon而不是文字展示\n2. 添加light/dark mode支持\n3. 发布动态正文如果没有图片，但是有url的话，解析下url内容，渲染时按照图文渲染，点击可以直接跳转",
       "categoryHint": "feature",
@@ -26,7 +26,10 @@
       "linkedIssueUrl": "https://github.com/jiangfengwhu/atd-v1/issues/20",
       "linkedRunId": "run-fb-mwz3eeyd-e431",
       "linkedPrNumber": 21,
-      "linkedPrUrl": "https://github.com/jiangfengwhu/atd-v1/pull/21"
+      "linkedPrUrl": "https://github.com/jiangfengwhu/atd-v1/pull/21",
+      "repliedStageKeys": [
+        "run-fb-mwz3eeyd-e431:launched"
+      ]
     },
     {
       "id": "fb-mwyviz95-72de77",

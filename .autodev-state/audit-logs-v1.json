@@ -1,5 +1,18 @@
 [
   {
+    "id": "aud-e7f9bae2",
+    "timestamp": "2026-11-27T16:26:54.717Z",
+    "category": "execution",
+    "action": "atd_v1_feedback_post_replied",
+    "label": "自动以 @官方反馈 回复社区原帖",
+    "actor": "官方反馈机器人",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-fb-mwz3eeyd-e431",
+    "prNumber": 21,
+    "status": "success",
+    "detail": "已以 @官方反馈 自动回复原帖（36ccd3f2-249a-4df0-bec8-6b53a0564ad6 · 工单状态 -> launched · 阶段 launched）"
+  },
+  {
     "id": "aud-1af6fffe",
     "timestamp": "2026-11-27T15:01:09.651Z",
     "category": "approval",
