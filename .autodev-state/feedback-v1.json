@@ -3,7 +3,7 @@
     {
       "id": "fb-mwyuoylz-675737",
       "createdAt": "2026-11-27T10:40:47.927Z",
-      "updatedAt": "2026-11-27T10:40:47.927Z",
+      "updatedAt": "2026-11-27T10:41:13.980Z",
       "repoFullName": "jiangfengwhu/atd-v1",
       "content": "1. 发帖支持@人\n2. 做一个官方账号，然后反馈可以直接@官方号 通过发帖的方式来进行",
       "categoryHint": "feature",
@@ -14,10 +14,36 @@
         "sourceApp": "atd-v1-community",
         "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36"
       },
-      "status": "pending"
+      "status": "needs_manual_prd",
+      "decisionScores": {
+        "injectionProb": 0.01,
+        "maliciousProb": 0.017906381409714546,
+        "actionableProb": 0.8661301075094737,
+        "scopeChoice": "needs_full_prd",
+        "scopeConfidence": 0.8857606634355437,
+        "priorityScore": 1.9060113963349732,
+        "evaluatedAt": "2026-11-27T10:41:13.980Z"
+      },
+      "triageReason": "超出细碎直通范围：涉及较大新功能或架构设计（置信度 89%），建议转人工走完整 PRD 策划",
+      "triageBatchId": "fb-batch-mwyupi61-9c47"
     }
   ],
   "batches": [
+    {
+      "id": "fb-batch-mwyupi61-9c47",
+      "createdAt": "2026-11-27T10:41:13.273Z",
+      "trigger": "manual",
+      "scannedCount": 1,
+      "acceptedCount": 0,
+      "rejectedMaliciousCount": 0,
+      "rejectedInvalidCount": 0,
+      "needsManualPrdCount": 1,
+      "summary": "已巡检 1 条反馈：拦截恶意/注入 0 条、过滤无效 0 条、转大型 PRD 人工评估 1 条，无须发起直通编码",
+      "feedbackIds": [
+        "fb-mwyuoylz-675737"
+      ],
+      "status": "completed_empty"
+    },
     {
       "id": "fb-batch-mwyryb4l-6310",
       "createdAt": "2026-11-27T09:24:05.205Z",
