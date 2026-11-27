@@ -2193,7 +2193,17 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45985756491",
       "branch": "main",
       "occurredAt": "2026-11-27T10:52:48Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "ci_workflow",
+        "rootCauseSummary": "部署流水线在执行 Provision D1 Database (if placeholder) & Apply Remote Migrations 步骤时失败，但当前采集的原始日志仅包含 GitHub Actions 作业收尾清理记录（移除 git 凭证与清理孤儿进程），未包含 D1 数据库创建或远程迁移执行阶段的具体报错详情。",
+        "shouldCodifyAsRule": false,
+        "decisionRationale": "当前日志缺少 D1 配置与迁移步骤的实际错误输出，无法确认本次失败是由偶发网络波动、凭据配置缺失还是具体 SQL 脚本异常引起，缺乏提炼新规则的充分依据；同时现有规则库中已存在状态为 active 的 cloudflare-d1-idempotent-migrations 规则覆盖 D1 迁移规范，无需重复固化。",
+        "confidence": 0.65,
+        "appliedOutcome": "discarded",
+        "analyzedAt": "2026-11-27T11:17:53.756Z",
+        "model": "gemini-4-hydrogen"
+      }
     },
     {
       "id": "inc-d40fc6b1",
@@ -2207,7 +2217,7 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45313229355",
       "branch": "main",
       "occurredAt": "2026-11-24T02:33:30Z",
-      "analysisStatus": "pending"
+      "analysisStatus": "analyzing"
     },
     {
       "id": "inc-c738d14f",
