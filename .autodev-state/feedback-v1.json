@@ -2,8 +2,8 @@
   "records": [],
   "batches": [
     {
-      "id": "fb-batch-mwxby7em-2089",
-      "createdAt": "2026-11-26T09:08:20.350Z",
+      "id": "fb-batch-mwyryb4l-6310",
+      "createdAt": "2026-11-27T09:24:05.205Z",
       "trigger": "cron",
       "scannedCount": 0,
       "acceptedCount": 0,
