@@ -3,7 +3,7 @@
     {
       "id": "fb-mwz32zkh-8c4a5a",
       "createdAt": "2026-11-27T14:35:39.281Z",
-      "updatedAt": "2026-11-27T14:35:39.281Z",
+      "updatedAt": "2026-11-27T14:44:42.811Z",
       "repoFullName": "jiangfengwhu/atd-v1",
       "content": "@官方反馈 \n1. feed正文的@ 用户不要框了，整体需要居中，包括官方的label，认证的label使用icon而不是文字展示\n2. 添加light/dark mode支持\n3. 发布动态正文如果没有图片，但是有url的话，解析下url内容，渲染时按照图文渲染，点击可以直接跳转",
       "categoryHint": "feature",
@@ -19,7 +19,14 @@
         "authorId": "618920fc-c57b-4f3b-bc2b-3d4489fc875c",
         "authorNickname": "飞翔的小猪🐷"
       },
-      "status": "pending"
+      "status": "dispatched",
+      "triageReason": "人工一键直派成功（Issue #20 / PR #21）",
+      "triageBatchId": "fb-direct-mwz33lmc-0569",
+      "linkedIssueNumber": 20,
+      "linkedIssueUrl": "https://github.com/jiangfengwhu/atd-v1/issues/20",
+      "linkedRunId": "run-fb-mwz3eeyd-e431",
+      "linkedPrNumber": 21,
+      "linkedPrUrl": "https://github.com/jiangfengwhu/atd-v1/pull/21"
     },
     {
       "id": "fb-mwyviz95-72de77",
@@ -78,6 +85,26 @@
     }
   ],
   "batches": [
+    {
+      "id": "fb-direct-mwz33lmc-0569",
+      "createdAt": "2026-11-27T14:36:07.860Z",
+      "trigger": "manual",
+      "scannedCount": 1,
+      "acceptedCount": 1,
+      "rejectedMaliciousCount": 0,
+      "rejectedInvalidCount": 0,
+      "needsManualPrdCount": 0,
+      "summary": "已直接派发该反馈至 Issue #20 与 Draft PR #21，AGY 编码已启动",
+      "feedbackIds": [
+        "fb-mwz32zkh-8c4a5a"
+      ],
+      "status": "dispatched",
+      "linkedIssueNumber": 20,
+      "linkedIssueUrl": "https://github.com/jiangfengwhu/atd-v1/issues/20",
+      "linkedRunId": "run-fb-mwz3eeyd-e431",
+      "linkedPrNumber": 21,
+      "linkedPrUrl": "https://github.com/jiangfengwhu/atd-v1/pull/21"
+    },
     {
       "id": "fb-direct-mwyvjogb-0c16",
       "createdAt": "2026-11-27T11:04:41.099Z",

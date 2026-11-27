@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-19dfbc65",
+    "timestamp": "2026-11-27T14:44:42.811Z",
+    "category": "execution",
+    "action": "feedback_direct_dispatched",
+    "label": "用户反馈一键直派编码",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-fb-mwz3eeyd-e431",
+    "prdTitle": "社区动态展示优化与深色模式支持",
+    "branch": "autodev/feat-20261127-144434",
+    "prNumber": 21,
+    "status": "success",
+    "detail": "已直接派发该反馈至 Issue #20 与 Draft PR #21，AGY 编码已启动"
+  },
+  {
     "id": "aud-37feb63f",
     "timestamp": "2026-11-27T14:35:39.282Z",
     "category": "planning",

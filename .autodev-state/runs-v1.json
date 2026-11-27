@@ -1,5 +1,157 @@
 [
   {
+    "id": "run-fb-mwz3eeyd-e431",
+    "createdAt": "2026-11-27T14:44:32.438Z",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "defaultBranch": "main",
+    "prdTitle": "社区动态展示优化与深色模式支持",
+    "prdContent": "# 社区动态展示优化与深色模式支持\n> 来源：AutoDev 用户反馈每日直通迭代（跳过前置 3-Agent 重策划，由 AI 安全消毒后直通 AGY 编码）\n> 关联追踪 Issue：[#20](https://github.com/jiangfengwhu/atd-v1/issues/20)\n## 摘要与目标\n针对动态展示细节进行UI调整，引入全局深色模式支持，并增强URL链接预览渲染逻辑。\n## 背景与根因分析\n用户反馈当前动态页面正文样式冗余、缺乏深色模式适配，且长链接缺乏视觉引导，影响阅读体验。\n## 合并涵盖的信号清单（已脱敏与防注入消毒）\n- [`fb-mwz32zkh-8c4a5a`] (/posts/:uuid) @官方反馈 \n1. feed正文的@ 用户不要框了，整体需要居中，包括官方的label，认证的label使用icon而不是文字展示\n2. 添加light/dark mode支持\n3. 发布动态正文如果没有图片，但是有url的话，解析下url内容，渲染时按照图文渲染，点击可以直接跳转\n## 明确改动边界（Non-Goals）\n- 不重构现有的用户鉴权机制\n- 不修改底层的数据库Schema\n- 不对图片上传逻辑进行调整\n## 验收核对标准\n1. 验证@用户显示正常，无残留边框\n2. 验证深色模式切换后页面配色正确，无反色异常\n3. 验证无图含链接动态成功渲染预览卡片",
+    "origin": "user_feedback_batch",
+    "linkedIssueNumbers": [
+      20
+    ],
+    "linkedIssueUrls": [
+      "https://github.com/jiangfengwhu/atd-v1/issues/20"
+    ],
+    "architect": {
+      "architectureSummary": "[用户反馈每日直通迭代] 针对动态展示细节进行UI调整，引入全局深色模式支持，并增强URL链接预览渲染逻辑。",
+      "techDecisions": [
+        "采用轻量 Micro-Spec 直通模式：保持最小化改动面，优先确保回归安全与构建通过。",
+        "链接解析可能导致小规模性能开销，需确保在列表滚动时不卡顿",
+        "UI样式变动需检查移动端适配，防止文字居中导致的小屏溢出问题"
+      ],
+      "ambiguities": [],
+      "apiContracts": [],
+      "tasks": [
+        {
+          "id": "T-01",
+          "title": "UI组件样式规范化",
+          "module": "frontend",
+          "description": "移除@用户名的边框样式，将内容容器居中处理，并将认证Label文字替换为SVG图标。（相关文件提示：src/components/PostContent.tsx, src/styles/components.css）",
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "所有@用户名的外边框被移除",
+            "动态正文及认证图标保持垂直居中对齐",
+            "使用指定图标替换文字标签"
+          ],
+          "estimatedComplexity": "S"
+        },
+        {
+          "id": "T-02",
+          "title": "实施全局深色模式",
+          "module": "frontend",
+          "description": "引入CSS变量体系，适配深色主题配色。（相关文件提示：src/styles/theme.css, src/hooks/useTheme.ts）",
+          "dependsOn": [
+            "T-01"
+          ],
+          "acceptanceCriteria": [
+            "系统支持通过配置切换主题",
+            "页面背景与文本颜色在深色模式下具备高可读性对比度"
+          ],
+          "estimatedComplexity": "S"
+        },
+        {
+          "id": "T-03",
+          "title": "增强URL链接解析渲染",
+          "module": "shared",
+          "description": "解析纯文本动态中的URL，将其转换为卡片式UI渲染，并支持点击跳转。（相关文件提示：src/utils/urlParser.ts, src/components/LinkPreview.tsx）",
+          "dependsOn": [
+            "T-02"
+          ],
+          "acceptanceCriteria": [
+            "无图动态包含URL时能显示预览卡片",
+            "预览卡片支持点击跳转至原链接",
+            "解析逻辑不会对正常文本渲染产生干扰"
+          ],
+          "estimatedComplexity": "S"
+        }
+      ]
+    },
+    "qaSpec": {
+      "e2eTestCode": "",
+      "apiTestChecklist": [
+        {
+          "id": "AC-1",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "验证@用户显示正常，无残留边框",
+          "expectedStatus": 200,
+          "assertion": "验证@用户显示正常，无残留边框"
+        },
+        {
+          "id": "AC-2",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "验证深色模式切换后页面配色正确，无反色异常",
+          "expectedStatus": 200,
+          "assertion": "验证深色模式切换后页面配色正确，无反色异常"
+        },
+        {
+          "id": "AC-3",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "验证无图含链接动态成功渲染预览卡片",
+          "expectedStatus": 200,
+          "assertion": "验证无图含链接动态成功渲染预览卡片"
+        }
+      ],
+      "coverageNotes": [
+        "由 用户反馈每日直通迭代 轻量规格自动生成，共 3 项核心验收核对标准。"
+      ]
+    },
+    "qaCritic": {
+      "reviewSummary": "已完成双层 AI 安全消毒与范围校验（跳过重策划），共拆解 3 项精简改动任务。",
+      "findings": [],
+      "finalE2eTestCode": "",
+      "finalApiTestChecklist": [
+        {
+          "id": "AC-1",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "验证@用户显示正常，无残留边框",
+          "expectedStatus": 200,
+          "assertion": "验证@用户显示正常，无残留边框"
+        },
+        {
+          "id": "AC-2",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "验证深色模式切换后页面配色正确，无反色异常",
+          "expectedStatus": 200,
+          "assertion": "验证深色模式切换后页面配色正确，无反色异常"
+        },
+        {
+          "id": "AC-3",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "验证无图含链接动态成功渲染预览卡片",
+          "expectedStatus": 200,
+          "assertion": "验证无图含链接动态成功渲染预览卡片"
+        }
+      ]
+    },
+    "status": "pr_created",
+    "draftPr": {
+      "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/21",
+      "prNumber": 21,
+      "branchName": "autodev/feat-20261127-144434",
+      "baseBranch": "main",
+      "commitSha": "18db9c44921c048a362c842b5f92d742cda2ee9f",
+      "filesCommitted": [
+        "docs/spec.json",
+        "docs/iterations/run-fb-mwz3eeyd-e431-spec.json",
+        "docs/prd.md",
+        "docs/iterations/run-fb-mwz3eeyd-e431-prd.md",
+        "tests/e2e/run-fb-mwz3eeyd-e431.spec.ts"
+      ],
+      "e2eTestPath": "tests/e2e/run-fb-mwz3eeyd-e431.spec.ts",
+      "e2eVaultPath": ".autodev-e2e-vault/run-fb-mwz3eeyd-e431/e2e.spec.ts",
+      "archivedSpecPath": "docs/iterations/run-fb-mwz3eeyd-e431-spec.json",
+      "createdAt": "2026-11-27T14:44:40.566Z",
+      "initializedEmptyRepo": false
+    }
+  },
+  {
     "id": "run-fb-mwyvk07p-94af",
     "createdAt": "2026-11-27T11:04:56.342Z",
     "repoFullName": "jiangfengwhu/atd-v1",
