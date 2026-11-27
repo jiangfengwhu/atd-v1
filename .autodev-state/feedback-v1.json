@@ -3,7 +3,7 @@
     {
       "id": "fb-mwyuoylz-675737",
       "createdAt": "2026-11-27T10:40:47.927Z",
-      "updatedAt": "2026-11-27T10:41:13.980Z",
+      "updatedAt": "2026-11-27T10:42:12.383Z",
       "repoFullName": "jiangfengwhu/atd-v1",
       "content": "1. 发帖支持@人\n2. 做一个官方账号，然后反馈可以直接@官方号 通过发帖的方式来进行",
       "categoryHint": "feature",
@@ -14,7 +14,7 @@
         "sourceApp": "atd-v1-community",
         "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36"
       },
-      "status": "needs_manual_prd",
+      "status": "dispatched",
       "decisionScores": {
         "injectionProb": 0.01,
         "maliciousProb": 0.017906381409714546,
@@ -24,11 +24,36 @@
         "priorityScore": 1.9060113963349732,
         "evaluatedAt": "2026-11-27T10:41:13.980Z"
       },
-      "triageReason": "超出细碎直通范围：涉及较大新功能或架构设计（置信度 89%），建议转人工走完整 PRD 策划",
-      "triageBatchId": "fb-batch-mwyupi61-9c47"
+      "triageReason": "人工一键直派成功（Issue #16 / PR #17）",
+      "triageBatchId": "fb-direct-mwyuqcqr-43bb",
+      "linkedIssueNumber": 16,
+      "linkedIssueUrl": "https://github.com/jiangfengwhu/atd-v1/issues/16",
+      "linkedRunId": "run-fb-mwyuql5l-e8a0",
+      "linkedPrNumber": 17,
+      "linkedPrUrl": "https://github.com/jiangfengwhu/atd-v1/pull/17"
     }
   ],
   "batches": [
+    {
+      "id": "fb-direct-mwyuqcqr-43bb",
+      "createdAt": "2026-11-27T10:41:52.899Z",
+      "trigger": "manual",
+      "scannedCount": 1,
+      "acceptedCount": 1,
+      "rejectedMaliciousCount": 0,
+      "rejectedInvalidCount": 0,
+      "needsManualPrdCount": 0,
+      "summary": "已直接派发该反馈至 Issue #16 与 Draft PR #17，AGY 编码已启动",
+      "feedbackIds": [
+        "fb-mwyuoylz-675737"
+      ],
+      "status": "dispatched",
+      "linkedIssueNumber": 16,
+      "linkedIssueUrl": "https://github.com/jiangfengwhu/atd-v1/issues/16",
+      "linkedRunId": "run-fb-mwyuql5l-e8a0",
+      "linkedPrNumber": 17,
+      "linkedPrUrl": "https://github.com/jiangfengwhu/atd-v1/pull/17"
+    },
     {
       "id": "fb-batch-mwyupi61-9c47",
       "createdAt": "2026-11-27T10:41:13.273Z",

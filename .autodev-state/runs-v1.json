@@ -1,5 +1,171 @@
 [
   {
+    "id": "run-fb-mwyuql5l-e8a0",
+    "createdAt": "2026-11-27T10:42:03.801Z",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "defaultBranch": "main",
+    "prdTitle": "发帖支持@用户提及与官方反馈账号MVP",
+    "prdContent": "# 发帖支持@用户提及与官方反馈账号MVP\n> 来源：AutoDev 用户反馈每日直通迭代（跳过前置 3-Agent 重策划，由 AI 安全消毒后直通 AGY 编码）\n> 关联追踪 Issue：[#16](https://github.com/jiangfengwhu/atd-v1/issues/16)\n## 摘要与目标\n在发帖流程中支持基础的@用户提及解析与高亮显示，并配置官方反馈账号，使用户可通过发帖@官方号提交反馈。\n## 背景与根因分析\n当前发帖仅支持纯文本或基础内容展示，缺乏@用户提及的解析与交互能力，也缺少统一的官方账号用于承接站内发帖反馈。\n## 合并涵盖的信号清单（已脱敏与防注入消毒）\n- [`fb-mwyuoylz-675737`] (/) 1. 发帖支持@人\n2. 做一个官方账号，然后反馈可以直接@官方号 通过发帖的方式来进行\n## 明确改动边界（Non-Goals）\n- 不构建完整的实时站内信/推送通知中心\n- 不重构现有富文本编辑器，仅在现有输入框基础上做轻量支持\n- 不涉及复杂的权限管理系统或后台工单流转系统\n## 验收核对标准\n1. 在首页发帖框输入@，确认能看到官方反馈账号并成功插入\n2. 发布包含@官方账号的帖子，确认帖子列表正常渲染且@标识高亮\n3. 在帖子中@普通已注册用户，确认发帖成功且无报错\n4. 输入不存在的@用户名发帖，确认不会导致接口报错或页面崩溃",
+    "origin": "user_feedback_batch",
+    "linkedIssueNumbers": [
+      16
+    ],
+    "linkedIssueUrls": [
+      "https://github.com/jiangfengwhu/atd-v1/issues/16"
+    ],
+    "architect": {
+      "architectureSummary": "[用户反馈每日直通迭代] 在发帖流程中支持基础的@用户提及解析与高亮显示，并配置官方反馈账号，使用户可通过发帖@官方号提交反馈。",
+      "techDecisions": [
+        "采用轻量 Micro-Spec 直通模式：保持最小化改动面，优先确保回归安全与构建通过。",
+        "需防止@解析正则表达式在处理特殊字符或邮箱地址（如 user@example.com）时产生误判",
+        "官方账号需做好防刷与基础权限隔离，避免被普通用户冒用或修改资料"
+      ],
+      "ambiguities": [],
+      "apiContracts": [],
+      "tasks": [
+        {
+          "id": "T-01",
+          "title": "初始化官方反馈账号与标识",
+          "module": "database",
+          "description": "在数据库种子数据或初始化脚本中预置官方反馈账号（如 official_feedback），并为其添加官方认证标识字段或角色标记。（相关文件提示：prisma/seed.ts, src/db/schema.ts）",
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "数据库中存在可被查询和@提及的官方反馈账号",
+            "官方账号在前端展示时带有明确的官方标识"
+          ],
+          "estimatedComplexity": "S"
+        },
+        {
+          "id": "T-02",
+          "title": "发帖内容@用户解析与存储",
+          "module": "backend",
+          "description": "在发帖接口中解析正文中的@用户名格式，校验目标用户是否存在，并在帖子数据中关联被提及的用户ID列表（含官方账号）。（相关文件提示：src/app/api/posts/route.ts, src/services/postService.ts）",
+          "dependsOn": [
+            "T-01"
+          ],
+          "acceptanceCriteria": [
+            "发帖包含@有效用户名时，后端能正确提取并关联对应用户",
+            "包含不存在的@用户名时，不影响正常发帖流程"
+          ],
+          "estimatedComplexity": "S"
+        },
+        {
+          "id": "T-03",
+          "title": "前端发帖@输入提示与高亮渲染",
+          "module": "frontend",
+          "description": "在发帖输入框支持输入@时弹出轻量用户选择列表（优先置顶官方反馈账号），并在帖子详情/列表页将@用户名渲染为可点击的高亮标签。（相关文件提示：src/components/PostEditor.tsx, src/components/PostCard.tsx）",
+          "dependsOn": [
+            "T-02"
+          ],
+          "acceptanceCriteria": [
+            "在发帖框输入@可触发用户选择浮层，且官方账号排在首位",
+            "发布后的帖子中@用户名以高亮样式展示"
+          ],
+          "estimatedComplexity": "S"
+        }
+      ]
+    },
+    "qaSpec": {
+      "e2eTestCode": "",
+      "apiTestChecklist": [
+        {
+          "id": "AC-1",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "在首页发帖框输入@，确认能看到官方反馈账号并成功插入",
+          "expectedStatus": 200,
+          "assertion": "在首页发帖框输入@，确认能看到官方反馈账号并成功插入"
+        },
+        {
+          "id": "AC-2",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "发布包含@官方账号的帖子，确认帖子列表正常渲染且@标识高亮",
+          "expectedStatus": 200,
+          "assertion": "发布包含@官方账号的帖子，确认帖子列表正常渲染且@标识高亮"
+        },
+        {
+          "id": "AC-3",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "在帖子中@普通已注册用户，确认发帖成功且无报错",
+          "expectedStatus": 200,
+          "assertion": "在帖子中@普通已注册用户，确认发帖成功且无报错"
+        },
+        {
+          "id": "AC-4",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "输入不存在的@用户名发帖，确认不会导致接口报错或页面崩溃",
+          "expectedStatus": 200,
+          "assertion": "输入不存在的@用户名发帖，确认不会导致接口报错或页面崩溃"
+        }
+      ],
+      "coverageNotes": [
+        "由 用户反馈每日直通迭代 轻量规格自动生成，共 4 项核心验收核对标准。"
+      ]
+    },
+    "qaCritic": {
+      "reviewSummary": "已完成双层 AI 安全消毒与范围校验（跳过重策划），共拆解 3 项精简改动任务。",
+      "findings": [],
+      "finalE2eTestCode": "",
+      "finalApiTestChecklist": [
+        {
+          "id": "AC-1",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "在首页发帖框输入@，确认能看到官方反馈账号并成功插入",
+          "expectedStatus": 200,
+          "assertion": "在首页发帖框输入@，确认能看到官方反馈账号并成功插入"
+        },
+        {
+          "id": "AC-2",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "发布包含@官方账号的帖子，确认帖子列表正常渲染且@标识高亮",
+          "expectedStatus": 200,
+          "assertion": "发布包含@官方账号的帖子，确认帖子列表正常渲染且@标识高亮"
+        },
+        {
+          "id": "AC-3",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "在帖子中@普通已注册用户，确认发帖成功且无报错",
+          "expectedStatus": 200,
+          "assertion": "在帖子中@普通已注册用户，确认发帖成功且无报错"
+        },
+        {
+          "id": "AC-4",
+          "endpoint": "FEEDBACK-VERIFY",
+          "method": "VERIFY",
+          "scenario": "输入不存在的@用户名发帖，确认不会导致接口报错或页面崩溃",
+          "expectedStatus": 200,
+          "assertion": "输入不存在的@用户名发帖，确认不会导致接口报错或页面崩溃"
+        }
+      ]
+    },
+    "status": "pr_created",
+    "draftPr": {
+      "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/17",
+      "prNumber": 17,
+      "branchName": "autodev/feat-20261127-104205",
+      "baseBranch": "main",
+      "commitSha": "4c2da26bfc6d1a102cdaff9b577d2979ded64035",
+      "filesCommitted": [
+        "docs/spec.json",
+        "docs/iterations/run-fb-mwyuql5l-e8a0-spec.json",
+        "docs/prd.md",
+        "docs/iterations/run-fb-mwyuql5l-e8a0-prd.md",
+        "tests/e2e/run-fb-mwyuql5l-e8a0.spec.ts"
+      ],
+      "e2eTestPath": "tests/e2e/run-fb-mwyuql5l-e8a0.spec.ts",
+      "e2eVaultPath": ".autodev-e2e-vault/run-fb-mwyuql5l-e8a0/e2e.spec.ts",
+      "archivedSpecPath": "docs/iterations/run-fb-mwyuql5l-e8a0-spec.json",
+      "createdAt": "2026-11-27T10:42:10.893Z",
+      "initializedEmptyRepo": false
+    }
+  },
+  {
     "id": "run-fb-mwvm5j18-21b8",
     "createdAt": "2026-11-25T04:18:25.820Z",
     "repoFullName": "jiangfengwhu/atd-v1",
