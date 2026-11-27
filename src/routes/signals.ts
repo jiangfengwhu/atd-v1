@@ -1,6 +1,19 @@
 import { Hono } from 'hono';
 import type { AppEnv, Bindings } from '../types';
 import { getSessionUser } from './auth';
+import { createOrUpdateNotification } from '../lib/notifications';
+import {
+  OFFICIAL_FEEDBACK_BADGE,
+  OFFICIAL_FEEDBACK_HANDLE,
+  OFFICIAL_FEEDBACK_NICKNAME,
+  OFFICIAL_FEEDBACK_USER_ID,
+  ensureOfficialFeedbackAccount,
+} from '../lib/official';
+import {
+  getFeedbackTicketStatusLabel,
+  isValidFeedbackTicketStatus,
+  serializeFeedbackTicket,
+} from '../lib/feedback-tickets';
 
 export const signalsRoutes = new Hono<AppEnv>();
 
@@ -514,4 +527,176 @@ signalsRoutes.post('/signals/ack', async (c) => {
     ackedFeedback: feedbackIds.length,
     ackedErrors: errorIds.length,
   });
+});
+
+/**
+ * Authenticated AutoDev Studio callback: posts an official @官方反馈 comment on the user's
+ * feedback post, transitions feedback_tickets.status, records comment_ticket_events,
+ * and pushes an in-app + realtime WebSocket notification to the post author.
+ */
+signalsRoutes.post('/signals/feedback-reply', async (c) => {
+  const auth = isAuthorizedSyncRequest(c.env, c.req.header('x-autodev-ingest-token'));
+  if (!auth.ok) {
+    return c.json({ error: auth.status === 503 ? 'Sync token not configured' : 'Unauthorized' }, auth.status);
+  }
+
+  let body: {
+    postId?: unknown;
+    ticketId?: unknown;
+    feedbackQueueId?: unknown;
+    ticketStatus?: unknown;
+    content?: unknown;
+  };
+  try {
+    body = (await c.req.json()) as typeof body;
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  const postIdInput = sanitizeText(body.postId, 80);
+  const ticketIdInput = sanitizeText(body.ticketId, 80);
+  const queueIdInput = sanitizeText(body.feedbackQueueId, 80);
+  const rawTicketStatus = sanitizeText(body.ticketStatus, 32);
+  const content = sanitizeText(body.content, 1000);
+
+  if (!postIdInput && !ticketIdInput && !queueIdInput) {
+    return c.json({ error: 'postId, ticketId, or feedbackQueueId is required' }, 400);
+  }
+  if (!isValidFeedbackTicketStatus(rawTicketStatus)) {
+    return c.json({ error: 'Invalid ticketStatus' }, 400);
+  }
+  if (content.length < 1) {
+    return c.json({ error: 'Reply content is required' }, 400);
+  }
+
+  type TicketLookupRow = {
+    id: string;
+    post_id: string;
+    author_id: string;
+    feedback_queue_id: string;
+    status: string;
+    created_at: string;
+  };
+
+  let ticketRow: TicketLookupRow | null = null;
+  if (postIdInput) {
+    ticketRow = await c.env.DB.prepare(
+      `SELECT id, post_id, author_id, feedback_queue_id, status, created_at
+       FROM feedback_tickets WHERE post_id = ? LIMIT 1`
+    )
+      .bind(postIdInput)
+      .first<TicketLookupRow>();
+  }
+  if (!ticketRow && ticketIdInput) {
+    ticketRow = await c.env.DB.prepare(
+      `SELECT id, post_id, author_id, feedback_queue_id, status, created_at
+       FROM feedback_tickets WHERE id = ? LIMIT 1`
+    )
+      .bind(ticketIdInput)
+      .first<TicketLookupRow>();
+  }
+  if (!ticketRow && queueIdInput) {
+    ticketRow = await c.env.DB.prepare(
+      `SELECT id, post_id, author_id, feedback_queue_id, status, created_at
+       FROM feedback_tickets WHERE feedback_queue_id = ? LIMIT 1`
+    )
+      .bind(queueIdInput)
+      .first<TicketLookupRow>();
+  }
+
+  if (!ticketRow) {
+    return c.json({ error: 'Feedback ticket not found' }, 404);
+  }
+
+  const post = await c.env.DB.prepare('SELECT id, author_id FROM posts WHERE id = ? LIMIT 1')
+    .bind(ticketRow.post_id)
+    .first<{ id: string; author_id: string }>();
+  if (!post) {
+    return c.json({ error: 'Feedback post not found' }, 404);
+  }
+
+  await ensureOfficialFeedbackAccount(c.env.DB);
+
+  const existingDuplicate = await c.env.DB.prepare(
+    'SELECT id FROM comments WHERE post_id = ? AND author_id = ? AND content = ? LIMIT 1'
+  )
+    .bind(post.id, OFFICIAL_FEEDBACK_USER_ID, content)
+    .first<{ id: string }>();
+
+  if (existingDuplicate) {
+    return c.json({
+      ok: true,
+      deduplicated: true,
+      commentId: existingDuplicate.id,
+      feedbackTicket: serializeFeedbackTicket({
+        id: ticketRow.id,
+        post_id: ticketRow.post_id,
+        feedback_queue_id: ticketRow.feedback_queue_id,
+        status: ticketRow.status,
+        status_note: content,
+        updated_by_admin: 1,
+        created_at: ticketRow.created_at,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+  }
+
+  const fromStatus = isValidFeedbackTicketStatus(ticketRow.status) ? ticketRow.status : 'pending';
+  const toStatus = rawTicketStatus;
+  const commentId = crypto.randomUUID();
+  const eventId = crypto.randomUUID();
+  const nowIso = new Date().toISOString();
+
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      'INSERT INTO comments (id, post_id, author_id, content, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(commentId, post.id, OFFICIAL_FEEDBACK_USER_ID, content, nowIso),
+    c.env.DB.prepare('UPDATE posts SET comments_count = comments_count + 1 WHERE id = ?').bind(
+      post.id
+    ),
+    c.env.DB.prepare(
+      `INSERT INTO comment_ticket_events (id, comment_id, ticket_id, post_id, from_status, to_status, actor_type, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'autodev', ?)`
+    ).bind(eventId, commentId, ticketRow.id, post.id, fromStatus, toStatus, nowIso),
+    c.env.DB.prepare(
+      `UPDATE feedback_tickets
+       SET status = ?, status_note = ?, last_reply_comment_id = ?, updated_by_admin = 1, updated_at = ?
+       WHERE id = ?`
+    ).bind(toStatus, content, commentId, nowIso, ticketRow.id),
+  ]);
+
+  const toStatusLabel = getFeedbackTicketStatusLabel(toStatus);
+  await createOrUpdateNotification(c.env, {
+    recipientId: post.author_id,
+    actorId: OFFICIAL_FEEDBACK_USER_ID,
+    type: 'comment',
+    postId: post.id,
+    commentId,
+    contentPreview: `[工单${toStatusLabel}] ${content}`,
+  });
+
+  return c.json(
+    {
+      ok: true,
+      commentId,
+      author: {
+        id: OFFICIAL_FEEDBACK_USER_ID,
+        nickname: OFFICIAL_FEEDBACK_NICKNAME,
+        avatarSeed: OFFICIAL_FEEDBACK_HANDLE,
+        isOfficial: true,
+        officialBadge: OFFICIAL_FEEDBACK_BADGE,
+      },
+      feedbackTicket: serializeFeedbackTicket({
+        id: ticketRow.id,
+        post_id: ticketRow.post_id,
+        feedback_queue_id: ticketRow.feedback_queue_id,
+        status: toStatus,
+        status_note: content,
+        updated_by_admin: 1,
+        created_at: ticketRow.created_at,
+        updated_at: nowIso,
+      }),
+    },
+    201
+  );
 });

@@ -327,6 +327,7 @@ postRoutes.post('/', async (c) => {
       source: 'post_mention',
       postId,
       ticketId,
+      feedbackQueueId,
       authorId: user.id,
       authorNickname: user.nickname,
     };
