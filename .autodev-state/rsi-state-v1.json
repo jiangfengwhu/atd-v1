@@ -2589,7 +2589,7 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45989081793",
       "branch": "main",
       "occurredAt": "2026-11-27T11:16:36Z",
-      "analysisStatus": "pending"
+      "analysisStatus": "analyzing"
     },
     {
       "id": "inc-7da272ac",
@@ -2603,7 +2603,36 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/46001400909",
       "branch": "main",
       "occurredAt": "2026-11-27T12:46:20Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "env_infra",
+        "rootCauseSummary": "Cloudflare D1 数据库部署或迁移失败，通常由 API 凭证失效、权限不足或环境变量配置缺失导致，需检查 CI 流水线中的相关 Secret 状态。",
+        "shouldCodifyAsRule": true,
+        "decisionRationale": "Decision 门控判定与现有规则语义重叠（重复度 99%），执行合并强化而非新增条目。 该问题频繁出现在 Cloudflare D1 部署流程中，属于典型的环境配置类重复性故障，通过标准化部署前的校验步骤可有效降低失败率。",
+        "confidence": 0.99,
+        "suggestedRule": {
+          "title": "Cloudflare D1 迁移规范",
+          "targetStage": "qa_critic",
+          "severity": "critical",
+          "promptDirective": "在执行 Cloudflare Workers D1 迁移前，必须先验证：1. wrangler.toml 中 database_id 已正确配置；2. 迁移脚本应保持原子性且具备幂等性；3. CI 环境环境变量已包含有效的 CLOUDFLARE_API_TOKEN 及对应的账户…",
+          "dedupeKey": "cloudflare-d1-idempotent-migrations"
+        },
+        "decisionGate": {
+          "model": "gemini-decision-1",
+          "generalizableProb": 0.9755,
+          "duplicateProb": 0.9859,
+          "generalityScore": 2.252,
+          "chosenAction": "merge_existing",
+          "actionConfidence": 0.9909,
+          "matchedRuleId": "rsi-619c6524",
+          "matchedRuleConfidence": 0.9972,
+          "evaluatedAt": "2026-11-27T14:59:22.913Z"
+        },
+        "appliedOutcome": "merged",
+        "mergedIntoRuleId": "rsi-619c6524",
+        "analyzedAt": "2026-11-27T14:59:22.913Z",
+        "model": "gemini-3.1-flash-lite + gemini-decision-1"
+      }
     },
     {
       "id": "inc-7a50136f",
@@ -3253,12 +3282,13 @@
         "inc-2dcaf204",
         "inc-1903069d",
         "inc-c3696f97",
-        "inc-c738d14f"
+        "inc-c738d14f",
+        "inc-7da272ac"
       ],
-      "hitCount": 5,
+      "hitCount": 6,
       "appliedCount": 5,
       "createdAt": "2026-11-22T09:38:01.968Z",
-      "updatedAt": "2026-11-27T10:52:55.339Z",
+      "updatedAt": "2026-11-27T14:59:22.914Z",
       "lastAppliedAt": "2026-11-24T02:07:27.471Z"
     }
   ],
