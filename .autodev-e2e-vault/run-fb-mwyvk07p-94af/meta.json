@@ -1,0 +1,8 @@
+{
+  "branchName": "autodev/feat-20261127-110458",
+  "prNumber": 19,
+  "e2eTestPath": "tests/e2e/run-fb-mwyvk07p-94af.spec.ts",
+  "e2eVaultPath": ".autodev-e2e-vault/run-fb-mwyvk07p-94af/e2e.spec.ts",
+  "prTitle": "[AutoDev 用户反馈直派] 交互体验优化：反馈机制与@提醒功能增强",
+  "createdAt": "2026-11-27T11:05:02.381Z"
+}
