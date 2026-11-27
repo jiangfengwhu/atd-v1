@@ -22,6 +22,8 @@ export interface AuthUser {
   avatarSeed: string;
   avatarUrl: string;
   bio: string;
+  isOfficial?: boolean;
+  officialBadge?: string;
   createdAt: string;
 }
 

@@ -11,4 +11,277 @@
  *   multi-element locator ambiguity, timeout, or flawed selector assumption), refine
  *   the test script while preserving genuine functional verification coverage.
  */
+import { test, expect, type APIRequestContext } from '@playwright/test';
 
+function makeEmail(prefix: string): string {
+  const rand = Math.random().toString(36).slice(2, 7);
+  return `${prefix}-${Date.now()}-${rand}@example.com`;
+}
+
+async function loginUser(
+  request: APIRequestContext,
+  email: string,
+  nickname: string
+): Promise<{ id: string; email: string; nickname: string }> {
+  const sendRes = await request.post('/api/auth/send-code', { data: { email } });
+  expect(sendRes.status(), 'send-code 应返回 200').toBe(200);
+  const sendJson = await sendRes.json();
+  expect(sendJson.devCode).toMatch(/^\d{6}$/);
+
+  const verifyRes = await request.post('/api/auth/verify-code', {
+    data: { email, code: sendJson.devCode, nickname },
+  });
+  expect(verifyRes.status(), 'verify-code 应返回 200').toBe(200);
+  const verifyJson = await verifyRes.json();
+  expect(verifyJson.ok).toBe(true);
+  return verifyJson.user;
+}
+
+test.describe.serial('发帖支持@用户提及与官方反馈账号MVP E2E 验收套件', () => {
+  test('AC-1: 首页发帖框输入 @ 展示官方反馈账号并置顶，支持选择插入且邮箱前缀不误触发', async ({
+    page,
+  }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    await loginUser(page.request, makeEmail('mention-ac1'), '反馈体验官');
+    await page.goto('/');
+
+    const inlineForm = page.locator('main form[data-testid="post-composer-form"]').first();
+    const textarea = inlineForm.locator('textarea').first();
+    await expect(textarea).toBeVisible({ timeout: 10000 });
+
+    // 1) 输入邮箱前缀 user@ 不应触发 @ 选人浮层
+    await textarea.click();
+    await textarea.pressSequentially('联系邮箱 user@');
+    await expect(inlineForm.getByTestId('mention-popover')).toHaveCount(0);
+
+    // 2) 清空后输入 @ 应立即弹出选人浮层，且官方反馈账号排在首位并带有官方标识
+    await textarea.fill('');
+    await textarea.pressSequentially('提个建议 @');
+    const popover = inlineForm.getByTestId('mention-popover');
+    await expect(popover).toBeVisible({ timeout: 8000 });
+
+    const firstOption = popover.getByRole('option').first();
+    await expect(firstOption).toContainText('官方反馈');
+    await expect(firstOption.getByTestId('official-badge')).toBeVisible();
+
+    // 3) 点击官方反馈选项应插入 @官方反馈 并关闭浮层
+    await popover.getByTestId('mention-option-official_feedback').click();
+    await expect(popover).toHaveCount(0);
+    await expect(textarea).toHaveValue('提个建议 @官方反馈 ');
+
+    // 4) 验证通过 @official_feedback 关键词也可过滤定位到官方反馈账号
+    await textarea.fill('');
+    await textarea.pressSequentially('@official');
+    await expect(popover).toBeVisible({ timeout: 8000 });
+    await expect(popover.getByTestId('mention-option-official_feedback')).toBeVisible();
+    await textarea.press('Escape');
+    await expect(popover).toHaveCount(0);
+
+    expect(pageErrors, 'AC-1 不应产生前端异常').toEqual([]);
+  });
+
+  test('AC-2: 发布包含 @官方反馈 的帖子，列表与详情高亮渲染、可跳转官方主页且官方账号受权限保护', async ({
+    page,
+  }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    const user = await loginUser(page.request, makeEmail('mention-ac2'), '产品建言者');
+
+    // 安全与权限隔离校验：官方账号禁止通过 OTP 登录、禁止普通用户冒用保留昵称
+    const officialLoginRes = await page.request.post('/api/auth/send-code', {
+      data: { email: 'official_feedback@system.local' },
+    });
+    expect(officialLoginRes.status()).toBe(403);
+
+    const hijackProfileRes = await page.request.patch('/api/auth/profile', {
+      data: { nickname: '官方反馈' },
+    });
+    expect(hijackProfileRes.status()).toBe(400);
+
+    const hijackHandleRes = await page.request.patch('/api/auth/profile', {
+      data: { nickname: 'official_feedback' },
+    });
+    expect(hijackHandleRes.status()).toBe(400);
+
+    // 确认未改动原用户昵称
+    const meJson = await (await page.request.get('/api/auth/me')).json();
+    expect(meJson.user.nickname).toBe(user.nickname);
+
+    await page.goto('/');
+    const inlineForm = page.locator('main form[data-testid="post-composer-form"]').first();
+    const textarea = inlineForm.locator('textarea').first();
+    await expect(textarea).toBeVisible({ timeout: 10000 });
+
+    await textarea.click();
+    await textarea.pressSequentially('@');
+    const popover = inlineForm.getByTestId('mention-popover');
+    await expect(popover).toBeVisible({ timeout: 8000 });
+    await popover.getByTestId('mention-option-official_feedback').click();
+
+    const feedbackText = `希望优化移动端发帖提示-${Date.now()}`;
+    await textarea.pressSequentially(feedbackText);
+
+    const createPromise = page.waitForResponse(
+      (res) => res.url().endsWith('/api/posts') && res.request().method() === 'POST'
+    );
+    await inlineForm.locator('button[type="submit"]').click();
+    const createRes = await createPromise;
+    expect(createRes.status()).toBe(201);
+    const createJson = await createRes.json();
+    expect(createJson.post.mentions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          userId: 'official_feedback',
+          nickname: '官方反馈',
+          isOfficial: true,
+        }),
+      ])
+    );
+
+    // 刷新后检查持久化渲染与官方高亮标识
+    await page.reload();
+    const card = page.locator('article').filter({ hasText: feedbackText }).first();
+    await expect(card).toBeVisible({ timeout: 10000 });
+    const officialMentionTag = card.getByTestId('mention-tag-official').first();
+    await expect(officialMentionTag).toBeVisible();
+    await expect(officialMentionTag).toContainText('@官方反馈');
+    await expect(officialMentionTag).toContainText('官方');
+
+    // 点击 @官方反馈 高亮标签跳转到官方反馈主页并显示官方认证标识
+    await officialMentionTag.click();
+    await expect(page.getByRole('heading', { name: '官方反馈' }).first()).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.locator('main').getByTestId('official-badge').first()).toBeVisible();
+
+    expect(pageErrors, 'AC-2 不应产生前端异常').toEqual([]);
+  });
+
+  test('AC-3: 在帖子中 @普通已注册用户，后端正确关联且前端列表和详情页均高亮可点击', async ({
+    browser,
+    page,
+  }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    const suffix = Date.now().toString().slice(-4);
+    const targetNick = `协作伙伴${suffix}`;
+    const ctxTarget = await browser.newContext();
+    let targetUserId = '';
+    try {
+      const targetUser = await loginUser(
+        ctxTarget.request,
+        makeEmail('mention-target'),
+        targetNick
+      );
+      targetUserId = targetUser.id;
+    } finally {
+      await ctxTarget.close();
+    }
+
+    await loginUser(page.request, makeEmail('mention-author'), `发起者${suffix}`);
+    await page.goto('/');
+
+    const inlineForm = page.locator('main form[data-testid="post-composer-form"]').first();
+    const textarea = inlineForm.locator('textarea').first();
+    await expect(textarea).toBeVisible({ timeout: 10000 });
+
+    await textarea.click();
+    await textarea.pressSequentially(`请 @${targetNick.slice(0, 6)}`);
+    const popover = inlineForm.getByTestId('mention-popover');
+    await expect(popover).toBeVisible({ timeout: 8000 });
+
+    const targetOption = popover.getByTestId(`mention-option-${targetUserId}`);
+    await expect(targetOption).toBeVisible({ timeout: 8000 });
+    await targetOption.click();
+    await expect(popover).toHaveCount(0);
+
+    const suffixBody = `一起看下这个方案-${suffix}`;
+    await textarea.pressSequentially(suffixBody);
+
+    const createPromise = page.waitForResponse(
+      (res) => res.url().endsWith('/api/posts') && res.request().method() === 'POST'
+    );
+    await inlineForm.locator('button[type="submit"]').click();
+    const createRes = await createPromise;
+    expect(createRes.status()).toBe(201);
+    const createJson = await createRes.json();
+    expect(createJson.post.mentions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          userId: targetUserId,
+          nickname: targetNick,
+          isOfficial: false,
+        }),
+      ])
+    );
+
+    const card = page.locator('article').filter({ hasText: suffixBody }).first();
+    await expect(card).toBeVisible({ timeout: 10000 });
+    const mentionTag = card.getByTestId('mention-tag').first();
+    await expect(mentionTag).toBeVisible();
+    await expect(mentionTag).toContainText(`@${targetNick}`);
+
+    // 打开帖子详情弹窗，确认详情页同样渲染可点击高亮 @用户名
+    await card.click();
+    const dialog = page.getByRole('dialog').first();
+    await expect(dialog).toBeVisible({ timeout: 10000 });
+    const dialogMentionTag = dialog.getByTestId('mention-tag').first();
+    await expect(dialogMentionTag).toBeVisible();
+    await expect(dialogMentionTag).toContainText(`@${targetNick}`);
+
+    // 点击详情页内的 @用户名 跳转目标用户主页
+    await dialogMentionTag.click();
+    await expect(page.getByRole('heading', { name: targetNick }).first()).toBeVisible({
+      timeout: 10000,
+    });
+
+    expect(pageErrors, 'AC-3 不应产生前端异常').toEqual([]);
+  });
+
+  test('AC-4: 输入不存在的 @用户名 与邮箱地址发帖，不报错、不崩溃且不误解析为有效提及', async ({
+    page,
+  }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    await loginUser(page.request, makeEmail('mention-ac4'), '边界测试员');
+    await page.goto('/');
+
+    const inlineForm = page.locator('main form[data-testid="post-composer-form"]').first();
+    const textarea = inlineForm.locator('textarea').first();
+    await expect(textarea).toBeVisible({ timeout: 10000 });
+
+    const uniqueId = Date.now().toString().slice(-5);
+    const missingHandle = `@不存在的用户${uniqueId}`;
+    const emailAddr = `support${uniqueId}@example.com`;
+    const bodyText = `测试提及 ${missingHandle} 以及邮箱 ${emailAddr} 边界处理`;
+
+    await textarea.fill(bodyText);
+
+    const createPromise = page.waitForResponse(
+      (res) => res.url().endsWith('/api/posts') && res.request().method() === 'POST'
+    );
+    await inlineForm.locator('button[type="submit"]').click();
+    const createRes = await createPromise;
+    expect(createRes.status()).toBe(201);
+    const createJson = await createRes.json();
+    expect(createJson.post.mentions).toEqual([]);
+
+    await page.reload();
+    const card = page.locator('article').filter({ hasText: missingHandle }).first();
+    await expect(card).toBeVisible({ timeout: 10000 });
+    await expect(card).toContainText(emailAddr);
+    await expect(card.getByTestId('mention-tag')).toHaveCount(0);
+    await expect(card.getByTestId('mention-tag-official')).toHaveCount(0);
+
+    expect(pageErrors, 'AC-4 不应产生前端异常').toEqual([]);
+  });
+});

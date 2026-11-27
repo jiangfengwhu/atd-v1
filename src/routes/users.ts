@@ -6,7 +6,9 @@ import {
   clearUnreadFollowNotification,
   createOrUpdateNotification,
 } from '../lib/notifications';
-import { makeContentPreview } from '../lib/validation';
+import { makeContentPreview, escapeSqlLike } from '../lib/validation';
+import { fetchMentionsForPostIds } from '../lib/mentions';
+import { ensureOfficialFeedbackAccount } from '../lib/official';
 
 interface UserProfileRow {
   id: string;
@@ -15,7 +17,21 @@ interface UserProfileRow {
   avatar_seed: string;
   avatar_url: string;
   bio: string;
+  is_official: number;
+  official_badge: string;
+  official_handle: string;
   created_at: string;
+}
+
+interface MentionCandidateRow {
+  id: string;
+  nickname: string;
+  avatar_seed: string;
+  avatar_url: string;
+  bio: string;
+  is_official: number;
+  official_badge: string;
+  official_handle: string;
 }
 
 interface FollowUserRow {
@@ -24,6 +40,8 @@ interface FollowUserRow {
   avatar_seed: string;
   avatar_url: string;
   bio: string;
+  is_official: number;
+  official_badge: string;
   is_following: number;
   followed_at: string;
 }
@@ -58,7 +76,82 @@ interface ReplyActivityRow {
 
 export const userRoutes = new Hono<AppEnv>();
 
+userRoutes.get('/mention-candidates', async (c) => {
+  await ensureOfficialFeedbackAccount(c.env.DB);
+  const sessionUser = await getSessionUser(c.env.DB, c.req.header('cookie'));
+
+  const q = (c.req.query('q') || '').trim().slice(0, 30);
+  const limitRaw = c.req.query('limit');
+  const limit = limitRaw !== undefined ? Number(limitRaw) : 8;
+
+  if (limitRaw === '' || !Number.isInteger(limit) || limit < 1 || limit > 20) {
+    return c.json({ error: 'limit 参数需为 1 到 20 的整数' }, 400);
+  }
+
+  const viewerId = sessionUser?.id ?? '';
+  const whereConditions: string[] = [];
+  const filterParams: (string | number)[] = [];
+
+  if (q) {
+    const likePattern = `%${escapeSqlLike(q)}%`;
+    whereConditions.push(
+      "(u.nickname LIKE ? ESCAPE '\\' OR COALESCE(oa.handle, '') LIKE ? ESCAPE '\\' OR COALESCE(oa.badge_label, '') LIKE ? ESCAPE '\\')"
+    );
+    filterParams.push(likePattern, likePattern, likePattern);
+  }
+
+  const whereSql = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+  const prefixPattern = q ? `${escapeSqlLike(q.toLowerCase())}%` : '';
+
+  const orderSql = q
+    ? `ORDER BY is_official DESC,
+                CASE WHEN LOWER(u.nickname) LIKE ? ESCAPE '\\' OR LOWER(COALESCE(oa.handle, '')) LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END ASC,
+                CASE WHEN ? != '' AND u.id = ? THEN 1 ELSE 0 END ASC,
+                (SELECT COUNT(*) FROM user_follows uf WHERE uf.following_id = u.id) DESC,
+                u.created_at DESC`
+    : `ORDER BY is_official DESC,
+                CASE WHEN ? != '' AND u.id = ? THEN 1 ELSE 0 END ASC,
+                (SELECT COUNT(*) FROM user_follows uf WHERE uf.following_id = u.id) DESC,
+                u.created_at DESC`;
+
+  const orderParams = q ? [prefixPattern, prefixPattern, viewerId, viewerId] : [viewerId, viewerId];
+
+  const rows = await c.env.DB.prepare(
+    `SELECT u.id, u.nickname, u.avatar_seed,
+            COALESCE(up.avatar_url, '') AS avatar_url,
+            COALESCE(up.bio, '') AS bio,
+            CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_official,
+            COALESCE(oa.badge_label, '') AS official_badge,
+            COALESCE(oa.handle, '') AS official_handle
+     FROM users u
+     LEFT JOIN user_profiles up ON up.user_id = u.id
+     LEFT JOIN official_accounts oa ON oa.user_id = u.id
+     ${whereSql}
+     ${orderSql}
+     LIMIT ?`
+  )
+    .bind(...filterParams, ...orderParams, limit)
+    .all<MentionCandidateRow>();
+
+  return c.json({
+    users: (rows.results ?? []).map((u) => {
+      const isOfficial = Boolean(u.is_official);
+      return {
+        id: u.id,
+        nickname: u.nickname,
+        ...(u.official_handle ? { handle: u.official_handle } : {}),
+        avatarSeed: u.avatar_seed,
+        avatarUrl: u.avatar_url ?? '',
+        bio: u.bio ?? '',
+        isOfficial,
+        ...(isOfficial ? { officialBadge: u.official_badge || '官方' } : {}),
+      };
+    }),
+  });
+});
+
 userRoutes.get('/:id', async (c) => {
+  await ensureOfficialFeedbackAccount(c.env.DB);
   const sessionUser = await getSessionUser(c.env.DB, c.req.header('cookie'));
   const rawId = c.req.param('id');
   if (rawId === 'me' && !sessionUser) {
@@ -69,9 +162,13 @@ userRoutes.get('/:id', async (c) => {
   const row = await c.env.DB.prepare(
     `SELECT u.id, u.email, u.nickname, u.avatar_seed, u.created_at,
             COALESCE(up.avatar_url, '') AS avatar_url,
-            COALESCE(up.bio, '') AS bio
+            COALESCE(up.bio, '') AS bio,
+            CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_official,
+            COALESCE(oa.badge_label, '') AS official_badge,
+            COALESCE(oa.handle, '') AS official_handle
      FROM users u
      LEFT JOIN user_profiles up ON up.user_id = u.id
+     LEFT JOIN official_accounts oa ON oa.user_id = u.id
      WHERE u.id = ?
      LIMIT 1`
   )
@@ -136,12 +233,20 @@ userRoutes.get('/:id', async (c) => {
       : Promise.resolve(null),
   ]);
 
+  const isOfficial = Boolean(row.is_official);
   const userPayload: Record<string, unknown> = {
     id: row.id,
     nickname: row.nickname,
     avatarSeed: row.avatar_seed,
     avatarUrl: row.avatar_url ?? '',
     bio: row.bio ?? '',
+    isOfficial,
+    ...(isOfficial
+      ? {
+          officialBadge: row.official_badge || '官方',
+          ...(row.official_handle ? { handle: row.official_handle } : {}),
+        }
+      : {}),
     createdAt: row.created_at,
     postsCount: Number(postsRow?.cnt ?? 0),
     followingCount: Number(followingRow?.cnt ?? 0),
@@ -279,6 +384,8 @@ userRoutes.get('/:id/follows', async (c) => {
     `SELECT u.id, u.nickname, u.avatar_seed,
             COALESCE(up.avatar_url, '') AS avatar_url,
             COALESCE(up.bio, '') AS bio,
+            CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_official,
+            COALESCE(oa.badge_label, '') AS official_badge,
             uf.created_at AS followed_at,
             CASE WHEN ? != '' AND EXISTS (
               SELECT 1 FROM user_follows f2 WHERE f2.follower_id = ? AND f2.following_id = u.id
@@ -286,6 +393,7 @@ userRoutes.get('/:id/follows', async (c) => {
      FROM user_follows uf
      JOIN users u ON u.id = ${joinField}
      LEFT JOIN user_profiles up ON up.user_id = u.id
+     LEFT JOIN official_accounts oa ON oa.user_id = u.id
      WHERE ${whereField} = ?
      ORDER BY uf.created_at DESC
      LIMIT ? OFFSET ?`
@@ -295,15 +403,20 @@ userRoutes.get('/:id/follows', async (c) => {
 
   return c.json({
     type,
-    users: (rows.results ?? []).map((u) => ({
-      id: u.id,
-      nickname: u.nickname,
-      avatarSeed: u.avatar_seed,
-      avatarUrl: u.avatar_url ?? '',
-      bio: u.bio ?? '',
-      isFollowing: Boolean(u.is_following),
-      followedAt: u.followed_at,
-    })),
+    users: (rows.results ?? []).map((u) => {
+      const isOfficial = Boolean(u.is_official);
+      return {
+        id: u.id,
+        nickname: u.nickname,
+        avatarSeed: u.avatar_seed,
+        avatarUrl: u.avatar_url ?? '',
+        bio: u.bio ?? '',
+        isOfficial,
+        ...(isOfficial ? { officialBadge: u.official_badge || '官方' } : {}),
+        isFollowing: Boolean(u.is_following),
+        followedAt: u.followed_at,
+      };
+    }),
     total: Number(countRow?.total ?? 0),
   });
 });
@@ -371,12 +484,15 @@ userRoutes.get('/:id/activity', async (c) => {
               COALESCE(pm.shares_count, 0) AS shares_count,
               u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
               COALESCE(up.avatar_url, '') AS author_avatar_url,
+              CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS author_is_official,
+              COALESCE(oa.badge_label, '') AS author_official_badge,
               CASE WHEN pl.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me,
               1 AS bookmarked_by_me
        FROM post_bookmarks pb
        JOIN posts p ON p.id = pb.post_id
        JOIN users u ON u.id = p.author_id
        LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN official_accounts oa ON oa.user_id = u.id
        LEFT JOIN post_metrics pm ON pm.post_id = p.id
        LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = ?
        WHERE pb.user_id = ?
@@ -386,9 +502,15 @@ userRoutes.get('/:id/activity', async (c) => {
       .bind(sessionUser!.id, targetId, limit, offset)
       .all<PostRow>();
 
+    const postResults = rows.results ?? [];
+    const mentionsMap = await fetchMentionsForPostIds(
+      c.env.DB,
+      postResults.map((r) => r.id)
+    );
+
     return c.json({
       tab,
-      items: (rows.results ?? []).map(serializePost),
+      items: postResults.map((r) => serializePost(r, mentionsMap.get(r.id) ?? [])),
       total: Number(countRow?.total ?? 0),
     });
   }
@@ -409,11 +531,14 @@ userRoutes.get('/:id/activity', async (c) => {
                   COALESCE(pm.shares_count, 0) AS shares_count,
                   u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
                   COALESCE(up.avatar_url, '') AS author_avatar_url,
+                  CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS author_is_official,
+                  COALESCE(oa.badge_label, '') AS author_official_badge,
                   CASE WHEN pl.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me,
                   CASE WHEN pb.user_id IS NOT NULL THEN 1 ELSE 0 END AS bookmarked_by_me
            FROM posts p
            JOIN users u ON u.id = p.author_id
            LEFT JOIN user_profiles up ON up.user_id = u.id
+           LEFT JOIN official_accounts oa ON oa.user_id = u.id
            LEFT JOIN post_metrics pm ON pm.post_id = p.id
            LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = ?
            LEFT JOIN post_bookmarks pb ON pb.post_id = p.id AND pb.user_id = ?
@@ -431,11 +556,14 @@ userRoutes.get('/:id/activity', async (c) => {
                   COALESCE(pm.shares_count, 0) AS shares_count,
                   u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
                   COALESCE(up.avatar_url, '') AS author_avatar_url,
+                  CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS author_is_official,
+                  COALESCE(oa.badge_label, '') AS author_official_badge,
                   0 AS liked_by_me,
                   0 AS bookmarked_by_me
            FROM posts p
            JOIN users u ON u.id = p.author_id
            LEFT JOIN user_profiles up ON up.user_id = u.id
+           LEFT JOIN official_accounts oa ON oa.user_id = u.id
            LEFT JOIN post_metrics pm ON pm.post_id = p.id
            WHERE p.author_id = ?
            ORDER BY p.created_at DESC
@@ -444,9 +572,15 @@ userRoutes.get('/:id/activity', async (c) => {
           .bind(targetId, limit, offset)
           .all<PostRow>();
 
+    const postResults = rows.results ?? [];
+    const mentionsMap = await fetchMentionsForPostIds(
+      c.env.DB,
+      postResults.map((r) => r.id)
+    );
+
     return c.json({
       tab,
-      items: (rows.results ?? []).map(serializePost),
+      items: postResults.map((r) => serializePost(r, mentionsMap.get(r.id) ?? [])),
       total: Number(countRow?.total ?? 0),
     });
   }
@@ -470,12 +604,15 @@ userRoutes.get('/:id/activity', async (c) => {
                   COALESCE(pm.shares_count, 0) AS shares_count,
                   u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
                   COALESCE(up.avatar_url, '') AS author_avatar_url,
+                  CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS author_is_official,
+                  COALESCE(oa.badge_label, '') AS author_official_badge,
                   CASE WHEN pl_me.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me,
                   CASE WHEN pb_me.user_id IS NOT NULL THEN 1 ELSE 0 END AS bookmarked_by_me
            FROM post_likes pl
            JOIN posts p ON p.id = pl.post_id
            JOIN users u ON u.id = p.author_id
            LEFT JOIN user_profiles up ON up.user_id = u.id
+           LEFT JOIN official_accounts oa ON oa.user_id = u.id
            LEFT JOIN post_metrics pm ON pm.post_id = p.id
            LEFT JOIN post_likes pl_me ON pl_me.post_id = p.id AND pl_me.user_id = ?
            LEFT JOIN post_bookmarks pb_me ON pb_me.post_id = p.id AND pb_me.user_id = ?
@@ -493,12 +630,15 @@ userRoutes.get('/:id/activity', async (c) => {
                   COALESCE(pm.shares_count, 0) AS shares_count,
                   u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
                   COALESCE(up.avatar_url, '') AS author_avatar_url,
+                  CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS author_is_official,
+                  COALESCE(oa.badge_label, '') AS author_official_badge,
                   0 AS liked_by_me,
                   0 AS bookmarked_by_me
            FROM post_likes pl
            JOIN posts p ON p.id = pl.post_id
            JOIN users u ON u.id = p.author_id
            LEFT JOIN user_profiles up ON up.user_id = u.id
+           LEFT JOIN official_accounts oa ON oa.user_id = u.id
            LEFT JOIN post_metrics pm ON pm.post_id = p.id
            WHERE pl.user_id = ?
            ORDER BY pl.created_at DESC
@@ -507,9 +647,15 @@ userRoutes.get('/:id/activity', async (c) => {
           .bind(targetId, limit, offset)
           .all<PostRow>();
 
+    const postResults = rows.results ?? [];
+    const mentionsMap = await fetchMentionsForPostIds(
+      c.env.DB,
+      postResults.map((r) => r.id)
+    );
+
     return c.json({
       tab,
-      items: (rows.results ?? []).map(serializePost),
+      items: postResults.map((r) => serializePost(r, mentionsMap.get(r.id) ?? [])),
       total: Number(countRow?.total ?? 0),
     });
   }

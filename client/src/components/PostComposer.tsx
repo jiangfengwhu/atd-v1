@@ -1,7 +1,14 @@
 import * as React from 'react';
-import { ArrowUpRight, Crop, Globe, Hash, Loader2, X } from 'lucide-react';
-import { api, ApiError, type PostItem, type UserProfile } from '@/lib/api';
+import { ArrowUpRight, AtSign, Crop, Globe, Hash, Loader2, X } from 'lucide-react';
+import {
+  api,
+  ApiError,
+  type MentionCandidateItem,
+  type PostItem,
+  type UserProfile,
+} from '@/lib/api';
 import { extractHashtagsFromContent } from '@/lib/hashtags';
+import { extractMentionTriggerBeforeCaret, type MentionTrigger } from '@/lib/mentions';
 import {
   extractUrlsFromContent,
   formatPastedTextWithUrls,
@@ -9,6 +16,7 @@ import {
   parseUrlMeta,
 } from '@/lib/urlParser';
 import { AvatarBadge } from '@/components/AvatarBadge';
+import { OfficialBadge } from '@/components/OfficialBadge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/input';
 import { ImageCropDialog } from '@/components/ImageCropDialog';
@@ -76,16 +84,90 @@ export function PostComposer({
   const [isDragging, setIsDragging] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [mentionTrigger, setMentionTrigger] = React.useState<MentionTrigger | null>(null);
+  const [mentionCandidates, setMentionCandidates] = React.useState<MentionCandidateItem[]>([]);
+  const [mentionLoading, setMentionLoading] = React.useState(false);
+  const [activeMentionIndex, setActiveMentionIndex] = React.useState(0);
 
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const dragDepthRef = React.useRef(0);
   const isHandlingPasteRef = React.useRef(false);
+  const mentionSeqRef = React.useRef(0);
+  const pendingCaretRef = React.useRef<number | null>(null);
+
+  React.useLayoutEffect(() => {
+    if (pendingCaretRef.current !== null && textareaRef.current) {
+      const pos = pendingCaretRef.current;
+      pendingCaretRef.current = null;
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(pos, pos);
+    }
+  }, [content]);
 
   React.useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
+
+  const mentionTriggerQuery = mentionTrigger?.query ?? null;
+  React.useEffect(() => {
+    if (mentionTriggerQuery === null) {
+      setMentionCandidates([]);
+      setMentionLoading(false);
+      setActiveMentionIndex(0);
+      return;
+    }
+
+    const seq = ++mentionSeqRef.current;
+    setMentionLoading(true);
+    const delay = mentionTriggerQuery === '' ? 0 : 80;
+    const timer = window.setTimeout(() => {
+      api
+        .searchMentionCandidates(mentionTriggerQuery, 8)
+        .then((res) => {
+          if (seq !== mentionSeqRef.current) return;
+          setMentionCandidates(res.users);
+          setActiveMentionIndex(0);
+        })
+        .catch(() => {
+          if (seq !== mentionSeqRef.current) return;
+          setMentionCandidates([]);
+        })
+        .finally(() => {
+          if (seq === mentionSeqRef.current) {
+            setMentionLoading(false);
+          }
+        });
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [mentionTriggerQuery]);
+
+  const syncMentionTrigger = React.useCallback((nextValue: string, caretPos: number | null) => {
+    const pos = caretPos ?? nextValue.length;
+    setMentionTrigger(extractMentionTriggerBeforeCaret(nextValue, pos));
+  }, []);
+
+  const insertMention = React.useCallback(
+    (candidate: MentionCandidateItem) => {
+      if (!mentionTrigger) return;
+      const before = content.slice(0, mentionTrigger.start);
+      const after = content.slice(mentionTrigger.end);
+      const mentionText = `@${candidate.nickname}`;
+      const needsTrailingSpace = after === '' || !/^\s/.test(after);
+      const inserted = `${mentionText}${needsTrailingSpace ? ' ' : ''}`;
+      const nextContent = `${before}${inserted}${after}`.slice(0, 5000);
+      const nextCaret = Math.min(before.length + inserted.length, 5000);
+
+      pendingCaretRef.current = nextCaret;
+      setContent(nextContent);
+      setMentionTrigger(null);
+      setMentionCandidates([]);
+      setActiveMentionIndex(0);
+    },
+    [content, mentionTrigger]
+  );
 
   const extractedTags = React.useMemo(
     () => extractHashtagsFromContent(content),
@@ -124,6 +206,9 @@ export function PostComposer({
     dragDepthRef.current = 0;
     setIsDragging(false);
     setError(null);
+    setMentionTrigger(null);
+    setMentionCandidates([]);
+    setActiveMentionIndex(0);
   };
 
   const acceptImageFile = (file: File) => {
@@ -204,16 +289,10 @@ export function PostComposer({
         );
       }
 
-      setContent(nextContent);
-
       if (el) {
-        window.requestAnimationFrame(() => {
-          if (textareaRef.current) {
-            textareaRef.current.selectionStart = nextCaret;
-            textareaRef.current.selectionEnd = nextCaret;
-          }
-        });
+        pendingCaretRef.current = nextCaret;
       }
+      setContent(nextContent);
     } finally {
       isHandlingPasteRef.current = false;
     }
@@ -357,27 +436,154 @@ export function PostComposer({
           )}
 
           <div className="min-w-0 flex-1 space-y-2.5">
-            <Textarea
-              ref={textareaRef}
-              id={compact ? 'inline-post-content' : 'dialog-post-content'}
-              aria-label="动态正文"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !submitting) {
-                  e.preventDefault();
-                  submitPost();
-                }
-              }}
-              maxLength={5000}
-              autoFocus={autoFocus}
-              placeholder={placeholder}
-              rows={compact ? 3 : 5}
-              className={cn(
-                'resize-none border-slate-200/80 bg-slate-50/50 text-sm leading-relaxed focus:bg-white',
-                compact ? 'min-h-[84px]' : 'min-h-[136px]'
+            <div className="relative">
+              <Textarea
+                ref={textareaRef}
+                id={compact ? 'inline-post-content' : 'dialog-post-content'}
+                aria-label="动态正文"
+                value={content}
+                onChange={(e) => {
+                  const nextVal = e.target.value;
+                  setContent(nextVal);
+                  syncMentionTrigger(nextVal, e.target.selectionStart);
+                }}
+                onClick={(e) => {
+                  syncMentionTrigger(e.currentTarget.value, e.currentTarget.selectionStart);
+                }}
+                onKeyUp={(e) => {
+                  if (
+                    e.key === 'ArrowLeft' ||
+                    e.key === 'ArrowRight' ||
+                    e.key === 'Home' ||
+                    e.key === 'End'
+                  ) {
+                    syncMentionTrigger(e.currentTarget.value, e.currentTarget.selectionStart);
+                  }
+                }}
+                onBlur={() => {
+                  setMentionTrigger(null);
+                }}
+                onKeyDown={(e) => {
+                  if (mentionTrigger !== null) {
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      setMentionTrigger(null);
+                      return;
+                    }
+                    if (mentionCandidates.length > 0) {
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setActiveMentionIndex((i) => (i + 1) % mentionCandidates.length);
+                        return;
+                      }
+                      if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setActiveMentionIndex(
+                          (i) => (i - 1 + mentionCandidates.length) % mentionCandidates.length
+                        );
+                        return;
+                      }
+                      if (
+                        (e.key === 'Enter' && !e.metaKey && !e.ctrlKey && !e.shiftKey) ||
+                        e.key === 'Tab'
+                      ) {
+                        e.preventDefault();
+                        const target =
+                          mentionCandidates[activeMentionIndex] ?? mentionCandidates[0];
+                        if (target) insertMention(target);
+                        return;
+                      }
+                    }
+                  }
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !submitting) {
+                    e.preventDefault();
+                    submitPost();
+                  }
+                }}
+                maxLength={5000}
+                autoFocus={autoFocus}
+                placeholder={placeholder}
+                rows={compact ? 3 : 5}
+                className={cn(
+                  'resize-none border-slate-200/80 bg-slate-50/50 text-sm leading-relaxed focus:bg-white',
+                  compact ? 'min-h-[84px]' : 'min-h-[136px]'
+                )}
+              />
+
+              {mentionTrigger !== null && (
+                <div
+                  role="listbox"
+                  aria-label="提及用户列表"
+                  data-testid="mention-popover"
+                  className="absolute left-0 right-0 top-full z-30 mt-1.5 max-h-60 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl"
+                >
+                  <div className="flex items-center justify-between px-2.5 py-1 text-[11px] font-semibold text-slate-400">
+                    <span className="inline-flex items-center gap-1">
+                      <AtSign className="h-3 w-3 text-blue-500" />
+                      选择要提及的账号
+                    </span>
+                    <span>↑↓ 选择 · Enter 插入</span>
+                  </div>
+
+                  {mentionLoading && mentionCandidates.length === 0 ? (
+                    <div className="flex items-center gap-2 px-3 py-2.5 text-xs text-slate-400">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+                      <span>正在匹配用户...</span>
+                    </div>
+                  ) : mentionCandidates.length === 0 ? (
+                    <div className="px-3 py-2.5 text-xs text-slate-400">
+                      未找到匹配用户，可直接发布保留文本
+                    </div>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {mentionCandidates.map((candidate, idx) => {
+                        const isActive = idx === activeMentionIndex;
+                        return (
+                          <button
+                            key={candidate.id}
+                            type="button"
+                            role="option"
+                            aria-selected={isActive}
+                            data-testid={`mention-option-${candidate.id}`}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onMouseEnter={() => setActiveMentionIndex(idx)}
+                            onClick={() => insertMention(candidate)}
+                            className={cn(
+                              'flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition',
+                              isActive
+                                ? 'bg-blue-50 text-slate-900'
+                                : candidate.isOfficial
+                                  ? 'bg-blue-50/40 text-slate-800 hover:bg-blue-50'
+                                  : 'text-slate-700 hover:bg-slate-50'
+                            )}
+                          >
+                            <AvatarBadge
+                              nickname={candidate.nickname}
+                              seed={candidate.avatarSeed}
+                              avatarUrl={candidate.avatarUrl}
+                              size="sm"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="truncate text-xs font-bold text-slate-900">
+                                  {candidate.nickname}
+                                </span>
+                                {candidate.isOfficial && (
+                                  <OfficialBadge label={candidate.officialBadge} />
+                                )}
+                              </div>
+                              <p className="truncate text-[11px] text-slate-400">
+                                {candidate.bio || `@${candidate.handle || candidate.nickname}`}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
-            />
+            </div>
 
             {extractedTags.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
@@ -473,7 +679,7 @@ export function PostComposer({
 
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-0.5">
               <p className="text-[11px] leading-relaxed text-slate-400">
-                支持拖拽 / 粘贴图片 · 粘贴外链自动识别 · #话题
+                支持 @提及 · 拖拽 / 粘贴图片 · 粘贴外链自动识别 · #话题
               </p>
 
               <div className="ml-auto flex shrink-0 items-center gap-2">

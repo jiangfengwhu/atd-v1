@@ -20,6 +20,12 @@ import {
   sha256Hex,
 } from '../lib/crypto';
 import { isValidEmail, isValidImageUrl } from '../lib/validation';
+import {
+  ensureOfficialFeedbackAccount,
+  isOfficialAccountEmail,
+  isOfficialUserId,
+  isReservedOfficialNickname,
+} from '../lib/official';
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_COOLDOWN_MS = 60 * 1000;
@@ -182,6 +188,11 @@ authRoutes.post('/send-code', async (c) => {
     return c.json({ error: '请输入有效的邮箱地址' }, 400);
   }
 
+  await ensureOfficialFeedbackAccount(c.env.DB);
+  if (await isOfficialAccountEmail(c.env.DB, rawEmail)) {
+    return c.json({ error: '官方系统账号不支持直接登录' }, 403);
+  }
+
   // Enforce 60-second cooldown per email
   const latestOtp = await c.env.DB.prepare(
     'SELECT created_at FROM email_otps WHERE email = ? ORDER BY created_at DESC LIMIT 1'
@@ -302,6 +313,14 @@ authRoutes.post('/verify-code', async (c) => {
     return c.json({ error: '请输入正确的邮箱和 6 位数字验证码' }, 400);
   }
 
+  await ensureOfficialFeedbackAccount(c.env.DB);
+  if (await isOfficialAccountEmail(c.env.DB, rawEmail)) {
+    return c.json({ error: '官方系统账号不支持直接登录' }, 403);
+  }
+  if (requestedNickname && isReservedOfficialNickname(requestedNickname)) {
+    return c.json({ error: '该昵称为系统保留官方账号名称，请更换其他昵称' }, 400);
+  }
+
   const otp = await c.env.DB.prepare(
     `SELECT id, code_hash, attempts, expires_at
      FROM email_otps
@@ -367,7 +386,10 @@ authRoutes.post('/verify-code', async (c) => {
 
   if (!user) {
     const userId = crypto.randomUUID();
-    const defaultNick = requestedNickname || rawEmail.split('@')[0].slice(0, 24) || '社区旅人';
+    const rawDefaultNick = requestedNickname || rawEmail.split('@')[0].slice(0, 24) || '社区旅人';
+    const defaultNick = isReservedOfficialNickname(rawDefaultNick)
+      ? `${rawDefaultNick.slice(0, 20)}_user`
+      : rawDefaultNick;
     const avatarSeed = (await sha256Hex(rawEmail)).slice(0, 12);
 
     await c.env.DB.prepare(
@@ -638,6 +660,9 @@ authRoutes.patch('/profile', async (c) => {
   if (!user) {
     return c.json({ error: '请先登录' }, 401);
   }
+  if (await isOfficialUserId(c.env.DB, user.id)) {
+    return c.json({ error: '官方系统账号资料不可修改' }, 403);
+  }
 
   const body = await c.req
     .json<{ nickname?: unknown; bio?: unknown; avatarUrl?: unknown }>()
@@ -662,6 +687,9 @@ authRoutes.patch('/profile', async (c) => {
     const trimmed = body.nickname.trim();
     if (trimmed.length < 1 || trimmed.length > 30) {
       return c.json({ error: '昵称长度需在 1 到 30 个字符之间' }, 400);
+    }
+    if (isReservedOfficialNickname(trimmed)) {
+      return c.json({ error: '该昵称为系统保留官方账号名称，请更换其他昵称' }, 400);
     }
     nextNickname = trimmed;
   }

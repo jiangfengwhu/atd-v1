@@ -5,6 +5,8 @@ export interface UserProfile {
   avatarSeed: string;
   avatarUrl?: string;
   bio?: string;
+  isOfficial?: boolean;
+  officialBadge?: string;
   createdAt?: string;
 }
 
@@ -13,6 +15,27 @@ export interface PostAuthor {
   nickname: string;
   avatarSeed: string;
   avatarUrl?: string;
+  isOfficial?: boolean;
+  officialBadge?: string;
+}
+
+export interface PostMentionItem {
+  userId: string;
+  nickname: string;
+  matchedText: string;
+  isOfficial: boolean;
+  officialBadge?: string;
+}
+
+export interface MentionCandidateItem {
+  id: string;
+  nickname: string;
+  handle?: string;
+  avatarSeed: string;
+  avatarUrl: string;
+  bio: string;
+  isOfficial: boolean;
+  officialBadge?: string;
 }
 
 export interface PostItem {
@@ -20,6 +43,7 @@ export interface PostItem {
   content: string;
   imageUrl: string;
   tags: string[];
+  mentions?: PostMentionItem[];
   likesCount: number;
   commentsCount: number;
   viewsCount: number;
@@ -43,6 +67,8 @@ export interface RecommendedUserItem {
   avatarSeed: string;
   avatarUrl: string;
   bio: string;
+  isOfficial?: boolean;
+  officialBadge?: string;
   followersCount: number;
   postsCount: number;
   isFollowing: boolean;
@@ -77,6 +103,9 @@ export interface PublicUserProfile {
   avatarUrl: string;
   bio: string;
   email?: string;
+  isOfficial?: boolean;
+  officialBadge?: string;
+  handle?: string;
   createdAt: string;
   postsCount: number;
   followingCount: number;
@@ -95,6 +124,8 @@ export interface FollowUserItem {
   avatarSeed: string;
   avatarUrl: string;
   bio: string;
+  isOfficial?: boolean;
+  officialBadge?: string;
   isFollowing: boolean;
   followedAt: string;
 }
@@ -276,6 +307,15 @@ export const api = {
     }),
 
   // Users & Social
+  searchMentionCandidates: (q = '', limit = 8) => {
+    const sp = new URLSearchParams();
+    if (q) sp.set('q', q);
+    sp.set('limit', String(limit));
+    return requestJson<{ users: MentionCandidateItem[] }>(
+      `/api/users/mention-candidates?${sp.toString()}`
+    );
+  },
+
   getUserProfile: (userId: string) =>
     requestJson<{ user: PublicUserProfile }>(`/api/users/${encodeURIComponent(userId)}`),
 

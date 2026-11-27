@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { HashtagText } from '@/components/HashtagText';
+import { OfficialBadge } from '@/components/OfficialBadge';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
 interface PostDetailDialogProps {
@@ -303,7 +304,12 @@ export function PostDetailDialog({
                   </div>
                   <div className="my-6">
                     <p className="whitespace-pre-wrap text-base sm:text-lg leading-relaxed text-slate-800">
-                      <HashtagText content={post.content} onSelectTag={(tag) => handleTagClick(tag)} />
+                      <HashtagText
+                        content={post.content}
+                        mentions={post.mentions}
+                        onSelectTag={(tag) => handleTagClick(tag)}
+                        onSelectMention={(mention) => navigateToUser(mention.userId)}
+                      />
                     </p>
                   </div>
                   {post.tags.length > 0 ? (
@@ -348,9 +354,14 @@ export function PostDetailDialog({
                     size="md"
                   />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-900">
-                      {post.author.nickname}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        {post.author.nickname}
+                      </p>
+                      {post.author.isOfficial && (
+                        <OfficialBadge label={post.author.officialBadge} />
+                      )}
+                    </div>
                     <p className="text-xs text-slate-400">{formatRelativeTime(post.createdAt)}</p>
                   </div>
                 </button>
@@ -373,7 +384,12 @@ export function PostDetailDialog({
               {/* Independently Scrollable Body & Comments */}
               <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
-                  <HashtagText content={post.content} onSelectTag={(tag) => handleTagClick(tag)} />
+                  <HashtagText
+                    content={post.content}
+                    mentions={post.mentions}
+                    onSelectTag={(tag) => handleTagClick(tag)}
+                    onSelectMention={(mention) => navigateToUser(mention.userId)}
+                  />
                 </p>
 
                 {fallbackTags.length > 0 && (
