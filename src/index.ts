@@ -9,6 +9,7 @@ import { userRoutes } from './routes/users';
 import { messageRoutes } from './routes/messages';
 import { notificationRoutes } from './routes/notifications';
 import { discoverRoutes } from './routes/discover';
+import { linkPreviewRoutes } from './routes/link-preview';
 import { captureServerErrorToAutoDev, signalsRoutes } from './routes/signals';
 
 export { UserRealtimeHub } from './realtime/user-hub';
@@ -69,6 +70,7 @@ app.route('/api/users', userRoutes);
 app.route('/api/messages', messageRoutes);
 app.route('/api/notifications', notificationRoutes);
 app.route('/api/discover', discoverRoutes);
+app.route('/api/link-preview', linkPreviewRoutes);
 app.route('/api', signalsRoutes);
 
 app.get('/api/ws', async (c) => {

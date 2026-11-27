@@ -234,7 +234,7 @@ export function NotificationsView({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+            <h1 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl dark:text-slate-100">
               通知中心
             </h1>
             {unreadCount > 0 && (
@@ -243,7 +243,7 @@ export function NotificationsView({
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
             点击对应分类即可一键标为已读
           </p>
         </div>
@@ -269,7 +269,7 @@ export function NotificationsView({
       <div
         role="tablist"
         aria-label="通知分类"
-        className="inline-flex flex-wrap gap-1.5 rounded-full border border-slate-200/80 bg-white p-1.5 shadow-card"
+        className="inline-flex flex-wrap gap-1.5 rounded-full border border-slate-200/80 bg-white p-1.5 shadow-card dark:border-slate-800 dark:bg-slate-900"
       >
         {FILTER_TABS.map((tab) => {
           const tabUnread = getTabUnreadCount(tab.value);
@@ -283,8 +283,8 @@ export function NotificationsView({
               className={cn(
                 'relative inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition',
                 filter === tab.value
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  ? 'bg-slate-900 text-white shadow-sm dark:bg-blue-600'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100'
               )}
             >
               <span>{tab.label}</span>
@@ -302,12 +302,12 @@ export function NotificationsView({
       </div>
 
       {loading ? (
-        <div className="flex h-60 items-center justify-center rounded-2xl border border-slate-200/80 bg-white shadow-card">
+        <div className="flex h-60 items-center justify-center rounded-2xl border border-slate-200/80 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900">
           <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-red-100 bg-white py-14 px-6 text-center shadow-card">
-          <p className="text-sm font-medium text-red-600">{error}</p>
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-red-100 bg-white py-14 px-6 text-center shadow-card dark:border-red-900/60 dark:bg-slate-900">
+          <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
           <Button
             variant="outline"
             size="sm"
@@ -319,12 +319,12 @@ export function NotificationsView({
           </Button>
         </div>
       ) : notifications.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300/80 bg-white/80 py-20 px-6 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300/80 bg-white/80 py-20 px-6 text-center dark:border-slate-700 dark:bg-slate-900/70">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
             <Bell className="h-6 w-6" />
           </div>
-          <h2 className="mt-4 text-base font-bold text-slate-900">暂无相关通知</h2>
-          <p className="mt-1 text-xs text-slate-500">
+          <h2 className="mt-4 text-base font-bold text-slate-900 dark:text-slate-100">暂无相关通知</h2>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             当有朋友点赞、评论你的动态或关注你时，这里会第一时间收到提醒
           </p>
         </div>
@@ -348,8 +348,8 @@ export function NotificationsView({
                   className={cn(
                     'flex cursor-pointer items-start justify-between gap-4 rounded-2xl border p-4 transition',
                     item.isRead
-                      ? 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/60'
-                      : 'border-blue-200/80 bg-blue-50/40 shadow-sm hover:bg-blue-50/60'
+                      ? 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700 dark:hover:bg-slate-800/70'
+                      : 'border-blue-200/80 bg-blue-50/40 shadow-sm hover:bg-blue-50/60 dark:border-blue-800/70 dark:bg-blue-950/40 dark:hover:bg-blue-950/60'
                   )}
                 >
                   <div className="flex min-w-0 flex-1 items-start gap-3.5">
@@ -383,14 +383,14 @@ export function NotificationsView({
                       {!item.isRead && (
                         <span
                           aria-label="未读"
-                          className="absolute -left-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"
+                          className="absolute -left-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900"
                         />
                       )}
                     </button>
 
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-bold text-slate-900">
+                        <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
                           {item.actor.nickname}
                         </span>
                         <span
@@ -402,7 +402,7 @@ export function NotificationsView({
                           <Icon className="h-3 w-3" />
                           {meta.label}
                         </span>
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500">
                           {formatRelativeTime(item.createdAt)}
                         </span>
                       </div>
@@ -410,12 +410,12 @@ export function NotificationsView({
                       {item.type === 'comment' && (
                         <>
                           {item.contentPreview && (
-                            <p className="line-clamp-2 rounded-xl border border-slate-100 bg-white/90 px-3 py-1.5 text-sm text-slate-700">
+                            <p className="line-clamp-2 rounded-xl border border-slate-100 bg-white/90 px-3 py-1.5 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
                               {item.contentPreview}
                             </p>
                           )}
                           {item.post?.contentPreview && (
-                            <p className="truncate text-xs text-slate-400">
+                            <p className="truncate text-xs text-slate-400 dark:text-slate-500">
                               原动态：{item.post.contentPreview}
                             </p>
                           )}
@@ -423,13 +423,13 @@ export function NotificationsView({
                       )}
 
                       {item.type === 'like' && (
-                        <p className="truncate text-xs text-slate-500">
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                           {item.post?.contentPreview || item.contentPreview || '你的动态'}
                         </p>
                       )}
 
                       {item.type === 'follow' && (
-                        <p className="text-xs text-slate-500">点击查看 TA 的个人主页</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">点击查看 TA 的个人主页</p>
                       )}
 
                       {item.type !== 'follow' && !item.post && (

@@ -1,72 +1,74 @@
 {
   "schemaVersion": "1.1",
   "generatedBy": "AutoDev Studio",
-  "runId": "run-fb-mwyvk07p-94af",
-  "createdAt": "2026-11-27T11:04:56.342Z",
+  "runId": "run-fb-mwz3eeyd-e431",
+  "createdAt": "2026-11-27T14:44:32.438Z",
   "repository": "jiangfengwhu/atd-v1",
   "baseBranch": "main",
-  "e2eTestPath": "tests/e2e/run-fb-mwyvk07p-94af.spec.ts",
-  "e2eVaultPath": ".autodev-e2e-vault/run-fb-mwyvk07p-94af/e2e.spec.ts",
+  "e2eTestPath": "tests/e2e/run-fb-mwz3eeyd-e431.spec.ts",
+  "e2eVaultPath": ".autodev-e2e-vault/run-fb-mwz3eeyd-e431/e2e.spec.ts",
   "blindE2eVerification": false,
-  "archivedSpecPath": "docs/iterations/run-fb-mwyvk07p-94af-spec.json",
-  "prdTitle": "交互体验优化：反馈机制与@提醒功能增强",
+  "archivedSpecPath": "docs/iterations/run-fb-mwz3eeyd-e431-spec.json",
+  "prdTitle": "社区动态展示优化与深色模式支持",
   "architecture": {
-    "summary": "[用户反馈每日直通迭代] 针对用户反馈调整系统反馈入口，增强@提及功能的视觉提示与交互逻辑。",
+    "summary": "[用户反馈每日直通迭代] 针对动态展示细节进行UI调整，引入全局深色模式支持，并增强URL链接预览渲染逻辑。",
     "techDecisions": [
       "采用轻量 Micro-Spec 直通模式：保持最小化改动面，优先确保回归安全与构建通过。",
-      "注意@提及的正则匹配逻辑，避免误触发系统关键词",
-      "确保权限校验，仅管理员账号操作评论才触发工单状态变更"
+      "链接解析可能导致小规模性能开销，需确保在列表滚动时不卡顿",
+      "UI样式变动需检查移动端适配，防止文字居中导致的小屏溢出问题"
     ]
   },
   "ambiguities": [],
   "apiContracts": [],
   "tasks": [
     {
-      "id": "T1",
-      "title": "清理反馈入口与优化@触发逻辑",
+      "id": "T-01",
+      "title": "UI组件样式规范化",
       "module": "frontend",
-      "description": "移除首页的“意见反馈”按钮；修正@官方账号时未能正确触发后端反馈逻辑的问题。（相关文件提示：src/components/FeedbackBtn.js, src/hooks/useMention.js）",
+      "description": "移除@用户名的边框样式，将内容容器居中处理，并将认证Label文字替换为SVG图标。（相关文件提示：src/components/PostContent.tsx, src/styles/components.css）",
       "dependsOn": [],
       "acceptanceCriteria": [
-        "首页不再显示意见反馈入口",
-        "在编辑器中通过@官方账号时，后台能够准确捕获并创建反馈记录"
+        "所有@用户名的外边框被移除",
+        "动态正文及认证图标保持垂直居中对齐",
+        "使用指定图标替换文字标签"
       ],
       "estimatedComplexity": "S"
     },
     {
-      "id": "T2",
-      "title": "强化@提及的用户UI区分度与资料卡预览",
+      "id": "T-02",
+      "title": "实施全局深色模式",
       "module": "frontend",
-      "description": "区分发帖时@用户与普通文本的视觉样式，并实现鼠标悬停触发用户资料卡弹窗。（相关文件提示：src/components/Editor/MentionRenderer.js, src/components/UserCard.js）",
+      "description": "引入CSS变量体系，适配深色主题配色。（相关文件提示：src/styles/theme.css, src/hooks/useTheme.ts）",
       "dependsOn": [
-        "T1"
+        "T-01"
       ],
       "acceptanceCriteria": [
-        "@提及文本具备明显的视觉高亮区分",
-        "鼠标悬停@提及用户时，能够正确弹出悬浮资料卡"
+        "系统支持通过配置切换主题",
+        "页面背景与文本颜色在深色模式下具备高可读性对比度"
       ],
       "estimatedComplexity": "S"
     },
     {
-      "id": "T3",
-      "title": "支持工单状态的评论回复联动",
-      "module": "backend",
-      "description": "实现管理员在原帖下通过评论回复反馈者，并同步更新工单状态。（相关文件提示：src/controllers/CommentController.js, src/models/Feedback.js）",
+      "id": "T-03",
+      "title": "增强URL链接解析渲染",
+      "module": "shared",
+      "description": "解析纯文本动态中的URL，将其转换为卡片式UI渲染，并支持点击跳转。（相关文件提示：src/utils/urlParser.ts, src/components/LinkPreview.tsx）",
       "dependsOn": [
-        "T2"
+        "T-02"
       ],
       "acceptanceCriteria": [
-        "管理员评论操作可触发生命周期更新逻辑",
-        "工单状态流转信息正确回显在评论区"
+        "无图动态包含URL时能显示预览卡片",
+        "预览卡片支持点击跳转至原链接",
+        "解析逻辑不会对正常文本渲染产生干扰"
       ],
       "estimatedComplexity": "S"
     }
   ],
   "qaSpec": {
     "coverageNotes": [
-      "由 用户反馈每日直通迭代 轻量规格自动生成，共 5 项核心验收核对标准。"
+      "由 用户反馈每日直通迭代 轻量规格自动生成，共 3 项核心验收核对标准。"
     ],
-    "initialApiTestCount": 5
+    "initialApiTestCount": 3
   },
   "qaCritic": {
     "reviewSummary": "已完成双层 AI 安全消毒与范围校验（跳过重策划），共拆解 3 项精简改动任务。",
@@ -76,41 +78,25 @@
         "id": "AC-1",
         "endpoint": "FEEDBACK-VERIFY",
         "method": "VERIFY",
-        "scenario": "确认意见反馈按钮已消失",
+        "scenario": "验证@用户显示正常，无残留边框",
         "expectedStatus": 200,
-        "assertion": "确认意见反馈按钮已消失"
+        "assertion": "验证@用户显示正常，无残留边框"
       },
       {
         "id": "AC-2",
         "endpoint": "FEEDBACK-VERIFY",
         "method": "VERIFY",
-        "scenario": "验证@官方账号后，数据库中生成了对应的工单条目",
+        "scenario": "验证深色模式切换后页面配色正确，无反色异常",
         "expectedStatus": 200,
-        "assertion": "验证@官方账号后，数据库中生成了对应的工单条目"
+        "assertion": "验证深色模式切换后页面配色正确，无反色异常"
       },
       {
         "id": "AC-3",
         "endpoint": "FEEDBACK-VERIFY",
         "method": "VERIFY",
-        "scenario": "验证编辑器内@用户的样式是否与普通文字有显著对比",
+        "scenario": "验证无图含链接动态成功渲染预览卡片",
         "expectedStatus": 200,
-        "assertion": "验证编辑器内@用户的样式是否与普通文字有显著对比"
-      },
-      {
-        "id": "AC-4",
-        "endpoint": "FEEDBACK-VERIFY",
-        "method": "VERIFY",
-        "scenario": "在编辑器预览中测试鼠标Hover是否能展开用户资料卡",
-        "expectedStatus": 200,
-        "assertion": "在编辑器预览中测试鼠标Hover是否能展开用户资料卡"
-      },
-      {
-        "id": "AC-5",
-        "endpoint": "FEEDBACK-VERIFY",
-        "method": "VERIFY",
-        "scenario": "验证评论回复工单状态是否准确更新",
-        "expectedStatus": 200,
-        "assertion": "验证评论回复工单状态是否准确更新"
+        "assertion": "验证无图含链接动态成功渲染预览卡片"
       }
     ]
   }

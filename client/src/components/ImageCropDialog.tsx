@@ -110,7 +110,7 @@ export function ImageCropDialog({
 
           {mode !== 'avatar' && (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 text-xs font-semibold text-zinc-500">比例</span>
+              <span className="mr-1 text-xs font-semibold text-zinc-500 dark:text-slate-400">比例</span>
               {ASPECT_OPTIONS.map((opt) => (
                 <button
                   key={opt.label}
@@ -119,8 +119,8 @@ export function ImageCropDialog({
                   className={cn(
                     'rounded-full px-3 py-1 text-xs font-semibold transition',
                     Math.abs(aspect - opt.value) < 0.01
-                      ? 'bg-zinc-900 text-white'
-                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                      ? 'bg-zinc-900 text-white dark:bg-blue-600'
+                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                   )}
                 >
                   {opt.label}
@@ -129,10 +129,10 @@ export function ImageCropDialog({
             </div>
           )}
 
-          <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200/80 bg-zinc-50/70 p-3">
+          <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200/80 bg-zinc-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/70">
             <div className="flex items-center gap-3">
-              <ZoomIn className="h-4 w-4 shrink-0 text-zinc-500" />
-              <span className="text-xs font-medium text-zinc-600">缩放</span>
+              <ZoomIn className="h-4 w-4 shrink-0 text-zinc-500 dark:text-slate-400" />
+              <span className="text-xs font-medium text-zinc-600 dark:text-slate-300">缩放</span>
               <input
                 type="range"
                 aria-label="缩放比例"
@@ -143,7 +143,7 @@ export function ImageCropDialog({
                 onChange={(e) => setZoom(Number(e.target.value))}
                 className="flex-1 accent-rose-500"
               />
-              <span className="w-10 text-right text-xs tabular-nums text-zinc-500">
+              <span className="w-10 text-right text-xs tabular-nums text-zinc-500 dark:text-slate-400">
                 {zoom.toFixed(1)}x
               </span>
             </div>

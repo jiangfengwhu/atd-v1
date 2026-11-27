@@ -253,10 +253,10 @@ export function MessagesView({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-extrabold tracking-tight text-zinc-900 sm:text-2xl">
+          <h1 className="text-xl font-extrabold tracking-tight text-zinc-900 sm:text-2xl dark:text-slate-100">
             站内私信
           </h1>
-          <p className="text-xs text-zinc-500">与社区创作者一对一交流灵感与故事</p>
+          <p className="text-xs text-zinc-500 dark:text-slate-400">与社区创作者一对一交流灵感与故事</p>
         </div>
         <Button
           type="button"
@@ -270,10 +270,10 @@ export function MessagesView({
         </Button>
       </div>
 
-      <div className="grid min-h-[540px] grid-cols-1 overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-card md:grid-cols-12">
+      <div className="grid min-h-[540px] grid-cols-1 overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-card md:grid-cols-12 dark:border-slate-800 dark:bg-slate-900">
         {/* Conversation list pane */}
-        <div className="border-b border-zinc-100 md:col-span-4 md:border-b-0 md:border-r">
-          <div className="border-b border-zinc-100 px-4 py-3 text-xs font-semibold text-zinc-500">
+        <div className="border-b border-zinc-100 md:col-span-4 md:border-b-0 md:border-r dark:border-slate-800">
+          <div className="border-b border-zinc-100 px-4 py-3 text-xs font-semibold text-zinc-500 dark:border-slate-800 dark:text-slate-400">
             会话列表 ({displayConversations.length})
           </div>
 
@@ -282,17 +282,17 @@ export function MessagesView({
               <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
             </div>
           ) : listError ? (
-            <div className="p-6 text-center text-xs text-red-600">{listError}</div>
+            <div className="p-6 text-center text-xs text-red-600 dark:text-red-400">{listError}</div>
           ) : displayConversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-              <MessageSquare className="h-8 w-8 text-zinc-300" />
-              <p className="mt-3 text-sm font-medium text-zinc-600">还没有私信会话</p>
-              <p className="mt-1 text-xs text-zinc-400">
+              <MessageSquare className="h-8 w-8 text-zinc-300 dark:text-slate-600" />
+              <p className="mt-3 text-sm font-medium text-zinc-600 dark:text-slate-300">还没有私信会话</p>
+              <p className="mt-1 text-xs text-zinc-400 dark:text-slate-500">
                 去动态流点击感兴趣的用户头像进入主页，即可发起私信
               </p>
             </div>
           ) : (
-            <ul className="divide-y divide-zinc-100 max-h-[490px] overflow-y-auto">
+            <ul className="divide-y divide-zinc-100 max-h-[490px] overflow-y-auto dark:divide-slate-800">
               {displayConversations.map((conv) => {
                 const selected = conv.peer.id === activePeerId;
                 return (
@@ -302,7 +302,7 @@ export function MessagesView({
                       onClick={() => setActivePeerId(conv.peer.id)}
                       className={cn(
                         'flex w-full items-center gap-3 px-4 py-3.5 text-left transition',
-                        selected ? 'bg-blue-50/70' : 'hover:bg-slate-50'
+                        selected ? 'bg-blue-50/70 dark:bg-blue-950/50' : 'hover:bg-slate-50 dark:hover:bg-slate-800/70'
                       )}
                     >
                       <AvatarBadge
@@ -313,15 +313,15 @@ export function MessagesView({
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-sm font-semibold text-zinc-900">
+                          <span className="truncate text-sm font-semibold text-zinc-900 dark:text-slate-100">
                             {conv.peer.nickname}
                           </span>
-                          <span className="shrink-0 text-[10px] text-zinc-400">
+                          <span className="shrink-0 text-[10px] text-zinc-400 dark:text-slate-500">
                             {formatRelativeTime(conv.lastMessage.createdAt)}
                           </span>
                         </div>
                         <div className="mt-0.5 flex items-center justify-between gap-2">
-                          <p className="truncate text-xs text-zinc-500">
+                          <p className="truncate text-xs text-zinc-500 dark:text-slate-400">
                             {conv.lastMessage.content}
                           </p>
                           {conv.unreadCount > 0 && (
@@ -342,9 +342,9 @@ export function MessagesView({
         {/* Chat thread pane */}
         <div className="flex flex-col md:col-span-8">
           {!activePeerId ? (
-            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-zinc-400">
-              <MessageSquare className="h-10 w-10 text-zinc-200" />
-              <p className="mt-3 text-sm font-medium text-zinc-500">选择一个会话开始聊天</p>
+            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-zinc-400 dark:text-slate-500">
+              <MessageSquare className="h-10 w-10 text-zinc-200 dark:text-slate-700" />
+              <p className="mt-3 text-sm font-medium text-zinc-500 dark:text-slate-400">选择一个会话开始聊天</p>
             </div>
           ) : loadingThread && !activePeer ? (
             <div className="flex flex-1 items-center justify-center">
@@ -353,7 +353,7 @@ export function MessagesView({
           ) : (
             <>
               {activePeer && (
-                <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-3.5">
+                <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-3.5 dark:border-slate-800">
                   <button
                     type="button"
                     onClick={() => onOpenUserProfile(activePeer.id)}
@@ -366,8 +366,8 @@ export function MessagesView({
                       size="md"
                     />
                     <div>
-                      <p className="text-sm font-bold text-zinc-900">{activePeer.nickname}</p>
-                      <p className="text-[11px] text-zinc-400 truncate max-w-[260px]">
+                      <p className="text-sm font-bold text-zinc-900 dark:text-slate-100">{activePeer.nickname}</p>
+                      <p className="text-[11px] text-zinc-400 truncate max-w-[260px] dark:text-slate-500">
                         {activePeer.bio || '点击查看个人主页'}
                       </p>
                     </div>
@@ -375,9 +375,9 @@ export function MessagesView({
                 </div>
               )}
 
-              <div className="flex-1 space-y-3 overflow-y-auto bg-zinc-50/50 p-5 max-h-[400px]">
+              <div className="flex-1 space-y-3 overflow-y-auto bg-zinc-50/50 p-5 max-h-[400px] dark:bg-slate-950/60">
                 {messages.length === 0 ? (
-                  <p className="py-12 text-center text-xs text-zinc-400">
+                  <p className="py-12 text-center text-xs text-zinc-400 dark:text-slate-500">
                     还没有消息记录，发送第一句问候吧 👋
                   </p>
                 ) : (
@@ -393,12 +393,12 @@ export function MessagesView({
                             'max-w-[78%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap shadow-sm',
                             isMine
                               ? 'bg-blue-600 text-white'
-                              : 'bg-white text-slate-800 border border-slate-200/70'
+                              : 'bg-white text-slate-800 border border-slate-200/70 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'
                           )}
                         >
                           {msg.content}
                         </div>
-                        <span className="mt-1 px-1 text-[10px] text-zinc-400">
+                        <span className="mt-1 px-1 text-[10px] text-zinc-400 dark:text-slate-500">
                           {formatRelativeTime(msg.createdAt)}
                         </span>
                       </div>
@@ -409,14 +409,14 @@ export function MessagesView({
               </div>
 
               {threadError && (
-                <div className="border-t border-red-100 bg-red-50 px-4 py-2 text-xs text-red-600">
+                <div className="border-t border-red-100 bg-red-50 px-4 py-2 text-xs text-red-600 dark:border-red-900/60 dark:bg-red-950/60 dark:text-red-400">
                   {threadError}
                 </div>
               )}
 
               <form
                 onSubmit={handleSend}
-                className="flex items-center gap-2 border-t border-zinc-100 bg-white p-3.5"
+                className="flex items-center gap-2 border-t border-zinc-100 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900"
               >
                 <Input
                   value={draft}
