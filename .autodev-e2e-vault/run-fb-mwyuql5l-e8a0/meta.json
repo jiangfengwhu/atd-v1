@@ -1,0 +1,8 @@
+{
+  "branchName": "autodev/feat-20261127-104205",
+  "prNumber": 17,
+  "e2eTestPath": "tests/e2e/run-fb-mwyuql5l-e8a0.spec.ts",
+  "e2eVaultPath": ".autodev-e2e-vault/run-fb-mwyuql5l-e8a0/e2e.spec.ts",
+  "prTitle": "[AutoDev 用户反馈直派] 发帖支持@用户提及与官方反馈账号MVP",
+  "createdAt": "2026-11-27T10:42:09.767Z"
+}
