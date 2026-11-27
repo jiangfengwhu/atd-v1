@@ -1884,7 +1884,36 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45540172631",
       "branch": "main",
       "occurredAt": "2026-11-25T03:28:33Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "ci_workflow",
+        "rootCauseSummary": "Cloudflare D1 数据库迁移失败，初步判断是由于 CI 环境中 D1 数据库配置缺失或环境变量鉴权失败导致部署脚本无法连接到远程环境执行迁移。",
+        "shouldCodifyAsRule": true,
+        "decisionRationale": "Decision 门控判定与现有规则语义重叠（重复度 99%），执行合并强化而非新增条目。 该问题属于典型的 CI/CD 流水线部署环节配置失效，通过复用已有的 D1 迁移规范规则，可以强化部署前的环境健康检查机制，避免类似配置缺失引发的部署中断。",
+        "confidence": 0.98,
+        "suggestedRule": {
+          "title": "Cloudflare D1 迁移规范",
+          "targetStage": "qa_critic",
+          "severity": "critical",
+          "promptDirective": "在执行 Cloudflare Workers D1 迁移前，必须先验证：1. wrangler.toml 中 database_id 已正确配置；2. 迁移脚本应保持原子性且具备幂等性；3. CI 环境环境变量已包含有效的 CLOUDFLARE_API_TOKEN 及对应的账户…",
+          "dedupeKey": "cloudflare-d1-idempotent-migrations"
+        },
+        "decisionGate": {
+          "model": "gemini-decision-1",
+          "generalizableProb": 0.9626,
+          "duplicateProb": 0.99,
+          "generalityScore": 2.328,
+          "chosenAction": "merge_existing",
+          "actionConfidence": 0.9811,
+          "matchedRuleId": "rsi-619c6524",
+          "matchedRuleConfidence": 0.9982,
+          "evaluatedAt": "2026-11-27T10:52:55.339Z"
+        },
+        "appliedOutcome": "merged",
+        "mergedIntoRuleId": "rsi-619c6524",
+        "analyzedAt": "2026-11-27T10:52:55.339Z",
+        "model": "gemini-3.1-flash-lite + gemini-decision-1"
+      }
     },
     {
       "id": "inc-c3696f97",
@@ -2442,14 +2471,15 @@
         "inc-66a7a222",
         "inc-2dcaf204",
         "inc-1903069d",
-        "inc-c3696f97"
+        "inc-c3696f97",
+        "inc-c738d14f"
       ],
-      "hitCount": 4,
+      "hitCount": 5,
       "appliedCount": 5,
       "createdAt": "2026-11-22T09:38:01.968Z",
-      "updatedAt": "2026-11-27T10:52:47.140Z",
+      "updatedAt": "2026-11-27T10:52:55.339Z",
       "lastAppliedAt": "2026-11-24T02:07:27.471Z"
     }
   ],
-  "lastSyncedAt": "2026-11-24T02:33:11.586Z"
+  "lastSyncedAt": "2026-11-27T10:52:55.344Z"
 }
