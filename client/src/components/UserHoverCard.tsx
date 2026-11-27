@@ -155,7 +155,7 @@ export function UserHoverCard({
         onMouseLeave={scheduleClose}
         onFocus={handleOpen}
         onBlur={scheduleClose}
-        className={cn('inline-flex items-baseline', className)}
+        className={cn('inline-flex items-center align-middle', className)}
       >
         {children}
       </span>
@@ -176,7 +176,7 @@ export function UserHoverCard({
               left: `${coords.left}px`,
               zIndex: 80,
             }}
-            className="w-72 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xl ring-1 ring-slate-900/5 animate-in fade-in-0 zoom-in-95 duration-150"
+            className="w-72 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xl ring-1 ring-slate-900/5 animate-in fade-in-0 zoom-in-95 duration-150 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2.5">
@@ -188,12 +188,12 @@ export function UserHoverCard({
                 />
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="truncate text-sm font-bold text-slate-900">
+                    <span className="truncate text-sm font-bold text-slate-900 dark:text-slate-100">
                       {displayNickname}
                     </span>
                     {displayIsOfficial && <OfficialBadge label={displayBadge} />}
                   </div>
-                  <p className="truncate text-[11px] text-slate-400">
+                  <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">
                     @{displayHandle || displayNickname}
                   </p>
                 </div>
@@ -207,7 +207,7 @@ export function UserHoverCard({
                     setOpen(false);
                     onOpenProfile(userId);
                   }}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-blue-700 dark:hover:bg-blue-950/60 dark:hover:text-blue-300"
                 >
                   <span>主页</span>
                   <ExternalLink className="h-2.5 w-2.5" />
@@ -215,11 +215,11 @@ export function UserHoverCard({
               )}
             </div>
 
-            <p className="mt-2.5 line-clamp-2 text-xs leading-relaxed text-slate-600">
+            <p className="mt-2.5 line-clamp-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
               {displayBio || '这个人很低调，还没有填写个人简介 ✨'}
             </p>
 
-            <div className="mt-3 flex items-center gap-4 border-t border-slate-100 pt-2.5 text-xs">
+            <div className="mt-3 flex items-center gap-4 border-t border-slate-100 pt-2.5 text-xs dark:border-slate-800">
               {loading && !profile ? (
                 <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
                   <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
@@ -230,19 +230,19 @@ export function UserHoverCard({
               ) : profile ? (
                 <>
                   <div className="flex items-baseline gap-1">
-                    <span className="font-bold text-slate-900 tabular-nums">
+                    <span className="font-bold text-slate-900 tabular-nums dark:text-slate-100">
                       {profile.postsCount}
                     </span>
                     <span className="text-[11px] text-slate-400">发帖</span>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="font-bold text-slate-900 tabular-nums">
+                    <span className="font-bold text-slate-900 tabular-nums dark:text-slate-100">
                       {profile.followingCount}
                     </span>
                     <span className="text-[11px] text-slate-400">关注</span>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="font-bold text-slate-900 tabular-nums">
+                    <span className="font-bold text-slate-900 tabular-nums dark:text-slate-100">
                       {profile.followersCount}
                     </span>
                     <span className="text-[11px] text-slate-400">粉丝</span>

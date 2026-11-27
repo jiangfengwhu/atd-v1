@@ -21,11 +21,13 @@ import {
   type UserProfile,
 } from '@/lib/api';
 import { extractHashtagsFromContent } from '@/lib/hashtags';
+import { getPrimaryPreviewUrl } from '@/lib/urlParser';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { HashtagText } from '@/components/HashtagText';
+import { LinkPreview } from '@/components/LinkPreview';
 import { OfficialBadge } from '@/components/OfficialBadge';
 import { TICKET_STATUS_META, TicketStatusBadge } from '@/components/TicketStatusBadge';
 import { cn, formatRelativeTime } from '@/lib/utils';
@@ -135,6 +137,11 @@ export function PostDetailDialog({
     if (!post || !post.tags || post.tags.length === 0) return [];
     const inlineSet = new Set(extractHashtagsFromContent(post.content));
     return post.tags.filter((t) => !inlineSet.has(t));
+  }, [post]);
+
+  const primaryPreviewUrl = React.useMemo(() => {
+    if (!post || post.imageUrl) return null;
+    return getPrimaryPreviewUrl(post.content);
   }, [post]);
 
   const handleTagClick = (tag: string) => {
@@ -335,12 +342,12 @@ export function PostDetailDialog({
                   />
                 </div>
               ) : (
-                <div className="flex min-h-[200px] md:h-full w-full flex-col justify-between bg-slate-50 p-6 sm:p-10 border-b md:border-b-0 md:border-r border-slate-200/80">
-                  <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600">
+                <div className="flex min-h-[200px] md:h-full w-full flex-col justify-between overflow-y-auto bg-slate-50 p-6 sm:p-10 border-b md:border-b-0 md:border-r border-slate-200/80 dark:bg-slate-950/80 dark:border-slate-800">
+                  <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                     dev社区 · 动态详情
                   </div>
-                  <div className="my-6">
-                    <p className="whitespace-pre-wrap text-base sm:text-lg leading-relaxed text-slate-800">
+                  <div className="my-6 space-y-4">
+                    <p className="whitespace-pre-wrap text-base sm:text-lg leading-relaxed text-slate-800 dark:text-slate-100">
                       <HashtagText
                         content={post.content}
                         mentions={post.mentions}
@@ -348,6 +355,7 @@ export function PostDetailDialog({
                         onSelectMention={(mention) => navigateToUser(mention.userId)}
                       />
                     </p>
+                    {primaryPreviewUrl && <LinkPreview url={primaryPreviewUrl} />}
                   </div>
                   {post.tags.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5">
@@ -356,7 +364,7 @@ export function PostDetailDialog({
                           key={tag}
                           type="button"
                           onClick={() => handleTagClick(tag)}
-                          className="inline-flex items-center gap-0.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                          className="inline-flex items-center gap-0.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:text-blue-400 dark:hover:bg-slate-800"
                         >
                           <Hash className="h-3 w-3" />
                           {tag}
@@ -364,7 +372,7 @@ export function PostDetailDialog({
                       ))}
                     </div>
                   ) : (
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-slate-400 dark:text-slate-500">
                       {post.author.nickname} · {formatRelativeTime(post.createdAt)}
                     </div>
                   )}
@@ -373,9 +381,9 @@ export function PostDetailDialog({
             </div>
 
             {/* Right 3-Part Interaction Column */}
-            <div className="flex flex-col bg-white min-w-0 md:w-[42%] md:h-full">
+            <div className="flex flex-col bg-white min-w-0 md:w-[42%] md:h-full dark:bg-slate-900">
               {/* Fixed Top Author Header */}
-              <div className="shrink-0 flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-3.5 pr-12">
+              <div className="shrink-0 flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-3.5 pr-12 dark:border-slate-800">
                 <DialogHeader className="sr-only">
                   <DialogTitle>{post.author.nickname} 的动态</DialogTitle>
                 </DialogHeader>
@@ -392,14 +400,14 @@ export function PostDetailDialog({
                   />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <p className="truncate text-sm font-semibold text-slate-900">
+                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                         {post.author.nickname}
                       </p>
                       {post.author.isOfficial && (
                         <OfficialBadge label={post.author.officialBadge} />
                       )}
                     </div>
-                    <p className="text-xs text-slate-400">{formatRelativeTime(post.createdAt)}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{formatRelativeTime(post.createdAt)}</p>
                   </div>
                 </button>
 
@@ -410,7 +418,7 @@ export function PostDetailDialog({
                     variant="ghost"
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="shrink-0 text-red-500 hover:bg-red-50 hover:text-red-600"
+                    className="shrink-0 text-red-500 hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-950/60"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     删除
@@ -421,15 +429,15 @@ export function PostDetailDialog({
               {/* Independently Scrollable Body & Comments */}
               <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
                 {post.feedbackTicket && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50/90 px-3 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 dark:border-slate-700/80 dark:bg-slate-800/70">
                     <TicketStatusBadge status={post.feedbackTicket.status} />
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
                       工单编号 {post.feedbackTicket.id.slice(0, 12)}
                     </span>
                   </div>
                 )}
 
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800 dark:text-slate-200">
                   <HashtagText
                     content={post.content}
                     mentions={post.mentions}
@@ -445,7 +453,7 @@ export function PostDetailDialog({
                         key={tag}
                         type="button"
                         onClick={() => handleTagClick(tag)}
-                        className="inline-flex items-center gap-0.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                        className="inline-flex items-center gap-0.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700"
                       >
                         <Hash className="h-3 w-3" />
                         {tag}
@@ -455,17 +463,17 @@ export function PostDetailDialog({
                 )}
 
                 {error && (
-                  <div className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600">{error}</div>
+                  <div className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600 dark:bg-red-950/60 dark:text-red-400">{error}</div>
                 )}
 
-                <div className="border-t border-slate-100 pt-4 space-y-3.5">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                    <MessageCircle className="h-3.5 w-3.5 text-slate-500" />
+                <div className="border-t border-slate-100 pt-4 space-y-3.5 dark:border-slate-800">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    <MessageCircle className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
                     <span>评论 ({post.commentsCount})</span>
                   </div>
 
                   {comments.length === 0 ? (
-                    <p className="py-6 text-center text-xs text-slate-400">
+                    <p className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
                       还没有评论，来做第一个留言的人吧
                     </p>
                   ) : (
@@ -476,7 +484,7 @@ export function PostDetailDialog({
                         return (
                           <li
                             key={cm.id}
-                            className="rounded-2xl bg-slate-50/90 p-3 text-sm space-y-2"
+                            className="rounded-2xl bg-slate-50/90 p-3 text-sm space-y-2 dark:bg-slate-800/60"
                           >
                             <div className="flex gap-2.5">
                               <button
@@ -497,7 +505,7 @@ export function PostDetailDialog({
                                     <button
                                       type="button"
                                       onClick={() => navigateToUser(cm.author.id)}
-                                      className="truncate font-semibold text-slate-800 hover:text-blue-600 transition-colors"
+                                      className="truncate font-semibold text-slate-800 hover:text-blue-600 transition-colors dark:text-slate-100 dark:hover:text-blue-400"
                                     >
                                       {cm.author.nickname}
                                     </button>
@@ -506,7 +514,7 @@ export function PostDetailDialog({
                                     )}
                                   </div>
                                   <div className="flex items-center gap-2 shrink-0">
-                                    <span className="text-[11px] text-slate-400">
+                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
                                       {formatRelativeTime(cm.createdAt)}
                                     </span>
                                     <button
@@ -514,7 +522,7 @@ export function PostDetailDialog({
                                       onClick={() =>
                                         handleOpenReply(cm.id, cm.author.nickname, cm.author.id)
                                       }
-                                      className="text-xs font-medium text-slate-500 hover:text-blue-600 transition-colors"
+                                      className="text-xs font-medium text-slate-500 hover:text-blue-600 transition-colors dark:text-slate-400 dark:hover:text-blue-400"
                                     >
                                       回复
                                     </button>
@@ -527,18 +535,18 @@ export function PostDetailDialog({
                                       prefix="工单状态："
                                       testId="comment-ticket-status"
                                     />
-                                    <span className="text-[11px] text-slate-400">
+                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
                                       ({cm.ticketEvent.fromStatusLabel} →{' '}
                                       {cm.ticketEvent.toStatusLabel})
                                     </span>
                                   </div>
                                 )}
-                                <p className="mt-1 whitespace-pre-wrap text-slate-600">{cm.content}</p>
+                                <p className="mt-1 whitespace-pre-wrap text-slate-600 dark:text-slate-300">{cm.content}</p>
                               </div>
                             </div>
 
                             {replies.length > 0 && (
-                              <ul className="ml-8 space-y-2 border-l-2 border-slate-200/80 pl-3">
+                              <ul className="ml-8 space-y-2 border-l-2 border-slate-200/80 pl-3 dark:border-slate-700">
                                 {replies.map((rp) => (
                                   <li key={rp.id} className="flex gap-2 text-xs">
                                     <button
@@ -559,18 +567,18 @@ export function PostDetailDialog({
                                           <button
                                             type="button"
                                             onClick={() => navigateToUser(rp.author.id)}
-                                            className="font-semibold text-slate-800 hover:text-blue-600"
+                                            className="font-semibold text-slate-800 hover:text-blue-600 dark:text-slate-100 dark:hover:text-blue-400"
                                           >
                                             {rp.author.nickname}
                                           </button>
                                           {rp.replyToUser && (
-                                            <span className="text-slate-400">
+                                            <span className="text-slate-400 dark:text-slate-500">
                                               回复 @{rp.replyToUser.nickname}
                                             </span>
                                           )}
                                         </div>
                                         <div className="flex items-center gap-2">
-                                          <span className="text-[11px] text-slate-400">
+                                          <span className="text-[11px] text-slate-400 dark:text-slate-500">
                                             {formatRelativeTime(rp.createdAt)}
                                           </span>
                                           <button
@@ -582,13 +590,13 @@ export function PostDetailDialog({
                                                 rp.author.id
                                               )
                                             }
-                                            className="text-[11px] font-medium text-slate-500 hover:text-blue-600"
+                                            className="text-[11px] font-medium text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
                                           >
                                             回复
                                           </button>
                                         </div>
                                       </div>
-                                      <p className="mt-0.5 whitespace-pre-wrap text-slate-600">
+                                      <p className="mt-0.5 whitespace-pre-wrap text-slate-600 dark:text-slate-300">
                                         {rp.content}
                                       </p>
                                     </div>
@@ -643,7 +651,7 @@ export function PostDetailDialog({
               </div>
 
               {/* Fixed Bottom Like + Bookmark + Share + Comment Input Bar */}
-              <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-3.5 space-y-2.5">
+              <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-3.5 space-y-2.5 dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Button
@@ -654,7 +662,7 @@ export function PostDetailDialog({
                       aria-label="点赞"
                       className={cn(
                         'h-8 rounded-full gap-1 px-2.5 text-xs',
-                        post.likedByMe && 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
+                        post.likedByMe && 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-400 dark:hover:bg-rose-950'
                       )}
                     >
                       <Heart className={cn('h-3.5 w-3.5', post.likedByMe && 'fill-current')} />
@@ -668,7 +676,7 @@ export function PostDetailDialog({
                       aria-label={post.bookmarkedByMe ? '取消收藏' : '收藏'}
                       className={cn(
                         'h-8 rounded-full gap-1 px-2.5 text-xs',
-                        post.bookmarkedByMe && 'bg-amber-500 text-white hover:bg-amber-600'
+                        post.bookmarkedByMe && 'bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-600 dark:text-white dark:hover:bg-amber-500'
                       )}
                     >
                       <Bookmark
@@ -684,7 +692,7 @@ export function PostDetailDialog({
                       aria-label="分享"
                       className={cn(
                         'h-8 rounded-full gap-1 px-2.5 text-xs',
-                        copiedShare && 'border-emerald-200 bg-emerald-50 text-emerald-600'
+                        copiedShare && 'border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400'
                       )}
                     >
                       {copiedShare ? (
@@ -695,15 +703,15 @@ export function PostDetailDialog({
                       <span>{copiedShare ? '已复制' : post.sharesCount ?? 0}</span>
                     </Button>
                   </div>
-                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
                     <Eye className="h-3.5 w-3.5" />
                     <span className="tabular-nums">{post.viewsCount ?? 0}</span>
                   </span>
                 </div>
 
                 {isAdmin && post.feedbackTicket && (
-                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-blue-200/80 bg-blue-50/50 px-2.5 py-1.5">
-                    <span className="text-[11px] font-semibold text-blue-700">
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-blue-200/80 bg-blue-50/50 px-2.5 py-1.5 dark:border-blue-800/70 dark:bg-blue-950/40">
+                    <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">
                       管理员工单联动：
                     </span>
                     <select
@@ -713,7 +721,7 @@ export function PostDetailDialog({
                       onChange={(e) =>
                         setSelectedTicketStatus(e.target.value as '' | FeedbackTicketStatus)
                       }
-                      className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
+                      className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                     >
                       <option value="">仅回复（不变更状态）</option>
                       {(['confirmed', 'in_progress', 'launched', 'closed'] as const).map((st) => (
@@ -758,7 +766,7 @@ export function PostDetailDialog({
             <DialogHeader className="sr-only">
               <DialogTitle>加载失败</DialogTitle>
             </DialogHeader>
-            <p className="text-sm font-medium text-slate-600">
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
               {error || '该动态不存在或已被删除'}
             </p>
             <Button type="button" variant="outline" size="sm" onClick={onClose}>

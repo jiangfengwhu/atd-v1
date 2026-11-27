@@ -3,6 +3,7 @@ import type { PostMentionItem } from '@/lib/api';
 import { splitContentByHashtags } from '@/lib/hashtags';
 import { splitContentByMentions } from '@/lib/mentions';
 import { splitTextByUrls } from '@/lib/urlParser';
+import { OfficialBadge } from '@/components/OfficialBadge';
 import { UserHoverCard } from '@/components/UserHoverCard';
 
 interface HashtagTextProps {
@@ -31,7 +32,7 @@ export function HashtagText({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="inline break-all font-medium text-blue-600 underline decoration-blue-300 underline-offset-2 hover:text-blue-700 hover:decoration-blue-500"
+              className="inline break-all font-medium text-blue-600 underline decoration-blue-300 underline-offset-2 hover:text-blue-700 hover:decoration-blue-500 dark:text-blue-400 dark:decoration-blue-500/50 dark:hover:text-blue-300 dark:hover:decoration-blue-400"
             >
               {part.value}
             </a>
@@ -51,7 +52,7 @@ export function HashtagText({
                       e.stopPropagation();
                       onSelectTag?.(seg.value, e);
                     }}
-                    className="inline font-medium text-blue-600 hover:text-blue-700 hover:underline focus:outline-none"
+                    className="inline font-medium text-blue-600 hover:text-blue-700 hover:underline focus:outline-none dark:text-blue-400 dark:hover:text-blue-300"
                   >
                     {seg.raw}
                   </button>
@@ -93,15 +94,16 @@ export function HashtagText({
                           }}
                           className={
                             mSeg.mention.isOfficial
-                              ? 'inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-300 transition hover:bg-indigo-100 focus:outline-none align-baseline'
-                              : 'inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 font-semibold text-sky-700 ring-1 ring-inset ring-sky-200 transition hover:bg-sky-100 hover:text-sky-800 focus:outline-none align-baseline'
+                              ? 'inline-flex items-center justify-center gap-1 align-middle font-semibold text-indigo-600 transition-colors hover:text-indigo-700 hover:underline focus:outline-none dark:text-indigo-400 dark:hover:text-indigo-300'
+                              : 'inline-flex items-center justify-center align-middle font-semibold text-blue-600 transition-colors hover:text-blue-700 hover:underline focus:outline-none dark:text-sky-400 dark:hover:text-sky-300'
                           }
                         >
                           <span>{mSeg.raw}</span>
                           {mSeg.mention.isOfficial && (
-                            <span className="rounded-full bg-indigo-600 px-1.5 py-px text-[10px] font-bold leading-none text-white">
-                              {mSeg.mention.officialBadge || '官方'}
-                            </span>
+                            <OfficialBadge
+                              label={mSeg.mention.officialBadge || '官方'}
+                              size="sm"
+                            />
                           )}
                         </button>
                       </UserHoverCard>

@@ -10,8 +10,10 @@ import {
 } from 'lucide-react';
 import type { PostItem } from '@/lib/api';
 import { extractHashtagsFromContent } from '@/lib/hashtags';
+import { getPrimaryPreviewUrl } from '@/lib/urlParser';
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { HashtagText } from '@/components/HashtagText';
+import { LinkPreview } from '@/components/LinkPreview';
 import { OfficialBadge } from '@/components/OfficialBadge';
 import { TicketStatusBadge } from '@/components/TicketStatusBadge';
 import { cn, formatRelativeTime } from '@/lib/utils';
@@ -44,6 +46,11 @@ export function PostCard({
     return post.tags.filter((t) => !inlineSet.has(t));
   }, [post.content, post.tags]);
 
+  const primaryPreviewUrl = React.useMemo(() => {
+    if (post.imageUrl && !imgError) return null;
+    return getPrimaryPreviewUrl(post.content);
+  }, [post.content, post.imageUrl, imgError]);
+
   const handleShareClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!onShare) return;
@@ -55,7 +62,7 @@ export function PostCard({
   return (
     <article
       onClick={() => onOpen(post.id)}
-      className="group cursor-pointer rounded-2xl border border-slate-200/80 bg-white px-4 py-3.5 shadow-card transition-all duration-150 hover:border-slate-300/90 hover:shadow-soft"
+      className="group cursor-pointer rounded-2xl border border-slate-200/80 bg-white px-4 py-3.5 shadow-card transition-all duration-150 hover:border-slate-300/90 hover:shadow-soft dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700"
     >
       <div className="flex gap-3">
         {/* Left Avatar Gutter (X.com timeline style) */}
@@ -90,15 +97,15 @@ export function PostCard({
                   onOpenAuthor(post.author.id);
                 }
               }}
-              className="flex min-w-0 items-center gap-2 text-left transition-opacity hover:opacity-80"
+              className="flex min-w-0 items-center gap-1.5 text-left transition-opacity hover:opacity-80"
             >
-              <span className="truncate text-sm font-bold text-slate-900">
+              <span className="truncate text-sm font-bold text-slate-900 dark:text-slate-100">
                 {post.author.nickname}
               </span>
               {post.author.isOfficial && (
                 <OfficialBadge label={post.author.officialBadge} />
               )}
-              <span className="shrink-0 text-xs text-slate-400">
+              <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">
                 · {formatRelativeTime(post.createdAt)}
               </span>
             </button>
@@ -108,7 +115,7 @@ export function PostCard({
           </div>
 
           {/* Post Body with inline clickable #hashtags and @mentions */}
-          <p className="line-clamp-5 whitespace-pre-wrap text-[14px] leading-relaxed text-slate-800">
+          <p className="line-clamp-5 whitespace-pre-wrap text-[14px] leading-relaxed text-slate-800 dark:text-slate-200">
             <HashtagText
               content={post.content}
               mentions={post.mentions}
@@ -130,7 +137,7 @@ export function PostCard({
                       onSelectTag(tag, e);
                     }
                   }}
-                  className="inline-flex items-center gap-0.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-blue-600 transition hover:bg-blue-50"
+                  className="inline-flex items-center gap-0.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-blue-600 transition hover:bg-blue-50 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700"
                 >
                   <Hash className="h-2.5 w-2.5" />
                   {tag}
@@ -140,8 +147,8 @@ export function PostCard({
           )}
 
           {/* Media Image */}
-          {post.imageUrl && !imgError && (
-            <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-100">
+          {post.imageUrl && !imgError ? (
+            <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-800 dark:bg-slate-800">
               <img
                 src={post.imageUrl}
                 alt={post.content.slice(0, 40) || '动态配图'}
@@ -150,10 +157,12 @@ export function PostCard({
                 className="w-full max-h-[400px] object-cover transition-transform duration-300 group-hover:scale-[1.01]"
               />
             </div>
-          )}
+          ) : primaryPreviewUrl ? (
+            <LinkPreview url={primaryPreviewUrl} compact />
+          ) : null}
 
           {/* X.com Style Bottom Action Bar */}
-          <div className="flex items-center justify-between pt-0.5 text-xs text-slate-400">
+          <div className="flex items-center justify-between pt-0.5 text-xs text-slate-400 dark:text-slate-500">
             <button
               type="button"
               onClick={(e) => {
@@ -161,7 +170,7 @@ export function PostCard({
                 onOpen(post.id);
               }}
               aria-label="评论"
-              className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors hover:bg-blue-50 hover:text-blue-600"
+              className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/60 dark:hover:text-blue-400"
             >
               <MessageCircle className="h-4 w-4" />
               <span className="tabular-nums">{post.commentsCount}</span>
@@ -174,8 +183,8 @@ export function PostCard({
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors',
                 post.likedByMe
-                  ? 'bg-rose-50 text-rose-500 font-semibold'
-                  : 'hover:bg-rose-50 hover:text-rose-500'
+                  ? 'bg-rose-50 text-rose-500 font-semibold dark:bg-rose-950/60 dark:text-rose-400'
+                  : 'hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/60 dark:hover:text-rose-400'
               )}
             >
               <Heart className={cn('h-4 w-4', post.likedByMe && 'fill-current')} />
@@ -193,8 +202,8 @@ export function PostCard({
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors',
                 post.bookmarkedByMe
-                  ? 'bg-amber-50 text-amber-600 font-semibold'
-                  : 'hover:bg-amber-50 hover:text-amber-600'
+                  ? 'bg-amber-50 text-amber-600 font-semibold dark:bg-amber-950/60 dark:text-amber-400'
+                  : 'hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950/60 dark:hover:text-amber-400'
               )}
             >
               <Bookmark className={cn('h-4 w-4', post.bookmarkedByMe && 'fill-current')} />
@@ -204,7 +213,7 @@ export function PostCard({
             <span
               title="浏览数"
               aria-label={`浏览 ${post.viewsCount ?? 0}`}
-              className="inline-flex items-center gap-1.5 px-2 py-1 text-slate-400"
+              className="inline-flex items-center gap-1.5 px-2 py-1 text-slate-400 dark:text-slate-500"
             >
               <Eye className="h-4 w-4" />
               <span className="tabular-nums">{post.viewsCount ?? 0}</span>
@@ -217,8 +226,8 @@ export function PostCard({
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors',
                 copied
-                  ? 'bg-emerald-50 text-emerald-600 font-semibold'
-                  : 'hover:bg-blue-50 hover:text-blue-600'
+                  ? 'bg-emerald-50 text-emerald-600 font-semibold dark:bg-emerald-950/60 dark:text-emerald-400'
+                  : 'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/60 dark:hover:text-blue-400'
               )}
             >
               {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}

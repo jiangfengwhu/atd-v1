@@ -89,16 +89,16 @@ export function BookmarksView({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white px-4 py-3.5 shadow-card">
+      <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white px-4 py-3.5 shadow-card dark:border-slate-800 dark:bg-slate-900/90">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
             <Bookmark className="h-4 w-4" />
           </span>
           <div>
-            <h1 className="text-base font-extrabold tracking-tight text-slate-900 sm:text-lg">
+            <h1 className="text-base font-extrabold tracking-tight text-slate-900 sm:text-lg dark:text-slate-100">
               我的收藏
             </h1>
-            <p className="text-xs text-slate-500">共 {total} 条已收藏的社区动态</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">共 {total} 条已收藏的社区动态</p>
           </div>
         </div>
         <Button
@@ -114,24 +114,24 @@ export function BookmarksView({
       </div>
 
       {loading ? (
-        <div className="flex h-56 items-center justify-center rounded-2xl border border-slate-200/80 bg-white shadow-card">
+        <div className="flex h-56 items-center justify-center rounded-2xl border border-slate-200/80 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900/90">
           <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-red-100 bg-white py-14 px-6 text-center shadow-card">
-          <p className="text-sm font-medium text-red-600">{error}</p>
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-red-100 bg-white py-14 px-6 text-center shadow-card dark:border-red-900/60 dark:bg-slate-900">
+          <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
           <Button variant="outline" size="sm" onClick={loadBookmarks} className="mt-4">
             <RefreshCw className="h-3.5 w-3.5" />
             重新加载
           </Button>
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300/80 bg-white/80 py-20 px-6 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300/80 bg-white/80 py-20 px-6 text-center dark:border-slate-700 dark:bg-slate-900/70">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
             <Bookmark className="h-6 w-6" />
           </div>
-          <h2 className="mt-4 text-base font-bold text-slate-900">还没有收藏任何动态</h2>
-          <p className="mt-1 text-xs text-slate-500">
+          <h2 className="mt-4 text-base font-bold text-slate-900 dark:text-slate-100">还没有收藏任何动态</h2>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             在社区浏览到优质内容时点击收藏按钮，方便随时回看
           </p>
           <Button type="button" variant="outline" size="sm" onClick={onGoFeed} className="mt-4">

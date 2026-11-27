@@ -102,7 +102,7 @@ export function ProfileDialog({ open, user, onOpenChange, onUpdated }: ProfileDi
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <div className="mb-1 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-900 text-white">
+            <div className="mb-1 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-900 text-white dark:bg-blue-600">
               <UserCheck className="h-5 w-5" />
             </div>
             <DialogTitle>个人资料设置</DialogTitle>
@@ -118,7 +118,7 @@ export function ProfileDialog({ open, user, onOpenChange, onUpdated }: ProfileDi
                 size="xl"
               />
               <div className="space-y-1.5">
-                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50">
+                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
                   {uploadingAvatar ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
@@ -133,12 +133,12 @@ export function ProfileDialog({ open, user, onOpenChange, onUpdated }: ProfileDi
                     className="sr-only"
                   />
                 </label>
-                <p className="text-[11px] text-zinc-400">支持裁剪为圆形头像，大小不超过 2MB</p>
+                <p className="text-[11px] text-zinc-400 dark:text-slate-500">支持裁剪为圆形头像，大小不超过 2MB</p>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="profile-nickname" className="text-xs font-semibold text-zinc-700">
+              <label htmlFor="profile-nickname" className="text-xs font-semibold text-zinc-700 dark:text-slate-300">
                 展示昵称
               </label>
               <Input
@@ -151,7 +151,7 @@ export function ProfileDialog({ open, user, onOpenChange, onUpdated }: ProfileDi
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="profile-bio" className="text-xs font-semibold text-zinc-700">
+              <label htmlFor="profile-bio" className="text-xs font-semibold text-zinc-700 dark:text-slate-300">
                 个人简介
               </label>
               <Textarea
@@ -163,10 +163,10 @@ export function ProfileDialog({ open, user, onOpenChange, onUpdated }: ProfileDi
                 placeholder="写一句自我介绍、兴趣爱好或生活签名..."
                 className="min-h-[84px]"
               />
-              <p className="text-right text-[11px] text-zinc-400">{bio.trim().length}/200</p>
+              <p className="text-right text-[11px] text-zinc-400 dark:text-slate-500">{bio.trim().length}/200</p>
             </div>
 
-            {error && <p className="text-xs text-red-600">{error}</p>}
+            {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>

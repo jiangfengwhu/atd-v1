@@ -7,11 +7,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-slate-900 text-white hover:bg-slate-800 shadow-sm',
-        gradient: 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm',
+        default: 'bg-slate-900 text-white hover:bg-slate-800 shadow-sm dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white',
+        gradient: 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm dark:bg-blue-600 dark:hover:bg-blue-500',
         outline:
-          'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300',
-        ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+          'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:border-slate-600',
+        ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
         destructive: 'bg-red-500 text-white hover:bg-red-600 shadow-sm',
       },
       size: {

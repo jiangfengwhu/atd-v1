@@ -26,6 +26,12 @@ export interface ParsedUrlMeta {
   isImage: boolean;
 }
 
+export interface UrlPreviewSummary extends ParsedUrlMeta {
+  title: string;
+  subtitle: string;
+  siteName: string;
+}
+
 /**
  * Trim trailing punctuation from a raw URL match while keeping balanced
  * parentheses (e.g. Wikipedia URLs like https://en.wikipedia.org/wiki/Foo_(bar)).
@@ -199,6 +205,62 @@ export function parseUrlMeta(url: string): ParsedUrlMeta {
       isImage: false,
     };
   }
+}
+
+/**
+ * Derive a readable preview summary synchronously from a URL for instant card rendering.
+ */
+export function buildUrlPreviewSummary(url: string): UrlPreviewSummary {
+  const meta = parseUrlMeta(url);
+  try {
+    const parsed = new URL(url);
+    const pathSegments = parsed.pathname
+      .split('/')
+      .map((seg) => {
+        try {
+          return decodeURIComponent(seg).trim();
+        } catch {
+          return seg.trim();
+        }
+      })
+      .filter(Boolean);
+
+    const readableTail = pathSegments
+      .slice(-2)
+      .join(' / ')
+      .replace(/[-_]+/g, ' ')
+      .trim();
+
+    const title = readableTail
+      ? `${meta.host} · ${readableTail.length > 48 ? `${readableTail.slice(0, 48)}…` : readableTail}`
+      : meta.host;
+
+    const subtitle = meta.pathPreview
+      ? `${meta.host}${meta.pathPreview}`
+      : url;
+
+    return {
+      ...meta,
+      title,
+      subtitle,
+      siteName: meta.host,
+    };
+  } catch {
+    return {
+      ...meta,
+      title: meta.host,
+      subtitle: url,
+      siteName: meta.host,
+    };
+  }
+}
+
+/**
+ * Return the first valid external URL present in content for link-preview card rendering.
+ */
+export function getPrimaryPreviewUrl(content: string): string | null {
+  const urls = extractUrlsFromContent(content, 1);
+  return urls[0] ?? null;
 }
 
 export interface UrlTextPart {

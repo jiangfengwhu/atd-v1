@@ -111,7 +111,7 @@ export function AuthDialog({ open, mode = 'login', onOpenChange, onSuccess }: Au
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <div className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm">
+          <div className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm dark:bg-blue-600">
             <Sparkles className="h-5 w-5" />
           </div>
           <DialogTitle className="text-xl">
@@ -126,7 +126,7 @@ export function AuthDialog({ open, mode = 'login', onOpenChange, onSuccess }: Au
 
         <form onSubmit={handleVerify} className="mt-4 space-y-4">
           <div className="space-y-1.5">
-            <label htmlFor="auth-email" className="text-xs font-semibold text-zinc-700">
+            <label htmlFor="auth-email" className="text-xs font-semibold text-zinc-700 dark:text-slate-300">
               邮箱地址
             </label>
             <div className="flex gap-2">
@@ -161,17 +161,17 @@ export function AuthDialog({ open, mode = 'login', onOpenChange, onSuccess }: Au
           </div>
 
           {devCode && (
-            <div className="flex items-center justify-between rounded-2xl border border-dashed border-amber-300 bg-amber-50/80 px-3.5 py-2.5 text-xs text-amber-900">
+            <div className="flex items-center justify-between rounded-2xl border border-dashed border-amber-300 bg-amber-50/80 px-3.5 py-2.5 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200">
               <div>
                 <span className="font-semibold">本地调试验证码：</span>
-                <code className="rounded bg-white px-2 py-0.5 font-mono text-sm font-bold text-blue-600">
+                <code className="rounded bg-white px-2 py-0.5 font-mono text-sm font-bold text-blue-600 dark:bg-slate-900 dark:text-blue-400">
                   {devCode}
                 </code>
               </div>
               <button
                 type="button"
                 onClick={() => setCode(devCode)}
-                className="rounded-full bg-amber-900 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-amber-800"
+                className="rounded-full bg-amber-900 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-amber-800 dark:bg-amber-600 dark:hover:bg-amber-500"
               >
                 一键填入
               </button>
@@ -179,13 +179,13 @@ export function AuthDialog({ open, mode = 'login', onOpenChange, onSuccess }: Au
           )}
 
           {deliveryHint && !devCode && (
-            <p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+            <p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
               {deliveryHint}
             </p>
           )}
 
           <div className="space-y-1.5">
-            <label htmlFor="auth-code" className="text-xs font-semibold text-zinc-700">
+            <label htmlFor="auth-code" className="text-xs font-semibold text-zinc-700 dark:text-slate-300">
               6 位验证码
             </label>
             <div className="relative">
@@ -204,8 +204,8 @@ export function AuthDialog({ open, mode = 'login', onOpenChange, onSuccess }: Au
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="auth-nickname" className="text-xs font-semibold text-zinc-700">
-              社区昵称 <span className="font-normal text-zinc-400">（首次注册可选）</span>
+            <label htmlFor="auth-nickname" className="text-xs font-semibold text-zinc-700 dark:text-slate-300">
+              社区昵称 <span className="font-normal text-zinc-400 dark:text-slate-500">（首次注册可选）</span>
             </label>
             <Input
               id="auth-nickname"
@@ -218,7 +218,7 @@ export function AuthDialog({ open, mode = 'login', onOpenChange, onSuccess }: Au
           </div>
 
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
+            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-600 dark:border-red-900/60 dark:bg-red-950/60 dark:text-red-400">
               {error}
             </div>
           )}

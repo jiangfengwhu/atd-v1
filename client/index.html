@@ -4,6 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>dev社区</title>
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('dev-community-theme');
+          var prefersDark =
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var resolved =
+            saved === 'dark' || saved === 'light'
+              ? saved
+              : prefersDark
+                ? 'dark'
+                : 'light';
+          if (resolved === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+          document.documentElement.dataset.theme = resolved;
+          document.documentElement.style.colorScheme = resolved;
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -11,7 +34,7 @@
       rel="stylesheet"
     />
   </head>
-  <body class="bg-[#F8FAFC] text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900">
+  <body class="bg-[#F8FAFC] text-slate-900 dark:bg-[#0B1120] dark:text-slate-100 antialiased selection:bg-blue-100 selection:text-blue-900 dark:selection:bg-blue-900/60 dark:selection:text-blue-100">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

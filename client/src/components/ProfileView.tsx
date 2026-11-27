@@ -284,12 +284,12 @@ export function ProfileView({
   if (loadingProfile) {
     return (
       <div className="space-y-6">
-        <div className="rounded-3xl border border-zinc-200/75 bg-white p-6 shadow-card">
+        <div className="rounded-3xl border border-zinc-200/75 bg-white p-6 shadow-card dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center gap-5">
-            <div className="h-20 w-20 animate-pulse rounded-full bg-zinc-200" />
+            <div className="h-20 w-20 animate-pulse rounded-full bg-zinc-200 dark:bg-slate-800" />
             <div className="space-y-2.5 flex-1">
-              <div className="h-6 w-40 animate-pulse rounded bg-zinc-200" />
-              <div className="h-4 w-72 animate-pulse rounded bg-zinc-100" />
+              <div className="h-6 w-40 animate-pulse rounded bg-zinc-200 dark:bg-slate-800" />
+              <div className="h-4 w-72 animate-pulse rounded bg-zinc-100 dark:bg-slate-800/70" />
             </div>
           </div>
         </div>
@@ -299,8 +299,8 @@ export function ProfileView({
 
   if (profileError || !profile) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-3xl border border-red-100 bg-white py-16 px-6 text-center shadow-card">
-        <p className="text-sm font-medium text-red-600">{profileError || '用户不存在'}</p>
+      <div className="flex flex-col items-center justify-center rounded-3xl border border-red-100 bg-white py-16 px-6 text-center shadow-card dark:border-red-900/60 dark:bg-slate-900">
+        <p className="text-sm font-medium text-red-600 dark:text-red-400">{profileError || '用户不存在'}</p>
         <Button variant="outline" size="sm" onClick={loadProfile} className="mt-4">
           <RefreshCw className="h-3.5 w-3.5" />
           重新加载
@@ -312,8 +312,8 @@ export function ProfileView({
   return (
     <div className="space-y-6">
       {/* Profile Header Card */}
-      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card">
-        <div className="h-24 bg-gradient-to-r from-slate-100 via-blue-50 to-slate-100" />
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900/90">
+        <div className="h-24 bg-gradient-to-r from-slate-100 via-blue-50 to-slate-100 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800" />
         <div className="px-6 pb-6">
           <div className="-mt-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-end gap-4">
@@ -323,12 +323,12 @@ export function ProfileView({
                   seed={profile.avatarSeed}
                   avatarUrl={profile.avatarUrl}
                   size="xl"
-                  className="ring-4 ring-white"
+                  className="ring-4 ring-white dark:ring-slate-900"
                 />
                 {profile.isSelf && (
                   <label
                     title="更换头像"
-                    className="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-blue-50 hover:text-blue-600"
+                    className="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-blue-50 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   >
                     {uploadingAvatar ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -348,15 +348,15 @@ export function ProfileView({
 
               <div className="pt-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-xl font-extrabold tracking-tight text-zinc-900 sm:text-2xl">
+                  <h1 className="text-xl font-extrabold tracking-tight text-zinc-900 sm:text-2xl dark:text-slate-100">
                     {profile.nickname}
                   </h1>
                   {profile.isOfficial && (
-                    <OfficialBadge label={profile.officialBadge} className="px-2 py-0.5 text-xs" />
+                    <OfficialBadge label={profile.officialBadge} size="lg" />
                   )}
                 </div>
                 {profile.isSelf && profile.email && (
-                  <p className="text-xs text-zinc-400">{profile.email}</p>
+                  <p className="text-xs text-zinc-400 dark:text-slate-500">{profile.email}</p>
                 )}
               </div>
             </div>
@@ -416,34 +416,34 @@ export function ProfileView({
             </div>
           </div>
 
-          <p className="mt-4 text-sm leading-relaxed text-zinc-600">
+          <p className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-slate-300">
             {profile.bio || '这个人很低调，还没有填写个人简介 ✨'}
           </p>
 
-          <div className="mt-5 flex flex-wrap items-center gap-6 border-t border-zinc-100 pt-4 text-sm">
+          <div className="mt-5 flex flex-wrap items-center gap-6 border-t border-zinc-100 pt-4 text-sm dark:border-slate-800">
             <div className="flex items-baseline gap-1.5">
-              <span className="font-bold text-zinc-900 tabular-nums">{profile.postsCount}</span>
-              <span className="text-xs text-zinc-500">发帖</span>
+              <span className="font-bold text-zinc-900 tabular-nums dark:text-slate-100">{profile.postsCount}</span>
+              <span className="text-xs text-zinc-500 dark:text-slate-400">发帖</span>
             </div>
             <button
               type="button"
               onClick={() => handleOpenFollows('following')}
-              className="flex items-baseline gap-1.5 hover:text-blue-600 transition-colors"
+              className="flex items-baseline gap-1.5 hover:text-blue-600 transition-colors dark:hover:text-blue-400"
             >
-              <span className="font-bold text-slate-900 tabular-nums">
+              <span className="font-bold text-slate-900 tabular-nums dark:text-slate-100">
                 {profile.followingCount}
               </span>
-              <span className="text-xs text-slate-500">关注</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">关注</span>
             </button>
             <button
               type="button"
               onClick={() => handleOpenFollows('followers')}
-              className="flex items-baseline gap-1.5 hover:text-blue-600 transition-colors"
+              className="flex items-baseline gap-1.5 hover:text-blue-600 transition-colors dark:hover:text-blue-400"
             >
-              <span className="font-bold text-slate-900 tabular-nums">
+              <span className="font-bold text-slate-900 tabular-nums dark:text-slate-100">
                 {profile.followersCount}
               </span>
-              <span className="text-xs text-slate-500">粉丝</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">粉丝</span>
             </button>
           </div>
         </div>
@@ -455,7 +455,7 @@ export function ProfileView({
         onValueChange={(v) => setActiveTab(v as ActivityTab)}
         className="space-y-4"
       >
-        <Tabs.List className="inline-flex flex-wrap gap-1.5 rounded-2xl border border-zinc-200/80 bg-white p-1.5 shadow-sm">
+        <Tabs.List className="inline-flex flex-wrap gap-1.5 rounded-2xl border border-zinc-200/80 bg-white p-1.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           {[
             { value: 'posts' as const, label: '历史发帖', count: profile.postsCount, icon: FileText },
             { value: 'likes' as const, label: '点赞', count: profile.likesCount, icon: Heart },
@@ -489,8 +489,8 @@ export function ProfileView({
                 value={tab.value}
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition',
-                  'data-[state=active]:bg-zinc-900 data-[state=active]:text-white data-[state=active]:shadow-sm',
-                  'data-[state=inactive]:text-zinc-600 data-[state=inactive]:hover:bg-zinc-100'
+                  'data-[state=active]:bg-zinc-900 data-[state=active]:text-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-blue-600',
+                  'data-[state=inactive]:text-zinc-600 data-[state=inactive]:hover:bg-zinc-100 dark:data-[state=inactive]:text-slate-400 dark:data-[state=inactive]:hover:bg-slate-800'
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -502,12 +502,12 @@ export function ProfileView({
         </Tabs.List>
 
         {tabLoading ? (
-          <div className="flex h-48 items-center justify-center rounded-2xl border border-slate-200/70 bg-white">
+          <div className="flex h-48 items-center justify-center rounded-2xl border border-slate-200/70 bg-white dark:border-slate-800 dark:bg-slate-900">
             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
           </div>
         ) : tabError ? (
-          <div className="flex flex-col items-center justify-center rounded-3xl border border-red-100 bg-white py-12 text-center">
-            <p className="text-sm text-red-600">{tabError}</p>
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-red-100 bg-white py-12 text-center dark:border-red-900/60 dark:bg-slate-900">
+            <p className="text-sm text-red-600 dark:text-red-400">{tabError}</p>
             <Button
               variant="outline"
               size="sm"
@@ -521,7 +521,7 @@ export function ProfileView({
           <>
             <Tabs.Content value="posts">
               {postsItems.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-zinc-300/80 bg-white/70 py-14 text-center text-sm text-zinc-400">
+                <div className="rounded-3xl border border-dashed border-zinc-300/80 bg-white/70 py-14 text-center text-sm text-zinc-400 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500">
                   还没有发布过图文动态
                 </div>
               ) : (
@@ -543,7 +543,7 @@ export function ProfileView({
 
             <Tabs.Content value="likes">
               {likesItems.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-zinc-300/80 bg-white/70 py-14 text-center text-sm text-zinc-400">
+                <div className="rounded-3xl border border-dashed border-zinc-300/80 bg-white/70 py-14 text-center text-sm text-zinc-400 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500">
                   还没有点赞过图文
                 </div>
               ) : (
@@ -566,7 +566,7 @@ export function ProfileView({
             {profile.isSelf && (
               <Tabs.Content value="bookmarks">
                 {bookmarksItems.length === 0 ? (
-                  <div className="rounded-3xl border border-dashed border-zinc-300/80 bg-white/70 py-14 text-center text-sm text-zinc-400">
+                  <div className="rounded-3xl border border-dashed border-zinc-300/80 bg-white/70 py-14 text-center text-sm text-zinc-400 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500">
                     还没有收藏过动态，去动态列表点击收藏吧
                   </div>
                 ) : (
@@ -589,7 +589,7 @@ export function ProfileView({
 
             <Tabs.Content value="comments">
               {commentsItems.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-zinc-300/80 bg-white/70 py-14 text-center text-sm text-zinc-400">
+                <div className="rounded-3xl border border-dashed border-zinc-300/80 bg-white/70 py-14 text-center text-sm text-zinc-400 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500">
                   还没有发表过评论
                 </div>
               ) : (
@@ -598,15 +598,15 @@ export function ProfileView({
                     <li
                       key={item.id}
                       onClick={() => onOpenPost(item.postId)}
-                      className="cursor-pointer rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-card"
+                      className="cursor-pointer rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-card dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-blue-800"
                     >
-                      <div className="flex items-center justify-between gap-2 text-xs text-slate-400">
-                        <span className="font-medium text-slate-600 truncate">
+                      <div className="flex items-center justify-between gap-2 text-xs text-slate-400 dark:text-slate-500">
+                        <span className="font-medium text-slate-600 truncate dark:text-slate-300">
                           评论了动态：{item.postContentPreview}
                         </span>
                         <span className="shrink-0">{formatRelativeTime(item.createdAt)}</span>
                       </div>
-                      <p className="mt-2 text-sm text-slate-800 whitespace-pre-wrap">
+                      <p className="mt-2 text-sm text-slate-800 whitespace-pre-wrap dark:text-slate-200">
                         {item.content}
                       </p>
                     </li>
@@ -617,7 +617,7 @@ export function ProfileView({
 
             <Tabs.Content value="replies">
               {repliesItems.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-300/80 bg-white/70 py-14 text-center text-sm text-slate-400">
+                <div className="rounded-2xl border border-dashed border-slate-300/80 bg-white/70 py-14 text-center text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500">
                   还没有回复记录
                 </div>
               ) : (
@@ -626,7 +626,7 @@ export function ProfileView({
                     <li
                       key={item.id}
                       onClick={() => onOpenPost(item.postId)}
-                      className="cursor-pointer rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-card"
+                      className="cursor-pointer rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-card dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-blue-800"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
@@ -634,8 +634,8 @@ export function ProfileView({
                             className={cn(
                               'inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
                               item.direction === 'sent'
-                                ? 'bg-blue-50 text-blue-600'
-                                : 'bg-emerald-50 text-emerald-600'
+                                ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400'
+                                : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
                             )}
                           >
                             {item.direction === 'sent' ? (
@@ -645,23 +645,23 @@ export function ProfileView({
                             )}
                             {item.direction === 'sent' ? '发出回复' : '收到回复'}
                           </span>
-                          <span className="truncate text-xs font-medium text-slate-700">
+                          <span className="truncate text-xs font-medium text-slate-700 dark:text-slate-300">
                             {item.author.nickname}
                             {item.replyToUser ? ` 回复 @${item.replyToUser.nickname}` : ''}
                           </span>
                         </div>
-                        <span className="shrink-0 text-xs text-slate-400">
+                        <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">
                           {formatRelativeTime(item.createdAt)}
                         </span>
                       </div>
 
-                      <p className="mt-2 text-sm text-slate-800 whitespace-pre-wrap">
+                      <p className="mt-2 text-sm text-slate-800 whitespace-pre-wrap dark:text-slate-200">
                         {item.content}
                       </p>
 
-                      <div className="mt-2.5 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                      <div className="mt-2.5 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800/70 dark:text-slate-400">
                         <span className="line-clamp-1">原评论：{item.parentCommentContent}</span>
-                        <span className="mt-0.5 block font-medium text-slate-600 truncate">
+                        <span className="mt-0.5 block font-medium text-slate-600 truncate dark:text-slate-300">
                           来源动态：{item.postContentPreview}
                         </span>
                       </div>
@@ -687,7 +687,7 @@ export function ProfileView({
               <Loader2 className="h-5 w-5 animate-spin text-rose-500" />
             </div>
           ) : followsList.length === 0 ? (
-            <p className="py-10 text-center text-sm text-zinc-400">
+            <p className="py-10 text-center text-sm text-zinc-400 dark:text-slate-500">
               {followsModalType === 'following' ? '还没有关注任何人' : '还没有粉丝'}
             </p>
           ) : (
@@ -699,7 +699,7 @@ export function ProfileView({
                     setFollowsModalType(null);
                     onOpenUserProfile(u.id);
                   }}
-                  className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-zinc-100 bg-zinc-50/70 p-3 transition hover:bg-zinc-100/80"
+                  className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-zinc-100 bg-zinc-50/70 p-3 transition hover:bg-zinc-100/80 dark:border-slate-800 dark:bg-slate-800/60 dark:hover:bg-slate-800"
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <AvatarBadge
@@ -709,8 +709,8 @@ export function ProfileView({
                       size="md"
                     />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-zinc-900">{u.nickname}</p>
-                      <p className="truncate text-xs text-zinc-400">
+                      <p className="truncate text-sm font-semibold text-zinc-900 dark:text-slate-100">{u.nickname}</p>
+                      <p className="truncate text-xs text-zinc-400 dark:text-slate-500">
                         {u.bio || '暂无个人简介'}
                       </p>
                     </div>

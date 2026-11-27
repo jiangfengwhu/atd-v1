@@ -14,7 +14,10 @@ import {
   Ticket,
   Send,
   ExternalLink,
+  Moon,
+  Sun,
 } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
 import {
   api,
   ApiError,
@@ -36,6 +39,7 @@ const TICKET_REPLY_TEMPLATES: Partial<Record<FeedbackTicketStatus, string>> = {
 };
 
 export function AdminPage() {
+  const { resolvedTheme, toggleTheme } = useTheme();
   const [checking, setChecking] = React.useState(true);
   const [authenticated, setAuthenticated] = React.useState(false);
   const [mustChangeDefault, setMustChangeDefault] = React.useState(false);
@@ -350,20 +354,33 @@ export function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900">
-      <header className="border-b border-zinc-200 bg-white">
+    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-[#0B1120] dark:text-slate-100">
+      <header className="border-b border-zinc-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900 text-white">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900 text-white dark:bg-blue-600">
               <Lock className="h-4 w-4" />
             </span>
             <div>
-              <h1 className="text-base font-bold text-zinc-900">社区管理后台</h1>
-              <p className="text-xs text-zinc-500">Resend 邮件配置 · 安全改密 · 内容治理</p>
+              <h1 className="text-base font-bold text-zinc-900 dark:text-slate-100">社区管理后台</h1>
+              <p className="text-xs text-zinc-500 dark:text-slate-400">Resend 邮件配置 · 安全改密 · 内容治理</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              data-testid="admin-theme-toggle"
+              onClick={toggleTheme}
+              aria-label={resolvedTheme === 'dark' ? '切换至浅色模式' : '切换至深色模式'}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              {resolvedTheme === 'dark' ? (
+                <Sun className="h-4 w-4 text-amber-400" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </button>
             <Button
               type="button"
               variant="outline"
@@ -399,22 +416,22 @@ export function AdminPage() {
         {/* Stats */}
         {settings && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-              <div className="flex items-center justify-between text-xs font-medium text-zinc-500">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-center justify-between text-xs font-medium text-zinc-500 dark:text-slate-400">
                 <span>注册用户</span>
                 <Users className="h-4 w-4 text-zinc-400" />
               </div>
               <p className="mt-2 text-2xl font-extrabold">{settings.stats.usersCount}</p>
             </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-              <div className="flex items-center justify-between text-xs font-medium text-zinc-500">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-center justify-between text-xs font-medium text-zinc-500 dark:text-slate-400">
                 <span>图文帖子</span>
                 <FileText className="h-4 w-4 text-zinc-400" />
               </div>
               <p className="mt-2 text-2xl font-extrabold">{settings.stats.postsCount}</p>
             </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-              <div className="flex items-center justify-between text-xs font-medium text-zinc-500">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-center justify-between text-xs font-medium text-zinc-500 dark:text-slate-400">
                 <span>互动评论</span>
                 <MessageSquare className="h-4 w-4 text-zinc-400" />
               </div>
@@ -425,7 +442,7 @@ export function AdminPage() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Resend & Site Settings */}
-          <section className="rounded-2xl border border-zinc-200 bg-white p-6">
+          <section className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Key className="h-4 w-4 text-blue-600" />
@@ -508,7 +525,7 @@ export function AdminPage() {
           </section>
 
           {/* Change Admin Password */}
-          <section className="rounded-2xl border border-zinc-200 bg-white p-6">
+          <section className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-4 flex items-center gap-2">
               <Lock className="h-4 w-4 text-indigo-500" />
               <h2 className="text-base font-bold">修改管理员密码</h2>
@@ -581,7 +598,7 @@ export function AdminPage() {
         {/* Feedback Tickets Management */}
         <section
           data-testid="admin-feedback-tickets-section"
-          className="rounded-2xl border border-zinc-200 bg-white p-6"
+          className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -638,12 +655,12 @@ export function AdminPage() {
                   <div
                     key={ticket.id}
                     data-testid={`admin-ticket-${ticket.id}`}
-                    className="rounded-2xl border border-zinc-200/90 bg-zinc-50/50 p-4 space-y-3"
+                    className="rounded-2xl border border-zinc-200/90 bg-zinc-50/50 p-4 space-y-3 dark:border-slate-800 dark:bg-slate-800/50"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <TicketStatusBadge status={ticket.status} prefix="" />
-                        <span className="text-xs font-semibold text-zinc-800">
+                        <span className="text-xs font-semibold text-zinc-800 dark:text-slate-100">
                           {ticket.author.nickname}
                         </span>
                         <span className="text-[11px] text-zinc-400">({ticket.author.email})</span>
@@ -656,14 +673,14 @@ export function AdminPage() {
                         href={`/posts/${encodeURIComponent(ticket.postId)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400"
                       >
                         查看原帖 ({ticket.post.commentsCount} 评论)
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>
 
-                    <p className="rounded-xl border border-zinc-200/70 bg-white px-3.5 py-2.5 text-sm text-slate-800 whitespace-pre-wrap">
+                    <p className="rounded-xl border border-zinc-200/70 bg-white px-3.5 py-2.5 text-sm text-slate-800 whitespace-pre-wrap dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                       {ticket.post.content}
                     </p>
 
@@ -736,22 +753,22 @@ export function AdminPage() {
         </section>
 
         {/* Posts Moderation */}
-        <section className="rounded-2xl border border-zinc-200 bg-white p-6">
+        <section className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
           <h2 className="mb-4 text-base font-bold">内容管理（最新 50 条图文）</h2>
           {posts.length === 0 ? (
             <p className="py-8 text-center text-xs text-zinc-400">暂无社区图文</p>
           ) : (
-            <div className="divide-y divide-zinc-100">
+            <div className="divide-y divide-zinc-100 dark:divide-slate-800">
               {posts.map((post) => (
                 <div
                   key={post.id}
                   className="flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-slate-900">
+                    <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                       {post.contentPreview || post.content}
                     </p>
-                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                    <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
                       {post.author.nickname} ({post.author.email}) ·{' '}
                       {formatRelativeTime(post.createdAt)} · 点赞 {post.likesCount} · 评论{' '}
                       {post.commentsCount}
