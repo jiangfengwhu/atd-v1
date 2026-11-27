@@ -2217,7 +2217,17 @@
       "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45313229355",
       "branch": "main",
       "occurredAt": "2026-11-24T02:33:30Z",
-      "analysisStatus": "analyzing"
+      "analysisStatus": "analyzed",
+      "attribution": {
+        "rootCauseCategory": "env_infra",
+        "rootCauseSummary": "Cloudflare Workers 部署流程在 Provision D1 Database (if placeholder) & Apply Remote Migrations 步骤失败；但当前采集的日志仅包含作业结束后的 Git 凭据清理信息，缺少该步骤的实际报错输出，无法进一步确认具体是凭证权限、database_id 配置还是远程迁移 SQL 执行异常。",
+        "shouldCodifyAsRule": false,
+        "decisionRationale": "原始日志未包含故障步骤的具体错误上下文，无法提炼出明确的新工程规律；且现有规则库中已存在 active 状态的 cloudflare-d1-idempotent-migrations 规则，已覆盖 database_id 配置、迁移幂等性及 CLOUDFLARE_API_TOKEN 校验，无需重复沉淀新规则。",
+        "confidence": 0.78,
+        "appliedOutcome": "discarded",
+        "analyzedAt": "2026-11-27T11:20:18.956Z",
+        "model": "gemini-4-hydrogen"
+      }
     },
     {
       "id": "inc-c738d14f",
@@ -2828,5 +2838,5 @@
       "lastAppliedAt": "2026-11-24T02:07:27.471Z"
     }
   ],
-  "lastSyncedAt": "2026-11-27T10:52:55.344Z"
+  "lastSyncedAt": "2026-11-27T11:20:19.755Z"
 }
