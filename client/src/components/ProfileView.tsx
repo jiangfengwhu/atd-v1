@@ -28,6 +28,7 @@ import {
 } from '@/lib/api';
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { Button } from '@/components/ui/button';
+import { OfficialBadge } from '@/components/OfficialBadge';
 import { PostCard } from '@/components/PostCard';
 import { ImageCropDialog } from '@/components/ImageCropDialog';
 import {
@@ -346,9 +347,14 @@ export function ProfileView({
               </div>
 
               <div className="pt-2">
-                <h1 className="text-xl font-extrabold tracking-tight text-zinc-900 sm:text-2xl">
-                  {profile.nickname}
-                </h1>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-xl font-extrabold tracking-tight text-zinc-900 sm:text-2xl">
+                    {profile.nickname}
+                  </h1>
+                  {profile.isOfficial && (
+                    <OfficialBadge label={profile.officialBadge} className="px-2 py-0.5 text-xs" />
+                  )}
+                </div>
                 {profile.isSelf && profile.email && (
                   <p className="text-xs text-zinc-400">{profile.email}</p>
                 )}

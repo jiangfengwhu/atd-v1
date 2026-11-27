@@ -29,6 +29,8 @@ interface RecommendedUserRow {
   avatar_seed: string;
   avatar_url: string;
   bio: string;
+  is_official: number;
+  official_badge: string;
   followers_count: number;
   posts_count: number;
 }
@@ -108,10 +110,13 @@ discoverRoutes.get('/recommended-users', async (c) => {
        u.avatar_seed,
        COALESCE(up.avatar_url, '') AS avatar_url,
        COALESCE(up.bio, '') AS bio,
+       CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_official,
+       COALESCE(oa.badge_label, '') AS official_badge,
        (SELECT COUNT(*) FROM user_follows uf WHERE uf.following_id = u.id) AS followers_count,
        (SELECT COUNT(*) FROM posts p WHERE p.author_id = u.id) AS posts_count
      FROM users u
      LEFT JOIN user_profiles up ON up.user_id = u.id
+     LEFT JOIN official_accounts oa ON oa.user_id = u.id
      WHERE (? = '' OR u.id != ?)
        AND (? = '' OR NOT EXISTS (
          SELECT 1 FROM user_follows uf2
@@ -124,15 +129,20 @@ discoverRoutes.get('/recommended-users', async (c) => {
     .all<RecommendedUserRow>();
 
   return c.json({
-    users: (rows.results ?? []).map((u) => ({
-      id: u.id,
-      nickname: u.nickname,
-      avatarSeed: u.avatar_seed,
-      avatarUrl: u.avatar_url ?? '',
-      bio: u.bio ?? '',
-      followersCount: Number(u.followers_count ?? 0),
-      postsCount: Number(u.posts_count ?? 0),
-      isFollowing: false,
-    })),
+    users: (rows.results ?? []).map((u) => {
+      const isOfficial = Boolean(u.is_official);
+      return {
+        id: u.id,
+        nickname: u.nickname,
+        avatarSeed: u.avatar_seed,
+        avatarUrl: u.avatar_url ?? '',
+        bio: u.bio ?? '',
+        isOfficial,
+        ...(isOfficial ? { officialBadge: u.official_badge || '官方' } : {}),
+        followersCount: Number(u.followers_count ?? 0),
+        postsCount: Number(u.posts_count ?? 0),
+        isFollowing: false,
+      };
+    }),
   });
 });

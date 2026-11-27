@@ -332,6 +332,7 @@ adminRoutes.delete('/posts/:id', async (c) => {
 
   await c.env.DB.batch([
     c.env.DB.prepare('DELETE FROM notifications WHERE post_id = ?').bind(postId),
+    c.env.DB.prepare('DELETE FROM post_mentions WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_bookmarks WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_metrics WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_likes WHERE post_id = ?').bind(postId),

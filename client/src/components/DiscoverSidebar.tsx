@@ -20,6 +20,7 @@ import {
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { OfficialBadge } from '@/components/OfficialBadge';
 import { cn } from '@/lib/utils';
 
 interface DiscoverSidebarProps {
@@ -276,7 +277,10 @@ export function DiscoverSidebar({
                       size="md"
                     />
                     <div className="min-w-0">
-                      <p className="truncate text-xs font-bold text-slate-900">{u.nickname}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-xs font-bold text-slate-900">{u.nickname}</p>
+                        {u.isOfficial && <OfficialBadge label={u.officialBadge} />}
+                      </div>
                       <p className="truncate text-[11px] text-slate-400">
                         {u.bio || `${u.followersCount} 粉丝 · ${u.postsCount} 动态`}
                       </p>

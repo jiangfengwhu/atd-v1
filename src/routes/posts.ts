@@ -15,6 +15,13 @@ import {
   getUnreadNotificationRecipientsForPost,
   pushNotificationReadSyncForUsers,
 } from '../lib/notifications';
+import {
+  extractMentionTokens,
+  fetchMentionsForPostIds,
+  resolveMentionedUsers,
+  type ResolvedMention,
+} from '../lib/mentions';
+import { isOfficialUserId } from '../lib/official';
 
 export interface PostRow {
   id: string;
@@ -31,6 +38,8 @@ export interface PostRow {
   author_nickname: string;
   author_avatar_seed: string;
   author_avatar_url?: string | null;
+  author_is_official?: number | null;
+  author_official_badge?: string | null;
   liked_by_me?: number;
   bookmarked_by_me?: number;
 }
@@ -69,12 +78,14 @@ function parseTagsJson(raw: string): string[] {
   }
 }
 
-export function serializePost(row: PostRow) {
+export function serializePost(row: PostRow, mentions: ResolvedMention[] = []) {
+  const isOfficial = Boolean(row.author_is_official);
   return {
     id: row.id,
     content: row.content,
     imageUrl: row.image_url,
     tags: parseTagsJson(row.tags_json),
+    mentions,
     likesCount: Number(row.likes_count),
     commentsCount: Number(row.comments_count),
     viewsCount: Number(row.views_count ?? 0),
@@ -87,6 +98,8 @@ export function serializePost(row: PostRow) {
       nickname: row.author_nickname,
       avatarSeed: row.author_avatar_seed,
       avatarUrl: row.author_avatar_url ?? '',
+      isOfficial,
+      ...(isOfficial ? { officialBadge: row.author_official_badge || '官方' } : {}),
     },
     createdAt: row.created_at,
   };
@@ -161,11 +174,14 @@ postRoutes.get('/', async (c) => {
               COALESCE(pm.shares_count, 0) AS shares_count,
               u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
               COALESCE(up.avatar_url, '') AS author_avatar_url,
+              CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS author_is_official,
+              COALESCE(oa.badge_label, '') AS author_official_badge,
               CASE WHEN pl.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me,
               CASE WHEN pb.user_id IS NOT NULL THEN 1 ELSE 0 END AS bookmarked_by_me
        FROM posts p
        JOIN users u ON u.id = p.author_id
        LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN official_accounts oa ON oa.user_id = u.id
        LEFT JOIN post_metrics pm ON pm.post_id = p.id
        LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = ?
        LEFT JOIN post_bookmarks pb ON pb.post_id = p.id AND pb.user_id = ?
@@ -179,11 +195,14 @@ postRoutes.get('/', async (c) => {
               COALESCE(pm.shares_count, 0) AS shares_count,
               u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
               COALESCE(up.avatar_url, '') AS author_avatar_url,
+              CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS author_is_official,
+              COALESCE(oa.badge_label, '') AS author_official_badge,
               0 AS liked_by_me,
               0 AS bookmarked_by_me
        FROM posts p
        JOIN users u ON u.id = p.author_id
        LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN official_accounts oa ON oa.user_id = u.id
        LEFT JOIN post_metrics pm ON pm.post_id = p.id
        ${whereSql}
        ${orderSql}
@@ -197,8 +216,14 @@ postRoutes.get('/', async (c) => {
     .bind(...listBindings)
     .all<PostRow>();
 
+  const postResults = rows.results ?? [];
+  const mentionsMap = await fetchMentionsForPostIds(
+    c.env.DB,
+    postResults.map((r) => r.id)
+  );
+
   return c.json({
-    posts: (rows.results ?? []).map(serializePost),
+    posts: postResults.map((row) => serializePost(row, mentionsMap.get(row.id) ?? [])),
     total: Number(countRow?.total ?? 0),
     siteName: config.site_name,
   });
@@ -232,15 +257,26 @@ postRoutes.post('/', async (c) => {
   }
 
   const tags = mergePostTags(content, extraTags);
+  const mentionTokens = extractMentionTokens(content);
+  const mentions = await resolveMentionedUsers(c.env.DB, mentionTokens);
+  const authorIsOfficial = await isOfficialUserId(c.env.DB, user.id);
   const postId = crypto.randomUUID();
   const nowIso = new Date().toISOString();
 
-  await c.env.DB.prepare(
-    `INSERT INTO posts (id, author_id, content, image_url, tags_json, likes_count, comments_count, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?)`
-  )
-    .bind(postId, user.id, content, imageUrl, JSON.stringify(tags), nowIso, nowIso)
-    .run();
+  const statements = [
+    c.env.DB.prepare(
+      `INSERT INTO posts (id, author_id, content, image_url, tags_json, likes_count, comments_count, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?)`
+    ).bind(postId, user.id, content, imageUrl, JSON.stringify(tags), nowIso, nowIso),
+    ...mentions.map((m) =>
+      c.env.DB.prepare(
+        `INSERT OR IGNORE INTO post_mentions (post_id, mentioned_user_id, matched_text, created_at)
+         VALUES (?, ?, ?, ?)`
+      ).bind(postId, m.userId, m.matchedText, nowIso)
+    ),
+  ];
+
+  await c.env.DB.batch(statements);
 
   return c.json(
     {
@@ -250,6 +286,7 @@ postRoutes.post('/', async (c) => {
         content,
         imageUrl,
         tags,
+        mentions,
         likesCount: 0,
         commentsCount: 0,
         viewsCount: 0,
@@ -262,6 +299,7 @@ postRoutes.post('/', async (c) => {
           nickname: user.nickname,
           avatarSeed: user.avatarSeed,
           avatarUrl: user.avatarUrl,
+          isOfficial: authorIsOfficial,
         },
         createdAt: nowIso,
       },
@@ -282,11 +320,14 @@ postRoutes.get('/:id', async (c) => {
               COALESCE(pm.shares_count, 0) AS shares_count,
               u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
               COALESCE(up.avatar_url, '') AS author_avatar_url,
+              CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS author_is_official,
+              COALESCE(oa.badge_label, '') AS author_official_badge,
               CASE WHEN pl.user_id IS NOT NULL THEN 1 ELSE 0 END AS liked_by_me,
               CASE WHEN pb.user_id IS NOT NULL THEN 1 ELSE 0 END AS bookmarked_by_me
        FROM posts p
        JOIN users u ON u.id = p.author_id
        LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN official_accounts oa ON oa.user_id = u.id
        LEFT JOIN post_metrics pm ON pm.post_id = p.id
        LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = ?
        LEFT JOIN post_bookmarks pb ON pb.post_id = p.id AND pb.user_id = ?
@@ -299,11 +340,14 @@ postRoutes.get('/:id', async (c) => {
               COALESCE(pm.shares_count, 0) AS shares_count,
               u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
               COALESCE(up.avatar_url, '') AS author_avatar_url,
+              CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS author_is_official,
+              COALESCE(oa.badge_label, '') AS author_official_badge,
               0 AS liked_by_me,
               0 AS bookmarked_by_me
        FROM posts p
        JOIN users u ON u.id = p.author_id
        LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN official_accounts oa ON oa.user_id = u.id
        LEFT JOIN post_metrics pm ON pm.post_id = p.id
        WHERE p.id = ?
        LIMIT 1`;
@@ -381,8 +425,10 @@ postRoutes.get('/:id', async (c) => {
     repliesByComment.set(r.comment_id, list);
   }
 
+  const mentionsMap = await fetchMentionsForPostIds(c.env.DB, [postId]);
+
   return c.json({
-    post: serializePost(row),
+    post: serializePost(row, mentionsMap.get(postId) ?? []),
     comments: (commentRows.results ?? []).map((cm) => ({
       id: cm.id,
       content: cm.content,
@@ -420,6 +466,7 @@ postRoutes.delete('/:id', async (c) => {
 
   await c.env.DB.batch([
     c.env.DB.prepare('DELETE FROM notifications WHERE post_id = ?').bind(postId),
+    c.env.DB.prepare('DELETE FROM post_mentions WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_bookmarks WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_metrics WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_likes WHERE post_id = ?').bind(postId),

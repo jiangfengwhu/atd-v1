@@ -12,6 +12,7 @@ import type { PostItem } from '@/lib/api';
 import { extractHashtagsFromContent } from '@/lib/hashtags';
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { HashtagText } from '@/components/HashtagText';
+import { OfficialBadge } from '@/components/OfficialBadge';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
 interface PostCardProps {
@@ -93,15 +94,23 @@ export function PostCard({
               <span className="truncate text-sm font-bold text-slate-900">
                 {post.author.nickname}
               </span>
+              {post.author.isOfficial && (
+                <OfficialBadge label={post.author.officialBadge} />
+              )}
               <span className="shrink-0 text-xs text-slate-400">
                 · {formatRelativeTime(post.createdAt)}
               </span>
             </button>
           </div>
 
-          {/* Post Body with inline clickable #hashtags */}
+          {/* Post Body with inline clickable #hashtags and @mentions */}
           <p className="line-clamp-5 whitespace-pre-wrap text-[14px] leading-relaxed text-slate-800">
-            <HashtagText content={post.content} onSelectTag={onSelectTag} />
+            <HashtagText
+              content={post.content}
+              mentions={post.mentions}
+              onSelectTag={onSelectTag}
+              onSelectMention={(mention) => onOpenAuthor?.(mention.userId)}
+            />
           </p>
 
           {/* Fallback Tags (for legacy posts whose tags weren't written inline) */}
