@@ -1,6 +1,27 @@
 {
   "records": [
     {
+      "id": "fb-mwz32zkh-8c4a5a",
+      "createdAt": "2026-11-27T14:35:39.281Z",
+      "updatedAt": "2026-11-27T14:35:39.281Z",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "content": "@官方反馈 \n1. feed正文的@ 用户不要框了，整体需要居中，包括官方的label，认证的label使用icon而不是文字展示\n2. 添加light/dark mode支持\n3. 发布动态正文如果没有图片，但是有url的话，解析下url内容，渲染时按照图文渲染，点击可以直接跳转",
+      "categoryHint": "feature",
+      "pageRoute": "/posts/:uuid",
+      "appVersion": "1.0.0",
+      "reporterHash": "u_5f76bdd01cf8",
+      "metadata": {
+        "sourceApp": "atd-v1-community",
+        "source": "post_mention",
+        "postId": "36ccd3f2-249a-4df0-bec8-6b53a0564ad6",
+        "ticketId": "tkt_da98fef25f244daab006",
+        "feedbackQueueId": "fb_c4f4e85cb80546ea9d85",
+        "authorId": "618920fc-c57b-4f3b-bc2b-3d4489fc875c",
+        "authorNickname": "飞翔的小猪🐷"
+      },
+      "status": "pending"
+    },
+    {
       "id": "fb-mwyviz95-72de77",
       "createdAt": "2026-11-27T11:04:08.441Z",
       "updatedAt": "2026-11-27T11:05:05.181Z",
