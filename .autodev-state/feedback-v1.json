@@ -1,6 +1,22 @@
 {
   "records": [
     {
+      "id": "fb-mwyviz95-72de77",
+      "createdAt": "2026-11-27T11:04:08.441Z",
+      "updatedAt": "2026-11-27T11:04:08.441Z",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "content": "1. 删除意见反馈按钮，因为以后都是通过@ 来进行反馈，\n2. 在确认反馈以及上线时候在原帖下进行评论回复，告诉反馈者当前的工单状态\n3. 修一下现在@官方账号 发帖没有触发反馈\n4. 在发帖时候 @用户 UI应该和普通不一样，现在没有区分度，然后在hover @用户的时候 展开用户的资料卡",
+      "categoryHint": "feature",
+      "pageRoute": "/",
+      "appVersion": "1.0.0",
+      "reporterHash": "u_5f76bdd01cf8",
+      "metadata": {
+        "sourceApp": "atd-v1-community",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36"
+      },
+      "status": "pending"
+    },
+    {
       "id": "fb-mwyuoylz-675737",
       "createdAt": "2026-11-27T10:40:47.927Z",
       "updatedAt": "2026-11-27T10:42:12.383Z",
