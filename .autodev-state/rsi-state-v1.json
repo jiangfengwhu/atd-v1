@@ -298,6 +298,273 @@
       "rawLogExcerpt": "00083Z Prepare workflow directory\n2026-11-26T09:08:16.6543745Z Prepare all required actions\n2026-11-26T09:08:16.6653737Z Complete job name: trigger-daily-triage\n2026-11-26T09:08:16.7454979Z ##[group]Run if [ -z \"$STUDIO_URL\" ]; then\n2026-11-26T09:08:16.7456174Z \u001b[36;1mif [ -z \"$STUDIO_URL\" ]; then\u001b[0m\n2026-11-26T09:08:16.7457462Z \u001b[36;1m  echo \"::error::Missing repository secret AUTODEV_STUDIO_URL (your deployed AutoDev Studio base URL)\"\u001b[0m\n2026-11-26T09:08:16.7458688Z \u001b[36;1m  exit 1\u001b[0m\n2026-11-26T09:08:16.7459288Z \u001b[36;1mfi\u001b[0m\n2026-11-26T09:08:16.7460157Z \u001b[36;1mif [ -z \"$CRON_SECRET\" ]; then\u001b[0m\n2026-11-26T09:08:16.7461363Z \u001b[36;1m  echo \"::error::Missing repository secret AUTODEV_CRON_SECRET (must match Cloud Run AUTODEV_CRON_SECRET)\"\u001b[0m\n2026-11-26T09:08:16.7462443Z \u001b[36;1m  exit 1\u001b[0m\n2026-11-26T09:08:16.7463077Z \u001b[36;1mfi\u001b[0m\n2026-11-26T09:08:16.7463568Z \u001b[36;1m\u001b[0m\n2026-11-26T09:08:16.7464100Z \u001b[36;1mBASE_URL=\"${STUDIO_URL%/}\"\u001b[0m\n2026-11-26T09:08:16.7464927Z \u001b[36;1mENDPOINT=\"${BASE_URL}/api/triage/feedback/daily\"\u001b[0m\n2026-11-26T09:08:16.7465889Z \u001b[36;1mecho \"Calling daily feedback triage endpoint: $ENDPOINT\"\u001b[0m\n2026-11-26T09:08:16.7466719Z \u001b[36;1m\u001b[0m\n2026-11-26T09:08:16.7467583Z \u001b[36;1mHTTP_CODE=$(curl -sS -o /tmp/triage_response.json -w \"%{http_code}\" \\\u001b[0m\n2026-11-26T09:08:16.7468526Z \u001b[36;1m  --max-time 180 \\\u001b[0m\n2026-11-26T09:08:16.7469176Z \u001b[36;1m  -X POST \"$ENDPOINT\" \\\u001b[0m\n2026-11-26T09:08:16.7470180Z \u001b[36;1m  -H \"Content-Type: application/json\" \\\u001b[0m\n2026-11-26T09:08:16.7471092Z \u001b[36;1m  -H \"X-AutoDev-Cron-Secret: $CRON_SECRET\" \\\u001b[0m\n2026-11-26T09:08:16.7471852Z \u001b[36;1m  -d '{\"trigger\":\"cron\"}')\u001b[0m\n2026-11-26T09:08:16.7472540Z \u001b[36;1m\u001b[0m\n2026-11-26T09:08:16.7473104Z \u001b[36;1mecho \"HTTP status: $HTTP_CODE\"\u001b[0m\n2026-11-26T09:08:16.7473921Z \u001b[36;1mcat /tmp/triage_response.json || true\u001b[0m\n2026-11-26T09:08:16.7474640Z \u001b[36;1mecho \"\"\u001b[0m\n2026-11-26T09:08:16.7475233Z \u001b[36;1m\u001b[0m\n2026-11-26T09:08:16.7475917Z \u001b[36;1mif [ \"$HTTP_CODE\" -lt 200 ] || [ \"$HTTP_CODE\" -ge 300 ]; then\u001b[0m\n2026-11-26T09:08:16.7477047Z \u001b[36;1m  echo \"::error::AutoDev daily feedback triage failed with HTTP $HTTP_CODE\"\u001b[0m\n2026-11-26T09:08:16.7478028Z \u001b[36;1m  exit 1\u001b[0m\n2026-11-26T09:08:16.7478643Z \u001b[36;1mfi\u001b[0m\n2026-11-26T09:08:18.0039079Z shell: /usr/bin/bash -e {0}\n2026-11-26T09:08:18.0040527Z env:\n2026-11-26T09:08:18.0042049Z   STUDIO_URL: ***\n2026-11-26T09:08:18.0043234Z   CRON_SECRET: ***\n2026-11-26T09:08:18.0043937Z ##[endgroup]\n2026-11-26T09:08:18.0194459Z Calling daily feedback triage endpoint: ***/api/triage/feedback/daily\n2026-11-26T09:08:21.1528925Z HTTP status: 200\n2026-11-26T09:08:21.1985292Z {\"batch\":{\"id\":\"fb-batch-mwxby7em-2089\",\"createdAt\":\"2026-11-26T09:08:20.350Z\",\"trigger\":\"cron\",\"scannedCount\":0,\"acceptedCount\":0,\"rejectedMaliciousCount\":0,\"rejectedInvalidCount\":0,\"needsManualPrdCount\":0,\"summary\":\"今日暂无待巡检的用户反馈\",\"feedbackIds\":[],\"status\":\"completed_empty\"},\"message\":\"今日暂无待巡检的用户反馈\"}\n2026-11-26T09:08:21.2112628Z Cleaning up orphan processes\n"
     },
     {
+      "id": "tr-gh-45546936401",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "actionsRunId": 45546936401,
+      "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45546936401",
+      "workflowName": "AutoDev Cloudflare Workers Deploy",
+      "branch": "main",
+      "kind": "build_check",
+      "status": "partial",
+      "total": 5,
+      "passed": 3,
+      "failed": 1,
+      "skipped": 1,
+      "passRate": 75,
+      "durationMs": 16000,
+      "executedAt": "2026-11-25T04:28:03Z",
+      "summary": "流水线步骤校验：3/5 步通过，1 步失败",
+      "cases": [
+        {
+          "id": "step-1",
+          "title": "Checkout Target Branch",
+          "status": "passed",
+          "durationMs": 0
+        },
+        {
+          "id": "step-2",
+          "title": "Verify Cloudflare Credentials & Wrangler Config",
+          "status": "passed",
+          "durationMs": 0
+        },
+        {
+          "id": "step-3",
+          "title": "Install Dependencies & Build Project",
+          "status": "passed",
+          "durationMs": 0
+        },
+        {
+          "id": "step-4",
+          "title": "Provision D1 Database (if placeholder) & Apply Remote Migrations",
+          "status": "failed",
+          "durationMs": 0,
+          "error": "Step conclusion: failure"
+        },
+        {
+          "id": "step-5",
+          "title": "Deploy to Cloudflare Workers",
+          "status": "skipped",
+          "durationMs": 0
+        }
+      ],
+      "rawLogExcerpt": "hub.com/.extraheader' || :\"\n2026-11-25T04:28:00.2235279Z Removing includeIf entries pointing to credentials config files\n2026-11-25T04:28:00.2241055Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\\.gitdir:\n2026-11-25T04:28:00.2269575Z includeif.gitdir:/data/home/actions-runner-2/_work/atd-v1/atd-v1/.git.path\n2026-11-25T04:28:00.2269984Z includeif.gitdir:/data/home/actions-runner-2/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-25T04:28:00.2270290Z includeif.gitdir:/github/workspace/.git.path\n2026-11-25T04:28:00.2270538Z includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-25T04:28:00.2276952Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner-2/_work/atd-v1/atd-v1/.git.path\n2026-11-25T04:28:00.2299736Z /data/home/actions-runner-2/_work/_temp/git-credentials-e3146047-4e42-4604-968e-59f758e04279.config\n2026-11-25T04:28:00.2308976Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner-2/_work/atd-v1/atd-v1/.git.path \\/data\\/home\\/actions\\-runner\\-2\\/_work\\/_temp\\/git\\-credentials\\-e3146047\\-4e42\\-4604\\-968e\\-59f758e04279\\.config\n2026-11-25T04:28:00.2344384Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner-2/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-25T04:28:00.2366726Z /data/home/actions-runner-2/_work/_temp/git-credentials-e3146047-4e42-4604-968e-59f758e04279.config\n2026-11-25T04:28:00.2373857Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner-2/_work/atd-v1/atd-v1/.git/worktrees/*.path \\/data\\/home\\/actions\\-runner\\-2\\/_work\\/_temp\\/git\\-credentials\\-e3146047\\-4e42\\-4604\\-968e\\-59f758e04279\\.config\n2026-11-25T04:28:00.2406197Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path\n2026-11-25T04:28:00.2440738Z /github/runner_temp/git-credentials-e3146047-4e42-4604-968e-59f758e04279.config\n2026-11-25T04:28:00.2448722Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \\/github\\/runner_temp\\/git\\-credentials\\-e3146047\\-4e42\\-4604\\-968e\\-59f758e04279\\.config\n2026-11-25T04:28:00.2510715Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-25T04:28:00.2538106Z /github/runner_temp/git-credentials-e3146047-4e42-4604-968e-59f758e04279.config\n2026-11-25T04:28:00.2545047Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \\/github\\/runner_temp\\/git\\-credentials\\-e3146047\\-4e42\\-4604\\-968e\\-59f758e04279\\.config\n2026-11-25T04:28:00.2577265Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url\n2026-11-25T04:28:00.2858792Z Removing credentials config '/data/home/actions-runner-2/_work/_temp/git-credentials-e3146047-4e42-4604-968e-59f758e04279.config'\n2026-11-25T04:28:00.3029910Z Cleaning up orphan processes\n"
+    },
+    {
+      "id": "tr-gh-45545889244",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "actionsRunId": 45545889244,
+      "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45545889244",
+      "workflowName": "AutoDev AGY Coding Runner",
+      "branch": "autodev/feat-20261125-041827",
+      "pipelineRunId": "run-fb-mwvm5j18-21b8",
+      "prNumber": 15,
+      "kind": "e2e",
+      "status": "passed",
+      "total": 26,
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "passRate": 100,
+      "durationMs": 51760,
+      "executedAt": "2026-11-25T04:25:32.858Z",
+      "summary": "自动化 E2E 验收（gemini-4-neon-high / auto）：26 通过 / 0 失败 / 0 跳过",
+      "cases": [
+        {
+          "id": "check-type",
+          "title": "TypeScript / Lint 静态检查 (typecheck)",
+          "status": "passed",
+          "durationMs": 3945
+        },
+        {
+          "id": "check-build",
+          "title": "生产构建检查 (npm run build)",
+          "status": "passed",
+          "durationMs": 2540
+        },
+        {
+          "id": "pw-2",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 1. 宽屏左侧导航栏改版、居中紧凑间距几何审计与通知入口验证",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 590
+        },
+        {
+          "id": "pw-3",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 2. 通知模块全链路 API 契约、防自发、参数边界、跨用户隔离与删帖清理",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 624
+        },
+        {
+          "id": "pw-4",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 3. WebSocket 握手安全边界、通知实时推送与零 HTTP 轮询网络审计",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 9082
+        },
+        {
+          "id": "pw-5",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 4. 私信 WebSocket 实时收发、已读接口校验与聊天窗零轮询审计",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 9116
+        },
+        {
+          "id": "pw-6",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 5. 动态详情页 Instagram 风格左右双栏几何结构、互动闭环与移动端适配",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 911
+        },
+        {
+          "id": "pw-7",
+          "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 1. 健康检查、左右分栏几何结构、左侧导航项与底部个人资料退出登录",
+          "file": "run-96e1a2ad.spec.ts",
+          "status": "passed",
+          "durationMs": 843
+        },
+        {
+          "id": "pw-8",
+          "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 2. 个人主页资料修改、安全边界、关注粉丝与评论二级回复闭环",
+          "file": "run-96e1a2ad.spec.ts",
+          "status": "passed",
+          "durationMs": 1020
+        },
+        {
+          "id": "pw-9",
+          "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 3. 私信权限隔离、边界校验、未读已读回执与 UI 聊天交互",
+          "file": "run-96e1a2ad.spec.ts",
+          "status": "passed",
+          "durationMs": 814
+        },
+        {
+          "id": "pw-10",
+          "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 4. 发布图文集成图片裁剪编辑（比例/旋转/确认裁剪）与持久化发布",
+          "file": "run-96e1a2ad.spec.ts",
+          "status": "passed",
+          "durationMs": 1467
+        },
+        {
+          "id": "pw-11",
+          "title": "run-9b961baa.spec.ts › 动态改版（X.com列表流、点击/收藏/分享直达、右侧导航、多账号切换）加固盲测套件 › 1. 主页单列列表形态、点击统计并发累加、收藏隐私隔离、分享 URL 直达与删帖级联清理",
+          "file": "run-9b961baa.spec.ts",
+          "status": "passed",
+          "durationMs": 1610
+        },
+        {
+          "id": "pw-12",
+          "title": "run-9b961baa.spec.ts › 动态改版（X.com列表流、点击/收藏/分享直达、右侧导航、多账号切换）加固盲测套件 › 2. 右侧导航（热门话题、推荐关注）接口契约、隐私脱敏、三栏几何布局与交互闭环",
+          "file": "run-9b961baa.spec.ts",
+          "status": "passed",
+          "durationMs": 891
+        },
+        {
+          "id": "pw-13",
+          "title": "run-9b961baa.spec.ts › 动态改版（X.com列表流、点击/收藏/分享直达、右侧导航、多账号切换）加固盲测套件 › 3. 多账号安全切换、防越权接管、UI 身份状态同步、添加账号与分级退出闭环",
+          "file": "run-9b961baa.spec.ts",
+          "status": "passed",
+          "durationMs": 1520
+        },
+        {
+          "id": "pw-14",
+          "title": "run-aec3b8f5.spec.ts › 发布功能优化、三栏独立滚动、收藏直达与通知分类已读加固盲测套件 › 1. 品牌改名dev社区、三栏独立滚动、吸顶Tab同宽对齐、右侧搜索、紧凑卡片与配色/隐形滚动条审计",
+          "file": "run-aec3b8f5.spec.ts",
+          "status": "passed",
+          "durationMs": 1132
+        },
+        {
+          "id": "pw-15",
+          "title": "run-aec3b8f5.spec.ts › 发布功能优化、三栏独立滚动、收藏直达与通知分类已读加固盲测套件 › 2. X.com 风格无标题发布、拖拽/粘贴图片、正文 #话题 解析边界与左侧独立收藏页闭环",
+          "file": "run-aec3b8f5.spec.ts",
+          "status": "passed",
+          "durationMs": 1205
+        },
+        {
+          "id": "pw-16",
+          "title": "run-aec3b8f5.spec.ts › 发布功能优化、三栏独立滚动、收藏直达与通知分类已读加固盲测套件 › 3. 通知红点按分类点击即已读、分项独立扣减、安全隔离与并发幂等校验",
+          "file": "run-aec3b8f5.spec.ts",
+          "status": "passed",
+          "durationMs": 940
+        },
+        {
+          "id": "pw-17",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 1. 健康检查、首页渲染与隐藏路由 /admin 入口审计",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 273
+        },
+        {
+          "id": "pw-18",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 2. 邮箱验证码登录安全边界（非法邮箱、冷却、错误码、UI 登录与防重放）",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 845
+        },
+        {
+          "id": "pw-19",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 3. 图文发布、图片上传、搜索、点赞、评论与持久化闭环",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 921
+        },
+        {
+          "id": "pw-20",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 4. 未登录拦截与跨用户越权删帖权限隔离",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 161
+        },
+        {
+          "id": "pw-21",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 5. 隐藏路由 /admin 全流程：鉴权、Resend 密钥脱敏配置、改密与状态回滚",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 710
+        },
+        {
+          "id": "pw-22",
+          "title": "run-fb-mwvm5j18-21b8.spec.ts › 发布界面精简化与增强交互体验 E2E 验收套件 › AC-1: 确认内联与弹窗发布编辑器均已移除图片上传与外链按钮",
+          "file": "run-fb-mwvm5j18-21b8.spec.ts",
+          "status": "passed",
+          "durationMs": 501
+        },
+        {
+          "id": "pw-23",
+          "title": "run-fb-mwvm5j18-21b8.spec.ts › 发布界面精简化与增强交互体验 E2E 验收套件 › AC-2: 拖拽本地图片自动预览上传，并拦截非图片非法文件",
+          "file": "run-fb-mwvm5j18-21b8.spec.ts",
+          "status": "passed",
+          "durationMs": 749
+        },
+        {
+          "id": "pw-24",
+          "title": "run-fb-mwvm5j18-21b8.spec.ts › 发布界面精简化与增强交互体验 E2E 验收套件 › AC-3: 正文粘贴包含 URL 文本自动识别与格式化，纯文本粘贴不受干扰且发布后链接可点击",
+          "file": "run-fb-mwvm5j18-21b8.spec.ts",
+          "status": "passed",
+          "durationMs": 582
+        },
+        {
+          "id": "pw-25",
+          "title": "run-fb-mwvm5j18-21b8.spec.ts › 发布界面精简化与增强交互体验 E2E 验收套件 › AC-4: 手机端 (375px) 与平板端 (768px) 发布界面响应式布局无溢出",
+          "file": "run-fb-mwvm5j18-21b8.spec.ts",
+          "status": "passed",
+          "durationMs": 1202
+        }
+      ],
+      "rawLogExcerpt": "es transformed.\nrendering chunks...\ncomputing gzip size...\n\u001b[2m../dist/client/\u001b[22m\u001b[32mindex.html                 \u001b[39m\u001b[1m\u001b[2m  0.78 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   0.46 kB\u001b[22m\n\u001b[2m../dist/client/\u001b[22m\u001b[2massets/\u001b[22m\u001b[35mindex-wVeWGt13.css  \u001b[39m\u001b[1m\u001b[2m 43.40 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   7.77 kB\u001b[22m\n\u001b[2m../dist/client/\u001b[22m\u001b[2massets/\u001b[22m\u001b[36mindex-NnQEr629.js   \u001b[39m\u001b[1m\u001b[2m417.38 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip: 123.21 kB\u001b[22m\n\u001b[32m✓ built in 2.25s\u001b[39m\n=== Playwright E2E Verification ===\n   ],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"870c76bbe5d81d4d4121-5c9dcbfe02582d262f1c\",\n              \"file\": \"run-fb-mwvm5j18-21b8.spec.ts\",\n              \"line\": 153,\n              \"column\": 3\n            },\n            {\n              \"title\": \"AC-4: 手机端 (375px) 与平板端 (768px) 发布界面响应式布局无溢出\",\n              \"ok\": true,\n              \"tags\": [],\n              \"tests\": [\n                {\n                  \"timeout\": 45000,\n                  \"annotations\": [\n                    {\n                      \"type\": \"serial\",\n                      \"location\": {\n                        \"file\": \"/data/home/actions-runner-2/_work/atd-v1/atd-v1/tests/e2e/run-fb-mwvm5j18-21b8.spec.ts\",\n                        \"line\": 45,\n                        \"column\": 15\n                      }\n                    }\n                  ],\n                  \"expectedStatus\": \"passed\",\n                  \"projectId\": \"\",\n                  \"projectName\": \"\",\n                  \"results\": [\n                    {\n                      \"workerIndex\": 0,\n                      \"parallelIndex\": 0,\n                      \"status\": \"passed\",\n                      \"duration\": 1202,\n                      \"errors\": [],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-25T04:25:31.495Z\",\n                      \"annotations\": [\n                        {\n                          \"type\": \"serial\",\n                          \"location\": {\n                            \"file\": \"/data/home/actions-runner-2/_work/atd-v1/atd-v1/tests/e2e/run-fb-mwvm5j18-21b8.spec.ts\",\n                            \"line\": 45,\n                            \"column\": 15\n                          }\n                        }\n                      ],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"870c76bbe5d81d4d4121-9264d954d7a94c9d2d86\",\n              \"file\": \"run-fb-mwvm5j18-21b8.spec.ts\",\n              \"line\": 236,\n              \"column\": 3\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"errors\": [],\n  \"stats\": {\n    \"startTime\": \"2026-11-25T04:24:48.138Z\",\n    \"duration\": 44688.179,\n    \"expected\": 24,\n    \"skipped\": 0,\n    \"unexpected\": 0,\n    \"flaky\": 0\n  }\n}\n",
+      "agySessionId": "ffc94982-e7f9-4cca-a91c-a0c2ba3e997c",
+      "agySessionReused": false,
+      "agyExitCode": 0,
+      "codingFinalOutput": "I have implemented the URL parser utility, removed the redundant image/external-link toolbar buttons from the post composer, added drag-and-drop image filtering plus paste-time URL auto-recognition and clickable external links in posts, and added/updated the E2E tests. TypeScript type-checking passed and the production Vite build is currently running.\nThe production build succeeded and the 16 Playwright E2E tests (covering the new spec and regression suites) are now running against the local Wrangler dev server. Waiting for test results.\nCompleted the implementation of **发布界面精简化与增强交互体验** (`run-fb-mwvm5j18-21b8`) on branch `autodev/feat-20261125-041827`.\n\n### Summary of Changes\n- **URL Parser & Auto-Formatting Utility** ([urlParser.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/lib/urlParser.ts)):\n  - Implemented linear, loop-safe `http(s)://` URL extraction (`extractUrlsFromContent`), trailing-punctuation trimming with balanced-parenthesis handling, image URL detection (`isLikelyImageUrl`), compact metadata parsing (`parseUrlMeta`), paste-time URL spacing formatting (`formatPastedTextWithUrls`), and text/URL splitting (`splitTextByUrls`).\n- **Streamlined Post Composer & Dialog** ([PostComposer.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/components/PostComposer.tsx), [ComposeDialog.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/components/ComposeDialog.tsx)):\n  - Removed the redundant physical **图片** upload button, **外链** toggle button, and manual URL input box (`UI-01`).\n  - Enhanced drag-and-drop image handling with strict MIME/extension validation (rejecting non-image and spoofed-extension files with an accessible alert) and flicker-free drag depth tracking (`UI-02`).\n  - Added loop-guarded `paste` URL auto-recognition that never intercepts plain text without URLs, formats pasted URLs cleanly, displays compact detected link chips (`composer-detected-links`), and auto-previews pasted image URLs with graceful error fallback.\n  - Tuned mobile (`375px`) and tablet (`768px`) responsive layout for both inline and modal composers so long URLs and action controls stay within viewport bounds without horizontal overflow.\n- **Clickable External Links in Published Posts** ([HashtagText.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/components/HashtagText.tsx)):\n  - Extended post body rendering to automatically parse and render `http(s)://` URLs as clickable external links (`target=\"_blank\" rel=\"noopener noreferrer\"`) alongside `#hashtag` buttons without changing backend storage or schemas.\n- **E2E Verification Suite** ([run-fb-mwvm5j18-21b8.spec.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/tests/e2e/run-fb-mwvm5j18-21b8.spec.ts), [run-96e1a2ad.spec.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/tests/e2e/run-96e1a2ad.spec.ts)):\n  - Added E2E tests covering `AC-1` through `AC-4` and updated the legacy crop E2E test to attach images via drag-and-drop after removal of the toolbar file button.\n\n### Verification & Git Status\n- `npx tsc --noEmit` and `npm run build` passed with zero errors.\n- `npx playwright test tests/e2e/run-fb-mwvm5j18-21b8.spec.ts tests/e2e/run-aec3b8f5.spec.ts tests/e2e/run-96e1a2ad.spec.ts tests/e2e/run-f8b35bdc.spec.ts`: **16/16 passed**.\n- Committed (`4d50362`) and pushed to `origin/autodev/feat-20261125-041827` with a clean working tree.",
+      "repairRounds": 0,
+      "tokenUsage": {
+        "inputTokens": 145783,
+        "outputTokens": 28844,
+        "totalTokens": 174627,
+        "source": "reported",
+        "model": "gemini-4-neon-high"
+      }
+    },
+    {
       "id": "tr-gh-45311332287",
       "repoFullName": "jiangfengwhu/atd-v1",
       "actionsRunId": 45311332287,
@@ -1487,6 +1754,20 @@
     }
   ],
   "incidents": [
+    {
+      "id": "inc-c3696f97",
+      "sourceRefKey": "actions:45546936401",
+      "source": "deploy_error",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "title": "AutoDev Cloudflare Workers Deploy #45546936401 异常（failure）",
+      "errorSummary": "Provision D1 Database (if placeholder) & Apply Remote Migrations (Step conclusion: failure)",
+      "rawEvidence": "hub.com/.extraheader' || :\"\n2026-11-25T04:28:00.2235279Z Removing includeIf entries pointing to credentials config files\n2026-11-25T04:28:00.2241055Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\\.gitdir:\n2026-11-25T04:28:00.2269575Z includeif.gitdir:/data/home/actions-runner-2/_work/atd-v1/atd-v1/.git.path\n2026-11-25T04:28:00.2269984Z includeif.gitdir:/data/home/actions-runner-2/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-25T04:28:00.2270290Z includeif.gitdir:/github/workspace/.git.path\n2026-11-25T04:28:00.2270538Z includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-25T04:28:00.2276952Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner-2/_work/atd-v1/atd-v1/.git.path\n2026-11-25T04:28:00.2299736Z /data/home/actions-runner-2/_work/_temp/git-credentials-e3146047-4e42-4604-968e-59f758e04279.config\n2026-11-25T04:28:00.2308976Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner-2/_work/atd-v1/atd-v1/.git.path \\/data\\/home\\/actions\\-runner\\-2\\/_work\\/_temp\\/git\\-credentials\\-e3146047\\-4e42\\-4604\\-968e\\-59f758e04279\\.config\n2026-11-25T04:28:00.2344384Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner-2/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-25T04:28:00.2366726Z /data/home/actions-runner-2/_work/_temp/git-credentials-e3146047-4e42-4604-968e-59f758e04279.config\n2026-11-25T04:28:00.2373857Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner-2/_work/atd-v1/atd-v1/.git/worktrees/*.path \\/data\\/home\\/actions\\-runner\\-2\\/_work\\/_temp\\/git\\-credentials\\-e3146047\\-4e42\\-4604\\-968e\\-59f758e04279\\.config\n2026-11-25T04:28:00.2406197Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path\n2026-11-25T04:28:00.2440738Z /github/runner_temp/git-credentials-e3146047-4e42-4604-968e-59f758e04279.config\n2026-11-25T04:28:00.2448722Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \\/github\\/runner_temp\\/git\\-credentials\\-e3146047\\-4e42\\-4604\\-968e\\-59f758e04279\\.config\n2026-11-25T04:28:00.2510715Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-25T04:28:00.2538106Z /github/runner_temp/git-credentials-e3146047-4e42-4604-968e-59f758e04279.config\n2026-11-25T04:28:00.2545047Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \\/github\\/runner_temp\\/git\\-credentials\\-e3146047\\-4e42\\-4604\\-968e\\-59f758e04279\\.config\n2026-11-25T04:28:00.2577265Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url\n2026-11-25T04:28:00.2858792Z Removing credentials config '/data/home/actions-runner-2/_work/_temp/git-credentials-e3146047-4e42-4604-968e-59f758e04279.config'\n2026-11-25T04:28:00.3029910Z Cleaning up orphan processes\n",
+      "relatedActionsRunId": 45546936401,
+      "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45546936401",
+      "branch": "main",
+      "occurredAt": "2026-11-25T04:28:03Z",
+      "analysisStatus": "pending"
+    },
     {
       "id": "inc-1ea9e5c4",
       "sourceRefKey": "deploy-production:main:1795488766687",

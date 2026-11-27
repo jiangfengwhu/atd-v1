@@ -364,6 +364,31 @@
       "migrationsApplied": true,
       "commitSha": "744ce1e",
       "isIsolatedPreview": false
+    },
+    "lastAgySession": {
+      "sessionId": "ffc94982-e7f9-4cca-a91c-a0c2ba3e997c",
+      "branchName": "autodev/feat-20261125-041827",
+      "actionsRunId": 45545889244,
+      "exitCode": 0,
+      "reused": false,
+      "consecutiveReuseCount": 0,
+      "updatedAt": "2026-11-25T04:25:32.858Z"
+    },
+    "latestCodingOutput": {
+      "content": "I have implemented the URL parser utility, removed the redundant image/external-link toolbar buttons from the post composer, added drag-and-drop image filtering plus paste-time URL auto-recognition and clickable external links in posts, and added/updated the E2E tests. TypeScript type-checking passed and the production Vite build is currently running.\nThe production build succeeded and the 16 Playwright E2E tests (covering the new spec and regression suites) are now running against the local Wrangler dev server. Waiting for test results.\nCompleted the implementation of **发布界面精简化与增强交互体验** (`run-fb-mwvm5j18-21b8`) on branch `autodev/feat-20261125-041827`.\n\n### Summary of Changes\n- **URL Parser & Auto-Formatting Utility** ([urlParser.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/lib/urlParser.ts)):\n  - Implemented linear, loop-safe `http(s)://` URL extraction (`extractUrlsFromContent`), trailing-punctuation trimming with balanced-parenthesis handling, image URL detection (`isLikelyImageUrl`), compact metadata parsing (`parseUrlMeta`), paste-time URL spacing formatting (`formatPastedTextWithUrls`), and text/URL splitting (`splitTextByUrls`).\n- **Streamlined Post Composer & Dialog** ([PostComposer.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/components/PostComposer.tsx), [ComposeDialog.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/components/ComposeDialog.tsx)):\n  - Removed the redundant physical **图片** upload button, **外链** toggle button, and manual URL input box (`UI-01`).\n  - Enhanced drag-and-drop image handling with strict MIME/extension validation (rejecting non-image and spoofed-extension files with an accessible alert) and flicker-free drag depth tracking (`UI-02`).\n  - Added loop-guarded `paste` URL auto-recognition that never intercepts plain text without URLs, formats pasted URLs cleanly, displays compact detected link chips (`composer-detected-links`), and auto-previews pasted image URLs with graceful error fallback.\n  - Tuned mobile (`375px`) and tablet (`768px`) responsive layout for both inline and modal composers so long URLs and action controls stay within viewport bounds without horizontal overflow.\n- **Clickable External Links in Published Posts** ([HashtagText.tsx](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/client/src/components/HashtagText.tsx)):\n  - Extended post body rendering to automatically parse and render `http(s)://` URLs as clickable external links (`target=\"_blank\" rel=\"noopener noreferrer\"`) alongside `#hashtag` buttons without changing backend storage or schemas.\n- **E2E Verification Suite** ([run-fb-mwvm5j18-21b8.spec.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/tests/e2e/run-fb-mwvm5j18-21b8.spec.ts), [run-96e1a2ad.spec.ts](file:///data/home/actions-runner-2/_work/atd-v1/atd-v1/tests/e2e/run-96e1a2ad.spec.ts)):\n  - Added E2E tests covering `AC-1` through `AC-4` and updated the legacy crop E2E test to attach images via drag-and-drop after removal of the toolbar file button.\n\n### Verification & Git Status\n- `npx tsc --noEmit` and `npm run build` passed with zero errors.\n- `npx playwright test tests/e2e/run-fb-mwvm5j18-21b8.spec.ts tests/e2e/run-aec3b8f5.spec.ts tests/e2e/run-96e1a2ad.spec.ts tests/e2e/run-f8b35bdc.spec.ts`: **16/16 passed**.\n- Committed (`4d50362`) and pushed to `origin/autodev/feat-20261125-041827` with a clean working tree.",
+      "commitSha": "4d50362",
+      "model": "gemini-4-neon-high",
+      "actionsRunId": 45545889244,
+      "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45545889244",
+      "repairRounds": 0,
+      "capturedAt": "2026-11-25T04:25:32.858Z",
+      "tokenUsage": {
+        "inputTokens": 145783,
+        "outputTokens": 28844,
+        "totalTokens": 174627,
+        "source": "reported",
+        "model": "gemini-4-neon-high"
+      }
     }
   },
   {
