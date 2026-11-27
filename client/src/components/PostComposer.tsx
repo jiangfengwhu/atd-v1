@@ -8,7 +8,13 @@ import {
   type UserProfile,
 } from '@/lib/api';
 import { extractHashtagsFromContent } from '@/lib/hashtags';
-import { extractMentionTriggerBeforeCaret, type MentionTrigger } from '@/lib/mentions';
+import {
+  extractMentionTokens,
+  extractMentionTriggerBeforeCaret,
+  OFFICIAL_MENTION_ALIASES,
+  splitEditorTextByMentions,
+  type MentionTrigger,
+} from '@/lib/mentions';
 import {
   extractUrlsFromContent,
   formatPastedTextWithUrls,
@@ -17,10 +23,30 @@ import {
 } from '@/lib/urlParser';
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { OfficialBadge } from '@/components/OfficialBadge';
+import { UserHoverCard } from '@/components/UserHoverCard';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/input';
 import { ImageCropDialog } from '@/components/ImageCropDialog';
 import { cn } from '@/lib/utils';
+
+const OFFICIAL_FEEDBACK_SEED: MentionCandidateItem = {
+  id: 'official_feedback',
+  nickname: '官方反馈',
+  handle: 'official_feedback',
+  avatarSeed: 'official_feedback',
+  avatarUrl: '',
+  bio: 'dev社区官方反馈与建议受理账号，发帖 @官方反馈 即可提交产品建议或问题反馈。',
+  isOfficial: true,
+  officialBadge: '官方',
+};
+
+function createInitialMentionLookup(): Map<string, MentionCandidateItem> {
+  const map = new Map<string, MentionCandidateItem>();
+  for (const alias of OFFICIAL_MENTION_ALIASES) {
+    map.set(alias, OFFICIAL_FEEDBACK_SEED);
+  }
+  return map;
+}
 
 const ALLOWED_IMAGE_TYPES = new Set([
   'image/png',
@@ -88,11 +114,16 @@ export function PostComposer({
   const [mentionCandidates, setMentionCandidates] = React.useState<MentionCandidateItem[]>([]);
   const [mentionLoading, setMentionLoading] = React.useState(false);
   const [activeMentionIndex, setActiveMentionIndex] = React.useState(0);
+  const [resolvedMentionLookup, setResolvedMentionLookup] = React.useState<
+    Map<string, MentionCandidateItem>
+  >(() => createInitialMentionLookup());
 
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const backdropRef = React.useRef<HTMLDivElement | null>(null);
   const dragDepthRef = React.useRef(0);
   const isHandlingPasteRef = React.useRef(false);
   const mentionSeqRef = React.useRef(0);
+  const checkedMentionTokensRef = React.useRef<Set<string>>(new Set(OFFICIAL_MENTION_ALIASES));
   const pendingCaretRef = React.useRef<number | null>(null);
 
   React.useLayoutEffect(() => {
@@ -144,6 +175,86 @@ export function PostComposer({
     return () => window.clearTimeout(timer);
   }, [mentionTriggerQuery]);
 
+  const syncBackdropScroll = React.useCallback(() => {
+    if (backdropRef.current && textareaRef.current) {
+      backdropRef.current.scrollTop = textareaRef.current.scrollTop;
+      backdropRef.current.scrollLeft = textareaRef.current.scrollLeft;
+    }
+  }, []);
+
+  const mentionTokensInContent = React.useMemo(() => extractMentionTokens(content), [content]);
+
+  React.useEffect(() => {
+    const missing = mentionTokensInContent.filter((tok) => {
+      const lower = tok.toLowerCase();
+      return !resolvedMentionLookup.has(lower) && !checkedMentionTokensRef.current.has(lower);
+    });
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      Promise.all(
+        missing.map(async (tok) => {
+          const lower = tok.toLowerCase();
+          checkedMentionTokensRef.current.add(lower);
+          try {
+            const res = await api.searchMentionCandidates(tok, 8);
+            const exact =
+              res.users.find(
+                (u) =>
+                  u.nickname.toLowerCase() === lower ||
+                  (u.handle && u.handle.toLowerCase() === lower)
+              ) ?? null;
+            return { lower, candidate: exact };
+          } catch {
+            return { lower, candidate: null };
+          }
+        })
+      ).then((results) => {
+        if (cancelled) return;
+        const found = results.filter(
+          (r): r is { lower: string; candidate: MentionCandidateItem } => Boolean(r.candidate)
+        );
+        if (found.length === 0) return;
+        setResolvedMentionLookup((prev) => {
+          const next = new Map(prev);
+          for (const item of found) {
+            next.set(item.lower, item.candidate);
+            next.set(item.candidate.nickname.toLowerCase(), item.candidate);
+          }
+          return next;
+        });
+      });
+    }, 100);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [mentionTokensInContent, resolvedMentionLookup]);
+
+  const editorSegments = React.useMemo(
+    () => splitEditorTextByMentions(content, resolvedMentionLookup),
+    [content, resolvedMentionLookup]
+  );
+
+  const resolvedMentionsInEditor = React.useMemo(() => {
+    const seenIds = new Set<string>();
+    const list: MentionCandidateItem[] = [];
+    for (const seg of editorSegments) {
+      if (seg.type === 'mention' && seg.candidate && !seenIds.has(seg.candidate.id)) {
+        seenIds.add(seg.candidate.id);
+        list.push(seg.candidate);
+      }
+    }
+    return list;
+  }, [editorSegments]);
+
+  const hasOfficialMentionInEditor = React.useMemo(
+    () => resolvedMentionsInEditor.some((m) => m.isOfficial),
+    [resolvedMentionsInEditor]
+  );
+
   const syncMentionTrigger = React.useCallback((nextValue: string, caretPos: number | null) => {
     const pos = caretPos ?? nextValue.length;
     setMentionTrigger(extractMentionTriggerBeforeCaret(nextValue, pos));
@@ -159,6 +270,13 @@ export function PostComposer({
       const inserted = `${mentionText}${needsTrailingSpace ? ' ' : ''}`;
       const nextContent = `${before}${inserted}${after}`.slice(0, 5000);
       const nextCaret = Math.min(before.length + inserted.length, 5000);
+
+      setResolvedMentionLookup((prev) => {
+        const next = new Map(prev);
+        next.set(candidate.nickname.toLowerCase(), candidate);
+        if (candidate.handle) next.set(candidate.handle.toLowerCase(), candidate);
+        return next;
+      });
 
       pendingCaretRef.current = nextCaret;
       setContent(nextContent);
@@ -436,16 +554,53 @@ export function PostComposer({
           )}
 
           <div className="min-w-0 flex-1 space-y-2.5">
-            <div className="relative">
+            <div className="relative rounded-xl bg-slate-50/50 transition-colors focus-within:bg-white">
+              {content.length > 0 && (
+                <div
+                  ref={backdropRef}
+                  aria-hidden="true"
+                  data-testid="composer-highlight-layer"
+                  className={cn(
+                    'pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words rounded-xl border border-transparent px-3.5 py-2.5 text-sm leading-relaxed text-slate-900',
+                    compact ? 'min-h-[84px]' : 'min-h-[136px]'
+                  )}
+                >
+                  {editorSegments.map((seg, idx) =>
+                    seg.type === 'mention' ? (
+                      <mark
+                        key={`hl-${idx}`}
+                        data-testid="composer-mention-highlight"
+                        data-mention-official={seg.candidate?.isOfficial ? 'true' : 'false'}
+                        className={cn(
+                          'rounded-sm px-0 text-inherit',
+                          seg.candidate?.isOfficial
+                            ? 'bg-indigo-100 text-indigo-700 underline decoration-indigo-400 decoration-2 underline-offset-2'
+                            : seg.candidate
+                              ? 'bg-blue-100 text-blue-700 underline decoration-blue-400 decoration-2 underline-offset-2'
+                              : 'bg-sky-100/80 text-sky-700'
+                        )}
+                      >
+                        {seg.raw}
+                      </mark>
+                    ) : (
+                      <React.Fragment key={`txt-${idx}`}>{seg.value}</React.Fragment>
+                    )
+                  )}
+                  {content.endsWith('\n') ? '\n' : null}
+                </div>
+              )}
+
               <Textarea
                 ref={textareaRef}
                 id={compact ? 'inline-post-content' : 'dialog-post-content'}
                 aria-label="动态正文"
                 value={content}
+                onScroll={syncBackdropScroll}
                 onChange={(e) => {
                   const nextVal = e.target.value;
                   setContent(nextVal);
                   syncMentionTrigger(nextVal, e.target.selectionStart);
+                  syncBackdropScroll();
                 }}
                 onClick={(e) => {
                   syncMentionTrigger(e.currentTarget.value, e.currentTarget.selectionStart);
@@ -505,7 +660,10 @@ export function PostComposer({
                 placeholder={placeholder}
                 rows={compact ? 3 : 5}
                 className={cn(
-                  'resize-none border-slate-200/80 bg-slate-50/50 text-sm leading-relaxed focus:bg-white',
+                  'relative z-10 resize-none border-slate-200/80 text-sm leading-relaxed',
+                  content.length > 0
+                    ? 'bg-transparent text-transparent caret-slate-900 selection:bg-blue-500/20 focus:bg-transparent'
+                    : 'bg-transparent text-slate-900 focus:bg-transparent',
                   compact ? 'min-h-[84px]' : 'min-h-[136px]'
                 )}
               />
@@ -584,6 +742,45 @@ export function PostComposer({
                 </div>
               )}
             </div>
+
+            {resolvedMentionsInEditor.length > 0 && (
+              <div
+                data-testid="composer-mention-preview"
+                className="flex flex-wrap items-center gap-1.5"
+              >
+                <span className="text-[11px] font-medium text-slate-400">提及预览：</span>
+                {resolvedMentionsInEditor.map((item) => (
+                  <UserHoverCard
+                    key={item.id}
+                    userId={item.id}
+                    initialUser={item}
+                  >
+                    <span
+                      tabIndex={0}
+                      data-testid="composer-mention-chip"
+                      data-mention-user-id={item.id}
+                      className={cn(
+                        'inline-flex cursor-pointer items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition',
+                        item.isOfficial
+                          ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                          : 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100'
+                      )}
+                    >
+                      <span>@{item.nickname}</span>
+                      {item.isOfficial && <OfficialBadge label={item.officialBadge} />}
+                    </span>
+                  </UserHoverCard>
+                ))}
+                {hasOfficialMentionInEditor && (
+                  <span
+                    data-testid="composer-feedback-hint"
+                    className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200"
+                  >
+                    发布后将自动创建反馈工单
+                  </span>
+                )}
+              </div>
+            )}
 
             {extractedTags.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">

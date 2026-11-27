@@ -17,15 +17,28 @@ import {
 } from '../lib/crypto';
 import { isValidFromEmail, makeContentPreview, maskApiKey } from '../lib/validation';
 import {
+  createOrUpdateNotification,
   getUnreadNotificationRecipientsForPost,
   pushNotificationReadSyncForUsers,
 } from '../lib/notifications';
+import {
+  getFeedbackTicketStatusLabel,
+  isValidFeedbackTicketStatus,
+  serializeFeedbackTicket,
+} from '../lib/feedback-tickets';
+import {
+  OFFICIAL_FEEDBACK_BADGE,
+  OFFICIAL_FEEDBACK_HANDLE,
+  OFFICIAL_FEEDBACK_NICKNAME,
+  OFFICIAL_FEEDBACK_USER_ID,
+  ensureOfficialFeedbackAccount,
+} from '../lib/official';
 
 const ADMIN_SESSION_TTL_SECONDS = 24 * 60 * 60;
 const MAX_FAILED_LOGIN_ATTEMPTS = 8;
 const LOCK_DURATION_MS = 5 * 60 * 1000;
 
-async function isValidAdminSession(
+export async function isValidAdminSession(
   db: D1Database,
   cookieHeader: string | undefined
 ): Promise<boolean> {
@@ -332,6 +345,8 @@ adminRoutes.delete('/posts/:id', async (c) => {
 
   await c.env.DB.batch([
     c.env.DB.prepare('DELETE FROM notifications WHERE post_id = ?').bind(postId),
+    c.env.DB.prepare('DELETE FROM comment_ticket_events WHERE post_id = ?').bind(postId),
+    c.env.DB.prepare('DELETE FROM feedback_tickets WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_mentions WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_bookmarks WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_metrics WHERE post_id = ?').bind(postId),
@@ -346,4 +361,190 @@ adminRoutes.delete('/posts/:id', async (c) => {
   }
 
   return c.json({ ok: true });
+});
+
+adminRoutes.get('/feedback-tickets', async (c) => {
+  const authed = await isValidAdminSession(c.env.DB, c.req.header('cookie'));
+  if (!authed) {
+    return c.json({ error: '未授权访问管理后台' }, 401);
+  }
+
+  const rawStatus = (c.req.query('status') || '').trim();
+  const hasFilter = rawStatus && rawStatus !== 'all';
+  if (hasFilter && !isValidFeedbackTicketStatus(rawStatus)) {
+    return c.json({ error: '工单状态筛选参数无效' }, 400);
+  }
+
+  const whereSql = hasFilter ? 'WHERE ft.status = ?' : '';
+  const bindings = hasFilter ? [rawStatus] : [];
+
+  const rows = await c.env.DB.prepare(
+    `SELECT ft.id, ft.post_id, ft.author_id, ft.feedback_queue_id, ft.content,
+            ft.status, ft.status_note, ft.updated_by_admin, ft.created_at, ft.updated_at,
+            p.content AS post_content, p.comments_count AS post_comments_count, p.created_at AS post_created_at,
+            u.nickname AS author_nickname, u.email AS author_email
+     FROM feedback_tickets ft
+     JOIN posts p ON p.id = ft.post_id
+     JOIN users u ON u.id = ft.author_id
+     ${whereSql}
+     ORDER BY ft.created_at DESC
+     LIMIT 100`
+  )
+    .bind(...bindings)
+    .all<{
+      id: string;
+      post_id: string;
+      author_id: string;
+      feedback_queue_id: string;
+      content: string;
+      status: string;
+      status_note: string;
+      updated_by_admin: number;
+      created_at: string;
+      updated_at: string;
+      post_content: string;
+      post_comments_count: number;
+      post_created_at: string;
+      author_nickname: string;
+      author_email: string;
+    }>();
+
+  return c.json({
+    tickets: (rows.results ?? []).map((r) => ({
+      ...serializeFeedbackTicket(r),
+      content: r.content,
+      post: {
+        id: r.post_id,
+        content: r.post_content,
+        contentPreview: makeContentPreview(r.post_content, 100),
+        commentsCount: Number(r.post_comments_count ?? 0),
+        createdAt: r.post_created_at,
+      },
+      author: {
+        id: r.author_id,
+        nickname: r.author_nickname,
+        email: r.author_email,
+      },
+    })),
+  });
+});
+
+adminRoutes.post('/feedback-tickets/:id/reply', async (c) => {
+  const authed = await isValidAdminSession(c.env.DB, c.req.header('cookie'));
+  if (!authed) {
+    return c.json({ error: '未授权访问管理后台' }, 401);
+  }
+
+  const ticketId = c.req.param('id');
+  const body = await c.req
+    .json<{ status?: unknown; content?: unknown }>()
+    .catch(() => null);
+  if (!body || typeof body !== 'object') {
+    return c.json({ error: '请求体格式错误' }, 400);
+  }
+
+  if (!isValidFeedbackTicketStatus(body.status)) {
+    return c.json({ error: '请选择有效的工单状态' }, 400);
+  }
+
+  const content = typeof body.content === 'string' ? body.content.trim() : '';
+  if (content.length < 1 || content.length > 1000) {
+    return c.json({ error: '回复内容长度需在 1 到 1000 个字符之间' }, 400);
+  }
+
+  const ticket = await c.env.DB.prepare(
+    `SELECT ft.id, ft.post_id, ft.author_id, ft.feedback_queue_id, ft.status, ft.created_at
+     FROM feedback_tickets ft
+     JOIN posts p ON p.id = ft.post_id
+     WHERE ft.id = ?
+     LIMIT 1`
+  )
+    .bind(ticketId)
+    .first<{
+      id: string;
+      post_id: string;
+      author_id: string;
+      feedback_queue_id: string;
+      status: string;
+      created_at: string;
+    }>();
+
+  if (!ticket) {
+    return c.json({ error: '反馈工单或关联帖子不存在' }, 404);
+  }
+
+  await ensureOfficialFeedbackAccount(c.env.DB);
+
+  const nextStatus = body.status;
+  const fromStatus = isValidFeedbackTicketStatus(ticket.status) ? ticket.status : 'pending';
+  const commentId = crypto.randomUUID();
+  const eventId = crypto.randomUUID();
+  const nowIso = new Date().toISOString();
+
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      'INSERT INTO comments (id, post_id, author_id, content, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(commentId, ticket.post_id, OFFICIAL_FEEDBACK_USER_ID, content, nowIso),
+    c.env.DB.prepare(
+      `INSERT INTO comment_ticket_events (id, comment_id, ticket_id, post_id, from_status, to_status, actor_type, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'admin', ?)`
+    ).bind(eventId, commentId, ticket.id, ticket.post_id, fromStatus, nextStatus, nowIso),
+    c.env.DB.prepare(
+      `UPDATE feedback_tickets
+       SET status = ?, status_note = ?, last_reply_comment_id = ?, updated_by_admin = 1, updated_at = ?
+       WHERE id = ?`
+    ).bind(nextStatus, content, commentId, nowIso, ticket.id),
+    c.env.DB.prepare('UPDATE posts SET comments_count = comments_count + 1 WHERE id = ?').bind(
+      ticket.post_id
+    ),
+  ]);
+
+  const statusLabel = getFeedbackTicketStatusLabel(nextStatus);
+  await createOrUpdateNotification(c.env, {
+    recipientId: ticket.author_id,
+    actorId: OFFICIAL_FEEDBACK_USER_ID,
+    type: 'comment',
+    postId: ticket.post_id,
+    commentId,
+    contentPreview: `[工单${statusLabel}] ${content}`,
+  });
+
+  return c.json(
+    {
+      ok: true,
+      ticket: serializeFeedbackTicket({
+        id: ticket.id,
+        post_id: ticket.post_id,
+        feedback_queue_id: ticket.feedback_queue_id,
+        status: nextStatus,
+        status_note: content,
+        updated_by_admin: 1,
+        created_at: ticket.created_at,
+        updated_at: nowIso,
+      }),
+      comment: {
+        id: commentId,
+        postId: ticket.post_id,
+        content,
+        author: {
+          id: OFFICIAL_FEEDBACK_USER_ID,
+          nickname: OFFICIAL_FEEDBACK_NICKNAME,
+          avatarSeed: OFFICIAL_FEEDBACK_HANDLE,
+          avatarUrl: '',
+          isOfficial: true,
+          officialBadge: OFFICIAL_FEEDBACK_BADGE,
+        },
+        ticketEvent: {
+          ticketId: ticket.id,
+          fromStatus,
+          toStatus: nextStatus,
+          fromStatusLabel: getFeedbackTicketStatusLabel(fromStatus),
+          toStatusLabel: statusLabel,
+        },
+        replies: [],
+        createdAt: nowIso,
+      },
+    },
+    201
+  );
 });

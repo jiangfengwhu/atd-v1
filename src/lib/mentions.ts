@@ -1,17 +1,23 @@
 import type { D1Database } from '@cloudflare/workers-types';
-import { ensureOfficialFeedbackAccount } from './official';
+import {
+  OFFICIAL_FEEDBACK_ALIASES,
+  OFFICIAL_FEEDBACK_USER_ID,
+  ensureOfficialFeedbackAccount,
+} from './official';
 
 const URL_MASK_PATTERN = /https?:\/\/[^\s<>"'`\u3000-\u303f\u4e00-\u9fa5\uff00-\uffef]+/gi;
 const MENTION_PATTERN =
   /(?:^|(?<![a-zA-Z0-9._%+-/@]))@([\u4e00-\u9fa5a-zA-Z0-9_-]{1,30})(?!\.[a-zA-Z0-9])/g;
 
 const MAX_MENTIONS_PER_POST = 20;
+const OFFICIAL_ALIAS_SET = new Set(OFFICIAL_FEEDBACK_ALIASES);
 
 export interface ResolvedMention {
   userId: string;
   nickname: string;
   matchedText: string;
   isOfficial: boolean;
+  isFeedbackAccount?: boolean;
   officialBadge?: string;
 }
 
@@ -19,6 +25,7 @@ interface MentionUserLookupRow {
   id: string;
   nickname: string;
   is_official: number;
+  is_feedback_account: number;
   official_badge: string;
   official_handle: string;
 }
@@ -61,21 +68,30 @@ export async function resolveMentionedUsers(
   await ensureOfficialFeedbackAccount(db);
 
   const loweredTokens = Array.from(new Set(tokens.map((t) => t.toLowerCase())));
+  const includesOfficialAlias = loweredTokens.some((t) => OFFICIAL_ALIAS_SET.has(t));
   const placeholders = loweredTokens.map(() => '?').join(', ');
 
   const rows = await db
     .prepare(
       `SELECT u.id, u.nickname,
               CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_official,
+              COALESCE(oa.is_feedback_account, 0) AS is_feedback_account,
               COALESCE(oa.badge_label, '') AS official_badge,
               COALESCE(oa.handle, '') AS official_handle
        FROM users u
        LEFT JOIN official_accounts oa ON oa.user_id = u.id
        WHERE LOWER(u.nickname) IN (${placeholders})
           OR LOWER(COALESCE(oa.handle, '')) IN (${placeholders})
+          OR LOWER(COALESCE(oa.badge_label, '')) IN (${placeholders})
+          ${includesOfficialAlias ? 'OR u.id = ?' : ''}
        ORDER BY is_official DESC, u.created_at ASC`
     )
-    .bind(...loweredTokens, ...loweredTokens)
+    .bind(
+      ...loweredTokens,
+      ...loweredTokens,
+      ...loweredTokens,
+      ...(includesOfficialAlias ? [OFFICIAL_FEEDBACK_USER_ID] : [])
+    )
     .all<MentionUserLookupRow>();
 
   const candidates = rows.results ?? [];
@@ -87,26 +103,37 @@ export async function resolveMentionedUsers(
   for (const token of tokens) {
     const lower = token.toLowerCase();
     const exactMatch = candidates.find(
-      (c) => c.nickname === token || (c.official_handle && c.official_handle === token)
+      (c) =>
+        c.nickname === token ||
+        (c.official_handle && c.official_handle === token) ||
+        (c.official_badge && c.official_badge === token)
     );
     const ciMatch =
       exactMatch ??
       candidates.find(
         (c) =>
           c.nickname.toLowerCase() === lower ||
-          (c.official_handle && c.official_handle.toLowerCase() === lower)
+          (c.official_handle && c.official_handle.toLowerCase() === lower) ||
+          (c.official_badge && c.official_badge.toLowerCase() === lower) ||
+          (OFFICIAL_ALIAS_SET.has(lower) && c.id === OFFICIAL_FEEDBACK_USER_ID)
       );
 
     if (!ciMatch || seenUserIds.has(ciMatch.id)) continue;
     seenUserIds.add(ciMatch.id);
 
     const isOfficial = Boolean(ciMatch.is_official);
+    const isFeedbackAccount = Boolean(ciMatch.is_feedback_account);
     resolved.push({
       userId: ciMatch.id,
       nickname: ciMatch.nickname,
       matchedText: token,
       isOfficial,
-      ...(isOfficial ? { officialBadge: ciMatch.official_badge || '官方' } : {}),
+      ...(isOfficial
+        ? {
+            isFeedbackAccount,
+            officialBadge: ciMatch.official_badge || '官方',
+          }
+        : {}),
     });
   }
 
@@ -131,6 +158,7 @@ export async function fetchMentionsForPostIds(
       `SELECT pm.post_id, pm.mentioned_user_id, pm.matched_text,
               u.nickname,
               CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_official,
+              COALESCE(oa.is_feedback_account, 0) AS is_feedback_account,
               COALESCE(oa.badge_label, '') AS official_badge
        FROM post_mentions pm
        JOIN users u ON u.id = pm.mentioned_user_id
@@ -145,6 +173,7 @@ export async function fetchMentionsForPostIds(
       matched_text: string;
       nickname: string;
       is_official: number;
+      is_feedback_account: number;
       official_badge: string;
     }>();
 
@@ -156,7 +185,12 @@ export async function fetchMentionsForPostIds(
       nickname: row.nickname,
       matchedText: row.matched_text || row.nickname,
       isOfficial,
-      ...(isOfficial ? { officialBadge: row.official_badge || '官方' } : {}),
+      ...(isOfficial
+        ? {
+            isFeedbackAccount: Boolean(row.is_feedback_account),
+            officialBadge: row.official_badge || '官方',
+          }
+        : {}),
     });
     result.set(row.post_id, list);
   }

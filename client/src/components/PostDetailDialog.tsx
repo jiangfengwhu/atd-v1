@@ -12,7 +12,14 @@ import {
   Eye,
   Check,
 } from 'lucide-react';
-import { api, ApiError, type CommentItem, type PostItem, type UserProfile } from '@/lib/api';
+import {
+  api,
+  ApiError,
+  type CommentItem,
+  type FeedbackTicketStatus,
+  type PostItem,
+  type UserProfile,
+} from '@/lib/api';
 import { extractHashtagsFromContent } from '@/lib/hashtags';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -20,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { HashtagText } from '@/components/HashtagText';
 import { OfficialBadge } from '@/components/OfficialBadge';
+import { TICKET_STATUS_META, TicketStatusBadge } from '@/components/TicketStatusBadge';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
 interface PostDetailDialogProps {
@@ -57,6 +65,10 @@ export function PostDetailDialog({
   const [submittingReply, setSubmittingReply] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [copiedShare, setCopiedShare] = React.useState(false);
+  const [isAdmin, setIsAdmin] = React.useState(false);
+  const [selectedTicketStatus, setSelectedTicketStatus] = React.useState<
+    '' | FeedbackTicketStatus
+  >('');
   const [error, setError] = React.useState<string | null>(null);
   const onPostUpdatedRef = React.useRef(onPostUpdated);
   onPostUpdatedRef.current = onPostUpdated;
@@ -68,12 +80,25 @@ export function PostDetailDialog({
       setReplyTarget(null);
       setReplyText('');
       setCopiedShare(false);
+      setIsAdmin(false);
+      setSelectedTicketStatus('');
       return;
     }
 
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setSelectedTicketStatus('');
+
+    api
+      .adminMe()
+      .then((res) => {
+        if (!cancelled) setIsAdmin(Boolean(res.authenticated));
+      })
+      .catch(() => {
+        if (!cancelled) setIsAdmin(false);
+      });
+
     api
       .getPost(postId)
       .then((res) => {
@@ -180,7 +205,8 @@ export function PostDetailDialog({
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!post) return;
-    if (!currentUser) {
+    const canAdminUpdate = Boolean(isAdmin && post.feedbackTicket && selectedTicketStatus);
+    if (!currentUser && !canAdminUpdate) {
       onRequireAuth();
       return;
     }
@@ -190,12 +216,23 @@ export function PostDetailDialog({
     setSubmittingComment(true);
     setError(null);
     try {
-      const res = await api.addComment(post.id, text);
+      const res = await api.addComment(
+        post.id,
+        text,
+        canAdminUpdate && selectedTicketStatus
+          ? { ticketStatus: selectedTicketStatus }
+          : undefined
+      );
       setComments((prev) => [...prev, { ...res.comment, replies: res.comment.replies ?? [] }]);
-      const updated = { ...post, commentsCount: post.commentsCount + 1 };
+      const updated = {
+        ...post,
+        commentsCount: post.commentsCount + 1,
+        ...(res.feedbackTicket ? { feedbackTicket: res.feedbackTicket } : {}),
+      };
       setPost(updated);
       onPostUpdated(updated);
       setCommentText('');
+      setSelectedTicketStatus('');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '发表评论失败');
     } finally {
@@ -383,6 +420,15 @@ export function PostDetailDialog({
 
               {/* Independently Scrollable Body & Comments */}
               <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
+                {post.feedbackTicket && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50/90 px-3 py-2">
+                    <TicketStatusBadge status={post.feedbackTicket.status} />
+                    <span className="text-[11px] text-slate-400">
+                      工单编号 {post.feedbackTicket.id.slice(0, 12)}
+                    </span>
+                  </div>
+                )}
+
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
                   <HashtagText
                     content={post.content}
@@ -447,14 +493,19 @@ export function PostDetailDialog({
                               </button>
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center justify-between gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => navigateToUser(cm.author.id)}
-                                    className="font-semibold text-slate-800 hover:text-blue-600 transition-colors"
-                                  >
-                                    {cm.author.nickname}
-                                  </button>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex min-w-0 items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => navigateToUser(cm.author.id)}
+                                      className="truncate font-semibold text-slate-800 hover:text-blue-600 transition-colors"
+                                    >
+                                      {cm.author.nickname}
+                                    </button>
+                                    {cm.author.isOfficial && (
+                                      <OfficialBadge label={cm.author.officialBadge} />
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
                                     <span className="text-[11px] text-slate-400">
                                       {formatRelativeTime(cm.createdAt)}
                                     </span>
@@ -469,6 +520,19 @@ export function PostDetailDialog({
                                     </button>
                                   </div>
                                 </div>
+                                {cm.ticketEvent && (
+                                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                    <TicketStatusBadge
+                                      status={cm.ticketEvent.toStatus}
+                                      prefix="工单状态："
+                                      testId="comment-ticket-status"
+                                    />
+                                    <span className="text-[11px] text-slate-400">
+                                      ({cm.ticketEvent.fromStatusLabel} →{' '}
+                                      {cm.ticketEvent.toStatusLabel})
+                                    </span>
+                                  </div>
+                                )}
                                 <p className="mt-1 whitespace-pre-wrap text-slate-600">{cm.content}</p>
                               </div>
                             </div>
@@ -637,11 +701,39 @@ export function PostDetailDialog({
                   </span>
                 </div>
 
+                {isAdmin && post.feedbackTicket && (
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-blue-200/80 bg-blue-50/50 px-2.5 py-1.5">
+                    <span className="text-[11px] font-semibold text-blue-700">
+                      管理员工单联动：
+                    </span>
+                    <select
+                      aria-label="变更工单状态"
+                      data-testid="admin-ticket-status-select"
+                      value={selectedTicketStatus}
+                      onChange={(e) =>
+                        setSelectedTicketStatus(e.target.value as '' | FeedbackTicketStatus)
+                      }
+                      className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
+                    >
+                      <option value="">仅回复（不变更状态）</option>
+                      {(['confirmed', 'in_progress', 'launched', 'closed'] as const).map((st) => (
+                        <option key={st} value={st}>
+                          更新为：{TICKET_STATUS_META[st].label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <form onSubmit={handleAddComment} className="flex gap-2">
                   <Input
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
-                    placeholder={currentUser ? '写下你的评论或补充建议...' : '登录后即可发表评论'}
+                    placeholder={
+                      currentUser || (isAdmin && post.feedbackTicket && selectedTicketStatus)
+                        ? '写下你的评论或补充建议...'
+                        : '登录后即可发表评论'
+                    }
                     maxLength={1000}
                     className="h-9 rounded-full"
                   />

@@ -11,11 +11,29 @@ import {
   FileText,
   MessageSquare,
   ArrowLeft,
+  Ticket,
+  Send,
+  ExternalLink,
 } from 'lucide-react';
-import { api, ApiError, type AdminPostItem, type AdminSettings } from '@/lib/api';
+import {
+  api,
+  ApiError,
+  type AdminFeedbackTicketItem,
+  type AdminPostItem,
+  type AdminSettings,
+  type FeedbackTicketStatus,
+} from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { formatRelativeTime } from '@/lib/utils';
+import { Input, Textarea } from '@/components/ui/input';
+import { TICKET_STATUS_META, TicketStatusBadge } from '@/components/TicketStatusBadge';
+import { cn, formatRelativeTime } from '@/lib/utils';
+
+const TICKET_REPLY_TEMPLATES: Partial<Record<FeedbackTicketStatus, string>> = {
+  confirmed: '已确认收到你的反馈，我们已将此需求纳入评估与排期队列！',
+  in_progress: '该反馈正在研发处理中，有新进展会第一时间在此同步。',
+  launched: '好消息！你反馈的功能/体验优化现已正式上线，欢迎前往体验。',
+  closed: '感谢你的反馈，该工单已归档关闭。',
+};
 
 export function AdminPage() {
   const [checking, setChecking] = React.useState(true);
@@ -48,12 +66,28 @@ export function AdminPage() {
   const [posts, setPosts] = React.useState<AdminPostItem[]>([]);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
+  // Feedback tickets
+  const [tickets, setTickets] = React.useState<AdminFeedbackTicketItem[]>([]);
+  const [ticketFilter, setTicketFilter] = React.useState<'all' | FeedbackTicketStatus>('all');
+  const [ticketStatusDrafts, setTicketStatusDrafts] = React.useState<
+    Record<string, FeedbackTicketStatus>
+  >({});
+  const [ticketReplyDrafts, setTicketReplyDrafts] = React.useState<Record<string, string>>({});
+  const [replyingTicketId, setReplyingTicketId] = React.useState<string | null>(null);
+  const [ticketMsg, setTicketMsg] = React.useState<string | null>(null);
+  const [ticketErr, setTicketErr] = React.useState<string | null>(null);
+
   const loadDashboard = React.useCallback(async () => {
-    const [cfg, postRes] = await Promise.all([api.adminGetSettings(), api.adminListPosts()]);
+    const [cfg, postRes, ticketRes] = await Promise.all([
+      api.adminGetSettings(),
+      api.adminListPosts(),
+      api.adminListFeedbackTickets(),
+    ]);
     setSettings(cfg);
     setResendFromEmail(cfg.resendFromEmail);
     setSiteName(cfg.siteName);
     setPosts(postRes.posts);
+    setTickets(ticketRes.tickets);
   }, []);
 
   React.useEffect(() => {
@@ -192,7 +226,73 @@ export function AdminPage() {
     setAuthenticated(false);
     setSettings(null);
     setPosts([]);
+    setTickets([]);
   };
+
+  const getTicketTargetStatus = (ticket: AdminFeedbackTicketItem): FeedbackTicketStatus => {
+    const existing = ticketStatusDrafts[ticket.id];
+    if (existing) return existing;
+    return ticket.status === 'pending' ? 'confirmed' : 'launched';
+  };
+
+  const handleSelectTicketStatus = (ticketId: string, nextStatus: FeedbackTicketStatus) => {
+    setTicketStatusDrafts((prev) => ({ ...prev, [ticketId]: nextStatus }));
+    setTicketReplyDrafts((prev) => {
+      const current = (prev[ticketId] || '').trim();
+      const isTemplate = Object.values(TICKET_REPLY_TEMPLATES).includes(current);
+      if (!current || isTemplate) {
+        return { ...prev, [ticketId]: TICKET_REPLY_TEMPLATES[nextStatus] ?? '' };
+      }
+      return prev;
+    });
+  };
+
+  const handleReplyTicket = async (ticket: AdminFeedbackTicketItem) => {
+    const targetStatus = getTicketTargetStatus(ticket);
+    const replyContent = (
+      ticketReplyDrafts[ticket.id] ??
+      TICKET_REPLY_TEMPLATES[targetStatus] ??
+      ''
+    ).trim();
+
+    if (!replyContent) {
+      setTicketErr('请输入工单回复内容');
+      return;
+    }
+
+    setReplyingTicketId(ticket.id);
+    setTicketErr(null);
+    setTicketMsg(null);
+    try {
+      const res = await api.adminReplyFeedbackTicket(ticket.id, {
+        status: targetStatus,
+        content: replyContent,
+      });
+      setTickets((prev) =>
+        prev.map((item) =>
+          item.id === ticket.id
+            ? {
+                ...item,
+                ...res.ticket,
+                post: {
+                  ...item.post,
+                  commentsCount: item.post.commentsCount + 1,
+                },
+              }
+            : item
+        )
+      );
+      setTicketReplyDrafts((prev) => ({ ...prev, [ticket.id]: '' }));
+      setTicketMsg(`工单已更新为「${res.ticket.statusLabel}」并在原帖下发表官方回复`);
+    } catch (err) {
+      setTicketErr(err instanceof ApiError ? err.message : '回复工单失败');
+    } finally {
+      setReplyingTicketId(null);
+    }
+  };
+
+  const filteredTickets =
+    ticketFilter === 'all' ? tickets : tickets.filter((t) => t.status === ticketFilter);
 
   if (checking) {
     return (
@@ -477,6 +577,163 @@ export function AdminPage() {
             </form>
           </section>
         </div>
+
+        {/* Feedback Tickets Management */}
+        <section
+          data-testid="admin-feedback-tickets-section"
+          className="rounded-2xl border border-zinc-200 bg-white p-6"
+        >
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Ticket className="h-4 w-4 text-blue-600" />
+              <h2 className="text-base font-bold">反馈工单管理（@官方反馈）</h2>
+              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-600">
+                {tickets.length}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(
+                ['all', 'pending', 'confirmed', 'in_progress', 'launched', 'closed'] as const
+              ).map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setTicketFilter(st)}
+                  className={cn(
+                    'rounded-full px-3 py-1 text-xs font-semibold transition',
+                    ticketFilter === st
+                      ? 'bg-zinc-900 text-white'
+                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                  )}
+                >
+                  {st === 'all' ? '全部' : TICKET_STATUS_META[st].label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {ticketMsg && (
+            <p className="mb-4 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+              {ticketMsg}
+            </p>
+          )}
+          {ticketErr && (
+            <p className="mb-4 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
+              {ticketErr}
+            </p>
+          )}
+
+          {filteredTickets.length === 0 ? (
+            <p className="py-8 text-center text-xs text-zinc-400">暂无匹配的反馈工单</p>
+          ) : (
+            <div className="space-y-4">
+              {filteredTickets.map((ticket) => {
+                const targetStatus = getTicketTargetStatus(ticket);
+                const draftText =
+                  ticketReplyDrafts[ticket.id] ?? TICKET_REPLY_TEMPLATES[targetStatus] ?? '';
+                const isSubmitting = replyingTicketId === ticket.id;
+
+                return (
+                  <div
+                    key={ticket.id}
+                    data-testid={`admin-ticket-${ticket.id}`}
+                    className="rounded-2xl border border-zinc-200/90 bg-zinc-50/50 p-4 space-y-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <TicketStatusBadge status={ticket.status} prefix="" />
+                        <span className="text-xs font-semibold text-zinc-800">
+                          {ticket.author.nickname}
+                        </span>
+                        <span className="text-[11px] text-zinc-400">({ticket.author.email})</span>
+                        <span className="text-[11px] text-zinc-400">
+                          · {formatRelativeTime(ticket.createdAt)}
+                        </span>
+                      </div>
+
+                      <a
+                        href={`/posts/${encodeURIComponent(ticket.postId)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline"
+                      >
+                        查看原帖 ({ticket.post.commentsCount} 评论)
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+
+                    <p className="rounded-xl border border-zinc-200/70 bg-white px-3.5 py-2.5 text-sm text-slate-800 whitespace-pre-wrap">
+                      {ticket.post.content}
+                    </p>
+
+                    {ticket.statusNote && (
+                      <p className="text-xs text-slate-500">
+                        最新官方答复：<span className="text-slate-700">{ticket.statusNote}</span>
+                      </p>
+                    )}
+
+                    <div className="flex flex-col gap-2.5 pt-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs font-semibold text-zinc-600 mr-1">
+                          流转至状态：
+                        </span>
+                        {(['confirmed', 'in_progress', 'launched', 'closed'] as const).map(
+                          (st) => (
+                            <button
+                              key={st}
+                              type="button"
+                              data-testid={`ticket-status-btn-${ticket.id}-${st}`}
+                              onClick={() => handleSelectTicketStatus(ticket.id, st)}
+                              className={cn(
+                                'rounded-full border px-3 py-1 text-xs font-semibold transition',
+                                targetStatus === st
+                                  ? 'border-blue-600 bg-blue-600 text-white'
+                                  : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100'
+                              )}
+                            >
+                              {TICKET_STATUS_META[st].label}
+                            </button>
+                          )
+                        )}
+                      </div>
+
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                        <Textarea
+                          rows={2}
+                          value={draftText}
+                          onChange={(e) =>
+                            setTicketReplyDrafts((prev) => ({
+                              ...prev,
+                              [ticket.id]: e.target.value,
+                            }))
+                          }
+                          placeholder="输入官方回复内容，将同步评论到原帖下并通知反馈者..."
+                          className="min-h-[64px] flex-1 bg-white text-xs"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={isSubmitting || !draftText.trim()}
+                          data-testid={`ticket-reply-submit-${ticket.id}`}
+                          onClick={() => handleReplyTicket(ticket)}
+                          className="h-9 shrink-0 rounded-xl px-4"
+                        >
+                          {isSubmitting ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Send className="h-3.5 w-3.5" />
+                          )}
+                          确认并回复原帖
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         {/* Posts Moderation */}
         <section className="rounded-2xl border border-zinc-200 bg-white p-6">

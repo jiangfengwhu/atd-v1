@@ -11,4 +11,387 @@
  *   multi-element locator ambiguity, timeout, or flawed selector assumption), refine
  *   the test script while preserving genuine functional verification coverage.
  */
+import { test, expect, type APIRequestContext } from '@playwright/test';
 
+function makeEmail(prefix: string): string {
+  const rand = Math.random().toString(36).slice(2, 7);
+  return `${prefix}-${Date.now()}-${rand}@example.com`;
+}
+
+async function loginUser(
+  request: APIRequestContext,
+  email: string,
+  nickname: string
+): Promise<{ id: string; email: string; nickname: string }> {
+  const sendRes = await request.post('/api/auth/send-code', { data: { email } });
+  expect(sendRes.status(), 'send-code 应返回 200').toBe(200);
+  const sendJson = await sendRes.json();
+  expect(sendJson.devCode).toMatch(/^\d{6}$/);
+
+  const verifyRes = await request.post('/api/auth/verify-code', {
+    data: { email, code: sendJson.devCode, nickname },
+  });
+  expect(verifyRes.status(), 'verify-code 应返回 200').toBe(200);
+  const verifyJson = await verifyRes.json();
+  expect(verifyJson.ok).toBe(true);
+  return verifyJson.user;
+}
+
+async function loginAdmin(request: APIRequestContext): Promise<void> {
+  const res = await request.post('/api/admin/login', {
+    data: { password: 'admin' },
+  });
+  expect(res.status(), 'admin login 应返回 200').toBe(200);
+}
+
+test.describe.serial('交互体验优化：反馈机制与@提醒功能增强 E2E 验收套件', () => {
+  test('AC-1: 确认桌面端与移动端首页均已移除“意见反馈”按钮及弹窗入口', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+
+    await loginUser(page.request, makeEmail('fb-remove-btn'), '体验检查员');
+
+    // Desktop viewport
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+    await expect(page.locator('main')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: '意见反馈' })).toHaveCount(0);
+    await expect(page.locator('aside').getByText('意见反馈')).toHaveCount(0);
+
+    // Mobile viewport
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.reload();
+    await expect(page.locator('header')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: '意见反馈' })).toHaveCount(0);
+
+    expect(pageErrors, 'AC-1 不应产生前端异常').toEqual([]);
+  });
+
+  test('AC-2: 发帖 @官方账号 / @官方反馈 后，数据库生成对应工单条目且普通邮箱不误触发', async ({
+    browser,
+    page,
+  }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    const user = await loginUser(page.request, makeEmail('fb-trigger'), '工单反馈者');
+    await page.goto('/');
+
+    const inlineForm = page.locator('main form[data-testid="post-composer-form"]').first();
+    const textarea = inlineForm.locator('textarea').first();
+    await expect(textarea).toBeVisible({ timeout: 10000 });
+
+    // 1) 包含邮箱地址但无有效 @官方 的普通帖子不应触发工单
+    const normalRes = await page.request.post('/api/posts', {
+      data: { content: `普通分享联系邮箱 support@official.com ${Date.now()}` },
+    });
+    expect(normalRes.status()).toBe(201);
+    const normalJson = await normalRes.json();
+    expect(normalJson.post.feedbackTicket).toBeNull();
+
+    // 2) 通过编辑器 @官方反馈 发布反馈贴 -> 自动生成反馈工单
+    await textarea.click();
+    await textarea.pressSequentially('@');
+    const popover = inlineForm.getByTestId('mention-popover');
+    await expect(popover).toBeVisible({ timeout: 8000 });
+    await popover.getByTestId('mention-option-official_feedback').click();
+
+    await expect(inlineForm.getByTestId('composer-feedback-hint')).toBeVisible();
+    const uniqueText = `希望列表增加快捷键翻页-${Date.now()}`;
+    await textarea.pressSequentially(uniqueText);
+
+    const createPromise = page.waitForResponse(
+      (res) => res.url().endsWith('/api/posts') && res.request().method() === 'POST'
+    );
+    await inlineForm.locator('button[type="submit"]').click();
+    const createRes = await createPromise;
+    expect(createRes.status()).toBe(201);
+    const createJson = await createRes.json();
+    expect(createJson.post.feedbackTicket).toBeTruthy();
+    expect(createJson.post.feedbackTicket.status).toBe('pending');
+    expect(createJson.post.feedbackTicket.statusLabel).toBe('待处理');
+    const createdPostId = createJson.post.id;
+    const createdTicketId = createJson.post.feedbackTicket.id;
+
+    // 3) 也验证直接输入 @官方账号 发帖同样能触发生成工单
+    const aliasText = `@官方账号 希望夜间模式支持自动跟随系统-${Date.now()}`;
+    const aliasRes = await page.request.post('/api/posts', {
+      data: { content: aliasText },
+    });
+    expect(aliasRes.status()).toBe(201);
+    const aliasJson = await aliasRes.json();
+    expect(aliasJson.post.feedbackTicket).toBeTruthy();
+    expect(aliasJson.post.feedbackTicket.status).toBe('pending');
+
+    // 4) 使用管理员会话查询后台工单列表，确认数据库中持久化存在对应工单记录
+    const adminCtx = await browser.newContext();
+    try {
+      await loginAdmin(adminCtx.request);
+      const ticketsRes = await adminCtx.request.get('/api/admin/feedback-tickets');
+      expect(ticketsRes.status()).toBe(200);
+      const ticketsJson = await ticketsRes.json();
+      expect(ticketsJson.tickets).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: createdTicketId,
+            postId: createdPostId,
+            status: 'pending',
+            author: expect.objectContaining({ id: user.id }),
+          }),
+          expect.objectContaining({
+            postId: aliasJson.post.id,
+            status: 'pending',
+          }),
+        ])
+      );
+    } finally {
+      await adminCtx.close();
+    }
+
+    // 5) 首页卡片显示反馈工单状态标签
+    await page.reload();
+    const card = page.locator('article').filter({ hasText: uniqueText }).first();
+    await expect(card).toBeVisible({ timeout: 10000 });
+    await expect(card.getByTestId('post-ticket-status')).toContainText('待处理');
+
+    expect(pageErrors, 'AC-2 不应产生前端异常').toEqual([]);
+  });
+
+  test('AC-3 & AC-4: 编辑器内 @用户 与普通文本具备显著视觉对比，且 Hover 预览可展开用户资料卡', async ({
+    browser,
+    page,
+  }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    const suffix = Date.now().toString().slice(-4);
+    const peerNick = `设计同学${suffix}`;
+    const peerCtx = await browser.newContext();
+    let peerUserId = '';
+    try {
+      const peer = await loginUser(peerCtx.request, makeEmail('hover-peer'), peerNick);
+      peerUserId = peer.id;
+      await peerCtx.request.patch('/api/auth/profile', {
+        data: { bio: `专注交互设计与前端体验 ${suffix}` },
+      });
+    } finally {
+      await peerCtx.close();
+    }
+
+    await loginUser(page.request, makeEmail('hover-author'), `创作者${suffix}`);
+    await page.goto('/');
+
+    const inlineForm = page.locator('main form[data-testid="post-composer-form"]').first();
+    const textarea = inlineForm.locator('textarea').first();
+    await expect(textarea).toBeVisible({ timeout: 10000 });
+
+    // 输入普通文本 + @普通用户 + @官方反馈 + 普通邮箱
+    await textarea.click();
+    await textarea.pressSequentially(`普通文本说明请 @${peerNick.slice(0, 4)}`);
+    const popover = inlineForm.getByTestId('mention-popover');
+    await expect(popover).toBeVisible({ timeout: 8000 });
+    await popover.getByTestId(`mention-option-${peerUserId}`).click();
+    await expect(popover).toHaveCount(0);
+
+    await textarea.pressSequentially('并同步 @');
+    await expect(popover).toBeVisible({ timeout: 8000 });
+    await popover.getByTestId('mention-option-official_feedback').click();
+    await textarea.pressSequentially(' 邮箱 contact@example.com');
+
+    // AC-3: 验证编辑器高亮层内 @用户 样式与普通文本存在显著对比（背景色 & 文字色不同），且邮箱未被高亮
+    const highlightLayer = inlineForm.getByTestId('composer-highlight-layer');
+    await expect(highlightLayer).toBeVisible();
+    const highlights = highlightLayer.getByTestId('composer-mention-highlight');
+    await expect(highlights).toHaveCount(2);
+    await expect(highlights.nth(0)).toContainText(`@${peerNick}`);
+    await expect(highlights.nth(1)).toContainText('@官方反馈');
+
+    const styleComparison = await highlightLayer.evaluate((layer) => {
+      const layerStyle = window.getComputedStyle(layer);
+      const marks = Array.from(
+        layer.querySelectorAll('[data-testid="composer-mention-highlight"]')
+      );
+      return {
+        plainColor: layerStyle.color,
+        plainBg: layerStyle.backgroundColor,
+        marks: marks.map((el) => {
+          const st = window.getComputedStyle(el);
+          return {
+            text: el.textContent,
+            color: st.color,
+            bg: st.backgroundColor,
+          };
+        }),
+      };
+    });
+
+    for (const m of styleComparison.marks) {
+      expect(m.color, `${m.text} 文字颜色应与普通文本不同`).not.toBe(styleComparison.plainColor);
+      expect(m.bg, `${m.text} 应具备高亮背景色`).not.toBe('rgba(0, 0, 0, 0)');
+    }
+
+    // AC-4: 在编辑器预览中鼠标 Hover @用户 展开悬浮用户资料卡
+    const previewBar = inlineForm.getByTestId('composer-mention-preview');
+    await expect(previewBar).toBeVisible();
+    const peerChip = previewBar
+      .locator(`[data-testid="composer-mention-chip"][data-mention-user-id="${peerUserId}"]`)
+      .first();
+    await expect(peerChip).toBeVisible();
+
+    await peerChip.hover();
+    const hoverCard = page.getByTestId('user-hover-card');
+    await expect(hoverCard).toBeVisible({ timeout: 8000 });
+    await expect(hoverCard).toContainText(peerNick);
+    await expect(hoverCard).toContainText(`专注交互设计与前端体验 ${suffix}`);
+    await expect(hoverCard).toContainText('发帖');
+    await expect(hoverCard).toContainText('粉丝');
+
+    // 再 Hover 官方反馈预览标签，资料卡切换展示官方反馈信息及官方认证徽章
+    const officialChip = previewBar
+      .locator('[data-testid="composer-mention-chip"][data-mention-user-id="official_feedback"]')
+      .first();
+    await officialChip.hover();
+    await expect(hoverCard).toBeVisible({ timeout: 8000 });
+    await expect(hoverCard).toContainText('官方反馈');
+    await expect(hoverCard.getByTestId('official-badge')).toBeVisible();
+
+    // 发布后，动态卡片上的 @用户 Hover 同样可展开资料卡
+    const createPromise = page.waitForResponse(
+      (res) => res.url().endsWith('/api/posts') && res.request().method() === 'POST'
+    );
+    await inlineForm.locator('button[type="submit"]').click();
+    const createRes = await createPromise;
+    expect(createRes.status()).toBe(201);
+
+    const card = page.locator('article').filter({ hasText: `contact@example.com` }).first();
+    await expect(card).toBeVisible({ timeout: 10000 });
+    await card.getByTestId('mention-tag').first().hover();
+    await expect(hoverCard).toBeVisible({ timeout: 8000 });
+    await expect(hoverCard).toContainText(peerNick);
+
+    expect(pageErrors, 'AC-3 & AC-4 不应产生前端异常').toEqual([]);
+  });
+
+  test('AC-5: 仅管理员评论回复可触发工单状态流转（确认反馈与上线），并在评论区准确回显与通知作者', async ({
+    browser,
+    page,
+  }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+
+    const author = await loginUser(page.request, makeEmail('ticket-author'), '建议发起人');
+    const feedbackContent = `@官方反馈 建议支持工单状态在评论区同步回显-${Date.now()}`;
+    const postRes = await page.request.post('/api/posts', {
+      data: { content: feedbackContent },
+    });
+    expect(postRes.status()).toBe(201);
+    const postJson = await postRes.json();
+    const postId: string = postJson.post.id;
+    const ticketId: string = postJson.post.feedbackTicket.id;
+
+    // 1) 权限校验：普通用户即使传入 ticketStatus 也必须被拒绝 (403)，普通评论不能修改工单状态
+    const normalUserCtx = await browser.newContext();
+    try {
+      await loginUser(normalUserCtx.request, makeEmail('ticket-nonadmin'), '普通路人');
+      const hijackRes = await normalUserCtx.request.post(`/api/posts/${postId}/comments`, {
+        data: { content: '我来试试强行确认工单', ticketStatus: 'confirmed' },
+      });
+      expect(hijackRes.status()).toBe(403);
+
+      const plainCommentRes = await normalUserCtx.request.post(`/api/posts/${postId}/comments`, {
+        data: { content: '普通用户评论：已确认我也遇到过' },
+      });
+      expect(plainCommentRes.status()).toBe(201);
+      const plainJson = await plainCommentRes.json();
+      expect(plainJson.comment.ticketEvent).toBeNull();
+    } finally {
+      await normalUserCtx.close();
+    }
+
+    // 验证工单状态仍保持待处理
+    const checkBeforeRes = await page.request.get(`/api/posts/${postId}`);
+    expect(checkBeforeRes.status()).toBe(200);
+    const checkBeforeJson = await checkBeforeRes.json();
+    expect(checkBeforeJson.post.feedbackTicket.status).toBe('pending');
+
+    // 2) 管理员登录 /admin 页面，确认反馈并回复原帖
+    const adminCtx = await browser.newContext();
+    const adminPage = await adminCtx.newPage();
+    try {
+      await adminPage.setViewportSize({ width: 1440, height: 900 });
+      await adminPage.goto('/admin');
+      await adminPage.locator('#admin-password').fill('admin');
+      await adminPage.getByRole('button', { name: '进入后台' }).click();
+
+      const ticketCard = adminPage.getByTestId(`admin-ticket-${ticketId}`);
+      await expect(ticketCard).toBeVisible({ timeout: 10000 });
+      await expect(ticketCard).toContainText('待处理');
+
+      // 点击“已确认”并填写自定义回复，提交后应在原帖下生成官方评论
+      await adminPage.getByTestId(`ticket-status-btn-${ticketId}-confirmed`).click();
+      const confirmReply = `已确认该需求，将纳入本周迭代计划-${Date.now()}`;
+      await ticketCard.locator('textarea').fill(confirmReply);
+
+      const confirmReq = adminPage.waitForResponse(
+        (res) =>
+          res.url().includes(`/api/admin/feedback-tickets/${ticketId}/reply`) &&
+          res.request().method() === 'POST'
+      );
+      await adminPage.getByTestId(`ticket-reply-submit-${ticketId}`).click();
+      const confirmRes = await confirmReq;
+      expect(confirmRes.status()).toBe(201);
+      await expect(ticketCard).toContainText('已确认');
+
+      // 接着点击“已上线”并回复
+      await adminPage.getByTestId(`ticket-status-btn-${ticketId}-launched`).click();
+      const launchReply = `该优化已正式上线，欢迎刷新体验-${Date.now()}`;
+      await ticketCard.locator('textarea').fill(launchReply);
+
+      const launchReq = adminPage.waitForResponse(
+        (res) =>
+          res.url().includes(`/api/admin/feedback-tickets/${ticketId}/reply`) &&
+          res.request().method() === 'POST'
+      );
+      await adminPage.getByTestId(`ticket-reply-submit-${ticketId}`).click();
+      const launchRes = await launchReq;
+      expect(launchRes.status()).toBe(201);
+      await expect(ticketCard).toContainText('已上线');
+
+      // 3) 回到前台以反馈者视角查看原帖详情，验证工单状态和评论区流转回显均准确
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto(`/posts/${postId}`);
+      const dialog = page.getByRole('dialog').first();
+      await expect(dialog).toBeVisible({ timeout: 10000 });
+      await expect(dialog.getByTestId('post-ticket-status')).toContainText('已上线');
+
+      const statusEvents = dialog.getByTestId('comment-ticket-status');
+      await expect(statusEvents).toHaveCount(2);
+      await expect(statusEvents.nth(0)).toContainText('已确认');
+      await expect(statusEvents.nth(1)).toContainText('已上线');
+      await expect(dialog).toContainText(confirmReply);
+      await expect(dialog).toContainText(launchReply);
+      await expect(dialog).toContainText('官方反馈');
+
+      // 验证反馈发起者也收到了官方回复通知
+      const notifRes = await page.request.get('/api/notifications?type=comment');
+      expect(notifRes.status()).toBe(200);
+      const notifJson = await notifRes.json();
+      expect(notifJson.notifications).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'comment',
+            actor: expect.objectContaining({ id: 'official_feedback' }),
+            post: expect.objectContaining({ id: postId }),
+          }),
+        ])
+      );
+      expect(author.id).toBeTruthy();
+    } finally {
+      await adminCtx.close();
+    }
+
+    expect(pageErrors, 'AC-5 不应产生前端异常').toEqual([]);
+  });
+});

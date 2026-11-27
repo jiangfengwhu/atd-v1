@@ -3,6 +3,7 @@ import type { PostMentionItem } from '@/lib/api';
 import { splitContentByHashtags } from '@/lib/hashtags';
 import { splitContentByMentions } from '@/lib/mentions';
 import { splitTextByUrls } from '@/lib/urlParser';
+import { UserHoverCard } from '@/components/UserHoverCard';
 
 interface HashtagTextProps {
   content: string;
@@ -62,30 +63,48 @@ export function HashtagText({
                 <React.Fragment key={`m-${idx}`}>
                   {mentionSegments.map((mSeg, mIdx) =>
                     mSeg.type === 'mention' ? (
-                      <button
+                      <UserHoverCard
                         key={`mention-${mSeg.mention.userId}-${mIdx}`}
-                        type="button"
-                        data-testid={
-                          mSeg.mention.isOfficial ? 'mention-tag-official' : 'mention-tag'
-                        }
-                        data-mention-user-id={mSeg.mention.userId}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectMention?.(mSeg.mention, e);
+                        userId={mSeg.mention.userId}
+                        initialUser={{
+                          nickname: mSeg.mention.nickname,
+                          isOfficial: mSeg.mention.isOfficial,
+                          officialBadge: mSeg.mention.officialBadge,
                         }}
-                        className={
-                          mSeg.mention.isOfficial
-                            ? 'inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-700 ring-1 ring-inset ring-blue-200 transition hover:bg-blue-100 focus:outline-none align-baseline'
-                            : 'inline rounded bg-blue-50/70 px-1 py-0.5 font-semibold text-blue-600 transition hover:bg-blue-100 hover:text-blue-700 focus:outline-none'
-                        }
+                        onOpenProfile={(uid) => {
+                          if (onSelectMention) {
+                            onSelectMention(mSeg.mention, {
+                              stopPropagation: () => {},
+                            } as React.MouseEvent);
+                          } else if (uid) {
+                            window.history.pushState(null, '', `/users/${encodeURIComponent(uid)}`);
+                          }
+                        }}
                       >
-                        <span>{mSeg.raw}</span>
-                        {mSeg.mention.isOfficial && (
-                          <span className="rounded bg-blue-600 px-1 py-px text-[10px] font-bold leading-none text-white">
-                            {mSeg.mention.officialBadge || '官方'}
-                          </span>
-                        )}
-                      </button>
+                        <button
+                          type="button"
+                          data-testid={
+                            mSeg.mention.isOfficial ? 'mention-tag-official' : 'mention-tag'
+                          }
+                          data-mention-user-id={mSeg.mention.userId}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectMention?.(mSeg.mention, e);
+                          }}
+                          className={
+                            mSeg.mention.isOfficial
+                              ? 'inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-300 transition hover:bg-indigo-100 focus:outline-none align-baseline'
+                              : 'inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 font-semibold text-sky-700 ring-1 ring-inset ring-sky-200 transition hover:bg-sky-100 hover:text-sky-800 focus:outline-none align-baseline'
+                          }
+                        >
+                          <span>{mSeg.raw}</span>
+                          {mSeg.mention.isOfficial && (
+                            <span className="rounded-full bg-indigo-600 px-1.5 py-px text-[10px] font-bold leading-none text-white">
+                              {mSeg.mention.officialBadge || '官方'}
+                            </span>
+                          )}
+                        </button>
+                      </UserHoverCard>
                     ) : (
                       <React.Fragment key={`plain-${mIdx}`}>{mSeg.value}</React.Fragment>
                     )

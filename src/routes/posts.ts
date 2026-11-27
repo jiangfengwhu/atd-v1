@@ -21,7 +21,25 @@ import {
   resolveMentionedUsers,
   type ResolvedMention,
 } from '../lib/mentions';
-import { isOfficialUserId } from '../lib/official';
+import {
+  OFFICIAL_FEEDBACK_BADGE,
+  OFFICIAL_FEEDBACK_HANDLE,
+  OFFICIAL_FEEDBACK_NICKNAME,
+  OFFICIAL_FEEDBACK_USER_ID,
+  ensureOfficialFeedbackAccount,
+  isOfficialUserId,
+} from '../lib/official';
+import {
+  fetchFeedbackTicketsForPostIds,
+  fetchTicketEventsForCommentIds,
+  getFeedbackTicketStatusLabel,
+  isValidFeedbackTicketStatus,
+  serializeFeedbackTicket,
+  type FeedbackTicketSummary,
+} from '../lib/feedback-tickets';
+import { sha256Hex } from '../lib/crypto';
+import { tryPushToAutoDevStudio } from './signals';
+import { isValidAdminSession } from './admin';
 
 export interface PostRow {
   id: string;
@@ -53,6 +71,8 @@ interface CommentRow {
   author_nickname: string;
   author_avatar_seed: string;
   author_avatar_url?: string | null;
+  author_is_official?: number | null;
+  author_official_badge?: string | null;
 }
 
 interface CommentReplyRow {
@@ -65,6 +85,8 @@ interface CommentReplyRow {
   author_nickname: string;
   author_avatar_seed: string;
   author_avatar_url?: string | null;
+  author_is_official?: number | null;
+  author_official_badge?: string | null;
   reply_to_user_id: string | null;
   reply_to_nickname: string | null;
 }
@@ -78,7 +100,11 @@ function parseTagsJson(raw: string): string[] {
   }
 }
 
-export function serializePost(row: PostRow, mentions: ResolvedMention[] = []) {
+export function serializePost(
+  row: PostRow,
+  mentions: ResolvedMention[] = [],
+  feedbackTicket: FeedbackTicketSummary | null = null
+) {
   const isOfficial = Boolean(row.author_is_official);
   return {
     id: row.id,
@@ -86,6 +112,7 @@ export function serializePost(row: PostRow, mentions: ResolvedMention[] = []) {
     imageUrl: row.image_url,
     tags: parseTagsJson(row.tags_json),
     mentions,
+    feedbackTicket,
     likesCount: Number(row.likes_count),
     commentsCount: Number(row.comments_count),
     viewsCount: Number(row.views_count ?? 0),
@@ -217,13 +244,16 @@ postRoutes.get('/', async (c) => {
     .all<PostRow>();
 
   const postResults = rows.results ?? [];
-  const mentionsMap = await fetchMentionsForPostIds(
-    c.env.DB,
-    postResults.map((r) => r.id)
-  );
+  const postIds = postResults.map((r) => r.id);
+  const [mentionsMap, ticketsMap] = await Promise.all([
+    fetchMentionsForPostIds(c.env.DB, postIds),
+    fetchFeedbackTicketsForPostIds(c.env.DB, postIds),
+  ]);
 
   return c.json({
-    posts: postResults.map((row) => serializePost(row, mentionsMap.get(row.id) ?? [])),
+    posts: postResults.map((row) =>
+      serializePost(row, mentionsMap.get(row.id) ?? [], ticketsMap.get(row.id) ?? null)
+    ),
     total: Number(countRow?.total ?? 0),
     siteName: config.site_name,
   });
@@ -263,6 +293,16 @@ postRoutes.post('/', async (c) => {
   const postId = crypto.randomUUID();
   const nowIso = new Date().toISOString();
 
+  const officialFeedbackMention = mentions.find(
+    (m) => m.isOfficial && m.isFeedbackAccount !== false && m.userId !== user.id
+  );
+
+  let createdTicket: FeedbackTicketSummary | null = null;
+  let feedbackQueuePush: {
+    rowId: string;
+    payload: Record<string, unknown>;
+  } | null = null;
+
   const statements = [
     c.env.DB.prepare(
       `INSERT INTO posts (id, author_id, content, image_url, tags_json, likes_count, comments_count, created_at, updated_at)
@@ -276,7 +316,91 @@ postRoutes.post('/', async (c) => {
     ),
   ];
 
+  if (officialFeedbackMention) {
+    const feedbackQueueId = `fb_${crypto.randomUUID().replace(/-/g, '').slice(0, 20)}`;
+    const ticketId = `tkt_${crypto.randomUUID().replace(/-/g, '').slice(0, 20)}`;
+    const userHash = (await sha256Hex(`user:${user.id}`)).slice(0, 24);
+    const feedbackContent = content.slice(0, 1500);
+    const pageRoute = `/posts/${postId}`;
+    const metadata = {
+      sourceApp: 'atd-v1-community',
+      source: 'post_mention',
+      postId,
+      ticketId,
+      authorId: user.id,
+      authorNickname: user.nickname,
+    };
+
+    statements.push(
+      c.env.DB.prepare(
+        `INSERT INTO autodev_feedback_queue
+          (id, content, category, page_route, user_hash, app_version, metadata_json, synced, created_at)
+         VALUES (?, ?, 'feature', ?, ?, '1.0.0', ?, 0, ?)`
+      ).bind(
+        feedbackQueueId,
+        feedbackContent,
+        pageRoute,
+        userHash,
+        JSON.stringify(metadata),
+        nowIso
+      ),
+      c.env.DB.prepare(
+        `INSERT INTO feedback_tickets
+          (id, post_id, author_id, official_user_id, feedback_queue_id, content, status, status_note, last_reply_comment_id, updated_by_admin, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'pending', '', NULL, 0, ?, ?)`
+      ).bind(
+        ticketId,
+        postId,
+        user.id,
+        officialFeedbackMention.userId,
+        feedbackQueueId,
+        feedbackContent,
+        nowIso,
+        nowIso
+      )
+    );
+
+    createdTicket = serializeFeedbackTicket({
+      id: ticketId,
+      post_id: postId,
+      feedback_queue_id: feedbackQueueId,
+      status: 'pending',
+      status_note: '',
+      updated_by_admin: 0,
+      created_at: nowIso,
+      updated_at: nowIso,
+    });
+
+    feedbackQueuePush = {
+      rowId: feedbackQueueId,
+      payload: {
+        content: feedbackContent,
+        category: 'feature',
+        pageRoute,
+        userId: userHash,
+        appVersion: '1.0.0',
+        metadata,
+      },
+    };
+  }
+
   await c.env.DB.batch(statements);
+
+  if (feedbackQueuePush) {
+    try {
+      c.executionCtx.waitUntil(
+        tryPushToAutoDevStudio({
+          env: c.env,
+          endpointPath: '/api/ingest/feedback',
+          table: 'autodev_feedback_queue',
+          rowId: feedbackQueuePush.rowId,
+          payload: feedbackQueuePush.payload,
+        })
+      );
+    } catch {
+      // executionCtx unavailable in test environments
+    }
+  }
 
   return c.json(
     {
@@ -287,6 +411,7 @@ postRoutes.post('/', async (c) => {
         imageUrl,
         tags,
         mentions,
+        feedbackTicket: createdTicket,
         likesCount: 0,
         commentsCount: 0,
         viewsCount: 0,
@@ -364,10 +489,13 @@ postRoutes.get('/:id', async (c) => {
     c.env.DB.prepare(
       `SELECT c.id, c.post_id, c.content, c.created_at,
               u.id AS author_id, u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
-              COALESCE(up.avatar_url, '') AS author_avatar_url
+              COALESCE(up.avatar_url, '') AS author_avatar_url,
+              CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS author_is_official,
+              COALESCE(oa.badge_label, '') AS author_official_badge
        FROM comments c
        JOIN users u ON u.id = c.author_id
        LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN official_accounts oa ON oa.user_id = u.id
        WHERE c.post_id = ?
        ORDER BY c.created_at ASC`
     )
@@ -377,11 +505,14 @@ postRoutes.get('/:id', async (c) => {
       `SELECT r.id, r.comment_id, r.post_id, r.content, r.created_at,
               u.id AS author_id, u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
               COALESCE(up.avatar_url, '') AS author_avatar_url,
+              CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS author_is_official,
+              COALESCE(oa.badge_label, '') AS author_official_badge,
               r.reply_to_user_id,
               ru.nickname AS reply_to_nickname
        FROM comment_replies r
        JOIN users u ON u.id = r.author_id
        LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN official_accounts oa ON oa.user_id = u.id
        LEFT JOIN users ru ON ru.id = r.reply_to_user_id
        WHERE r.post_id = ?
        ORDER BY r.created_at ASC`
@@ -397,13 +528,21 @@ postRoutes.get('/:id', async (c) => {
       commentId: string;
       postId: string;
       content: string;
-      author: { id: string; nickname: string; avatarSeed: string; avatarUrl: string };
+      author: {
+        id: string;
+        nickname: string;
+        avatarSeed: string;
+        avatarUrl: string;
+        isOfficial: boolean;
+        officialBadge?: string;
+      };
       replyToUser: { id: string; nickname: string } | null;
       createdAt: string;
     }>
   >();
 
   for (const r of replyRows.results ?? []) {
+    const isOfficial = Boolean(r.author_is_official);
     const list = repliesByComment.get(r.comment_id) ?? [];
     list.push({
       id: r.id,
@@ -415,6 +554,8 @@ postRoutes.get('/:id', async (c) => {
         nickname: r.author_nickname,
         avatarSeed: r.author_avatar_seed,
         avatarUrl: r.author_avatar_url ?? '',
+        isOfficial,
+        ...(isOfficial ? { officialBadge: r.author_official_badge || '官方' } : {}),
       },
       replyToUser:
         r.reply_to_user_id && r.reply_to_nickname
@@ -425,22 +566,36 @@ postRoutes.get('/:id', async (c) => {
     repliesByComment.set(r.comment_id, list);
   }
 
-  const mentionsMap = await fetchMentionsForPostIds(c.env.DB, [postId]);
+  const commentList = commentRows.results ?? [];
+  const [mentionsMap, ticketsMap, ticketEventsMap] = await Promise.all([
+    fetchMentionsForPostIds(c.env.DB, [postId]),
+    fetchFeedbackTicketsForPostIds(c.env.DB, [postId]),
+    fetchTicketEventsForCommentIds(
+      c.env.DB,
+      commentList.map((cm) => cm.id)
+    ),
+  ]);
 
   return c.json({
-    post: serializePost(row, mentionsMap.get(postId) ?? []),
-    comments: (commentRows.results ?? []).map((cm) => ({
-      id: cm.id,
-      content: cm.content,
-      author: {
-        id: cm.author_id,
-        nickname: cm.author_nickname,
-        avatarSeed: cm.author_avatar_seed,
-        avatarUrl: cm.author_avatar_url ?? '',
-      },
-      replies: repliesByComment.get(cm.id) ?? [],
-      createdAt: cm.created_at,
-    })),
+    post: serializePost(row, mentionsMap.get(postId) ?? [], ticketsMap.get(postId) ?? null),
+    comments: commentList.map((cm) => {
+      const isOfficial = Boolean(cm.author_is_official);
+      return {
+        id: cm.id,
+        content: cm.content,
+        author: {
+          id: cm.author_id,
+          nickname: cm.author_nickname,
+          avatarSeed: cm.author_avatar_seed,
+          avatarUrl: cm.author_avatar_url ?? '',
+          isOfficial,
+          ...(isOfficial ? { officialBadge: cm.author_official_badge || '官方' } : {}),
+        },
+        ticketEvent: ticketEventsMap.get(cm.id) ?? null,
+        replies: repliesByComment.get(cm.id) ?? [],
+        createdAt: cm.created_at,
+      };
+    }),
   });
 });
 
@@ -466,6 +621,8 @@ postRoutes.delete('/:id', async (c) => {
 
   await c.env.DB.batch([
     c.env.DB.prepare('DELETE FROM notifications WHERE post_id = ?').bind(postId),
+    c.env.DB.prepare('DELETE FROM comment_ticket_events WHERE post_id = ?').bind(postId),
+    c.env.DB.prepare('DELETE FROM feedback_tickets WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_mentions WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_bookmarks WHERE post_id = ?').bind(postId),
     c.env.DB.prepare('DELETE FROM post_metrics WHERE post_id = ?').bind(postId),
@@ -686,9 +843,33 @@ postRoutes.post('/:id/share', async (c) => {
 });
 
 postRoutes.post('/:id/comments', async (c) => {
-  const user = await getSessionUser(c.env.DB, c.req.header('cookie'));
-  if (!user) {
+  const cookieHeader = c.req.header('cookie');
+  const [user, isAdmin] = await Promise.all([
+    getSessionUser(c.env.DB, cookieHeader),
+    isValidAdminSession(c.env.DB, cookieHeader),
+  ]);
+
+  const body = await c.req
+    .json<{ content?: unknown; ticketStatus?: unknown; asOfficial?: unknown }>()
+    .catch(() => null);
+  if (!body || typeof body !== 'object') {
+    return c.json({ error: '请求格式错误' }, 400);
+  }
+
+  const rawTicketStatus =
+    typeof body.ticketStatus === 'string' ? body.ticketStatus.trim() : '';
+  const hasTicketStatusUpdate = rawTicketStatus.length > 0;
+
+  if (hasTicketStatusUpdate && !isAdmin) {
+    return c.json({ error: '仅管理员账号可操作工单状态变更' }, 403);
+  }
+
+  if (!user && !(hasTicketStatusUpdate && isAdmin)) {
     return c.json({ error: '请先登录后再发表评论' }, 401);
+  }
+
+  if (hasTicketStatusUpdate && !isValidFeedbackTicketStatus(rawTicketStatus)) {
+    return c.json({ error: '工单状态参数无效' }, 400);
   }
 
   const postId = c.req.param('id');
@@ -700,31 +881,130 @@ postRoutes.post('/:id/comments', async (c) => {
     return c.json({ error: '帖子不存在' }, 404);
   }
 
-  const body = await c.req.json<{ content?: unknown }>().catch(() => null);
-  const content = typeof body?.content === 'string' ? body.content.trim() : '';
+  const content = typeof body.content === 'string' ? body.content.trim() : '';
   if (content.length < 1 || content.length > 1000) {
     return c.json({ error: '评论内容长度需在 1 到 1000 个字符之间' }, 400);
   }
 
+  let ticketRow: {
+    id: string;
+    post_id: string;
+    author_id: string;
+    feedback_queue_id: string;
+    status: string;
+    created_at: string;
+  } | null = null;
+
+  if (hasTicketStatusUpdate) {
+    ticketRow = await c.env.DB.prepare(
+      `SELECT id, post_id, author_id, feedback_queue_id, status, created_at
+       FROM feedback_tickets
+       WHERE post_id = ?
+       LIMIT 1`
+    )
+      .bind(postId)
+      .first();
+
+    if (!ticketRow) {
+      return c.json({ error: '该动态未关联反馈工单，无法变更工单状态' }, 400);
+    }
+  }
+
+  const actAsOfficial = Boolean(hasTicketStatusUpdate && (!user || body.asOfficial === true));
+  if (actAsOfficial) {
+    await ensureOfficialFeedbackAccount(c.env.DB);
+  }
+
+  const commentAuthor = actAsOfficial
+    ? {
+        id: OFFICIAL_FEEDBACK_USER_ID,
+        nickname: OFFICIAL_FEEDBACK_NICKNAME,
+        avatarSeed: OFFICIAL_FEEDBACK_HANDLE,
+        avatarUrl: '',
+        isOfficial: true,
+        officialBadge: OFFICIAL_FEEDBACK_BADGE,
+      }
+    : {
+        id: user!.id,
+        nickname: user!.nickname,
+        avatarSeed: user!.avatarSeed,
+        avatarUrl: user!.avatarUrl,
+        isOfficial: await isOfficialUserId(c.env.DB, user!.id),
+      };
+
   const commentId = crypto.randomUUID();
   const nowIso = new Date().toISOString();
 
-  await c.env.DB.batch([
+  const statements = [
     c.env.DB.prepare(
       'INSERT INTO comments (id, post_id, author_id, content, created_at) VALUES (?, ?, ?, ?, ?)'
-    ).bind(commentId, postId, user.id, content, nowIso),
+    ).bind(commentId, postId, commentAuthor.id, content, nowIso),
     c.env.DB.prepare('UPDATE posts SET comments_count = comments_count + 1 WHERE id = ?').bind(
       postId
     ),
-  ]);
+  ];
+
+  let ticketEventPayload: {
+    ticketId: string;
+    fromStatus: string;
+    toStatus: string;
+    fromStatusLabel: string;
+    toStatusLabel: string;
+  } | null = null;
+  let updatedTicketPayload: FeedbackTicketSummary | null = null;
+
+  if (hasTicketStatusUpdate && ticketRow && isValidFeedbackTicketStatus(rawTicketStatus)) {
+    const fromStatus = isValidFeedbackTicketStatus(ticketRow.status)
+      ? ticketRow.status
+      : 'pending';
+    const toStatus = rawTicketStatus;
+    const eventId = crypto.randomUUID();
+
+    statements.push(
+      c.env.DB.prepare(
+        `INSERT INTO comment_ticket_events (id, comment_id, ticket_id, post_id, from_status, to_status, actor_type, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'admin', ?)`
+      ).bind(eventId, commentId, ticketRow.id, postId, fromStatus, toStatus, nowIso),
+      c.env.DB.prepare(
+        `UPDATE feedback_tickets
+         SET status = ?, status_note = ?, last_reply_comment_id = ?, updated_by_admin = 1, updated_at = ?
+         WHERE id = ?`
+      ).bind(toStatus, content, commentId, nowIso, ticketRow.id)
+    );
+
+    ticketEventPayload = {
+      ticketId: ticketRow.id,
+      fromStatus,
+      toStatus,
+      fromStatusLabel: getFeedbackTicketStatusLabel(fromStatus),
+      toStatusLabel: getFeedbackTicketStatusLabel(toStatus),
+    };
+
+    updatedTicketPayload = serializeFeedbackTicket({
+      id: ticketRow.id,
+      post_id: ticketRow.post_id,
+      feedback_queue_id: ticketRow.feedback_queue_id,
+      status: toStatus,
+      status_note: content,
+      updated_by_admin: 1,
+      created_at: ticketRow.created_at,
+      updated_at: nowIso,
+    });
+  }
+
+  await c.env.DB.batch(statements);
+
+  const notifPreview = ticketEventPayload
+    ? `[工单${ticketEventPayload.toStatusLabel}] ${content}`
+    : content;
 
   await createOrUpdateNotification(c.env, {
     recipientId: post.author_id,
-    actorId: user.id,
+    actorId: commentAuthor.id,
     type: 'comment',
     postId,
     commentId,
-    contentPreview: content,
+    contentPreview: notifPreview,
   });
 
   return c.json(
@@ -734,15 +1014,12 @@ postRoutes.post('/:id/comments', async (c) => {
         id: commentId,
         postId,
         content,
-        author: {
-          id: user.id,
-          nickname: user.nickname,
-          avatarSeed: user.avatarSeed,
-          avatarUrl: user.avatarUrl,
-        },
+        author: commentAuthor,
+        ticketEvent: ticketEventPayload,
         replies: [],
         createdAt: nowIso,
       },
+      ...(updatedTicketPayload ? { feedbackTicket: updatedTicketPayload } : {}),
     },
     201
   );
