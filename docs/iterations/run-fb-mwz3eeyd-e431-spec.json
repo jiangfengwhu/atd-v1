@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "1.1",
+  "generatedBy": "AutoDev Studio",
+  "runId": "run-fb-mwz3eeyd-e431",
+  "createdAt": "2026-11-27T14:44:32.438Z",
+  "repository": "jiangfengwhu/atd-v1",
+  "baseBranch": "main",
+  "e2eTestPath": "tests/e2e/run-fb-mwz3eeyd-e431.spec.ts",
+  "e2eVaultPath": ".autodev-e2e-vault/run-fb-mwz3eeyd-e431/e2e.spec.ts",
+  "blindE2eVerification": false,
+  "archivedSpecPath": "docs/iterations/run-fb-mwz3eeyd-e431-spec.json",
+  "prdTitle": "社区动态展示优化与深色模式支持",
+  "architecture": {
+    "summary": "[用户反馈每日直通迭代] 针对动态展示细节进行UI调整，引入全局深色模式支持，并增强URL链接预览渲染逻辑。",
+    "techDecisions": [
+      "采用轻量 Micro-Spec 直通模式：保持最小化改动面，优先确保回归安全与构建通过。",
+      "链接解析可能导致小规模性能开销，需确保在列表滚动时不卡顿",
+      "UI样式变动需检查移动端适配，防止文字居中导致的小屏溢出问题"
+    ]
+  },
+  "ambiguities": [],
+  "apiContracts": [],
+  "tasks": [
+    {
+      "id": "T-01",
+      "title": "UI组件样式规范化",
+      "module": "frontend",
+      "description": "移除@用户名的边框样式，将内容容器居中处理，并将认证Label文字替换为SVG图标。（相关文件提示：src/components/PostContent.tsx, src/styles/components.css）",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "所有@用户名的外边框被移除",
+        "动态正文及认证图标保持垂直居中对齐",
+        "使用指定图标替换文字标签"
+      ],
+      "estimatedComplexity": "S"
+    },
+    {
+      "id": "T-02",
+      "title": "实施全局深色模式",
+      "module": "frontend",
+      "description": "引入CSS变量体系，适配深色主题配色。（相关文件提示：src/styles/theme.css, src/hooks/useTheme.ts）",
+      "dependsOn": [
+        "T-01"
+      ],
+      "acceptanceCriteria": [
+        "系统支持通过配置切换主题",
+        "页面背景与文本颜色在深色模式下具备高可读性对比度"
+      ],
+      "estimatedComplexity": "S"
+    },
+    {
+      "id": "T-03",
+      "title": "增强URL链接解析渲染",
+      "module": "shared",
+      "description": "解析纯文本动态中的URL，将其转换为卡片式UI渲染，并支持点击跳转。（相关文件提示：src/utils/urlParser.ts, src/components/LinkPreview.tsx）",
+      "dependsOn": [
+        "T-02"
+      ],
+      "acceptanceCriteria": [
+        "无图动态包含URL时能显示预览卡片",
+        "预览卡片支持点击跳转至原链接",
+        "解析逻辑不会对正常文本渲染产生干扰"
+      ],
+      "estimatedComplexity": "S"
+    }
+  ],
+  "qaSpec": {
+    "coverageNotes": [
+      "由 用户反馈每日直通迭代 轻量规格自动生成，共 3 项核心验收核对标准。"
+    ],
+    "initialApiTestCount": 3
+  },
+  "qaCritic": {
+    "reviewSummary": "已完成双层 AI 安全消毒与范围校验（跳过重策划），共拆解 3 项精简改动任务。",
+    "findings": [],
+    "finalApiTestChecklist": [
+      {
+        "id": "AC-1",
+        "endpoint": "FEEDBACK-VERIFY",
+        "method": "VERIFY",
+        "scenario": "验证@用户显示正常，无残留边框",
+        "expectedStatus": 200,
+        "assertion": "验证@用户显示正常，无残留边框"
+      },
+      {
+        "id": "AC-2",
+        "endpoint": "FEEDBACK-VERIFY",
+        "method": "VERIFY",
+        "scenario": "验证深色模式切换后页面配色正确，无反色异常",
+        "expectedStatus": 200,
+        "assertion": "验证深色模式切换后页面配色正确，无反色异常"
+      },
+      {
+        "id": "AC-3",
+        "endpoint": "FEEDBACK-VERIFY",
+        "method": "VERIFY",
+        "scenario": "验证无图含链接动态成功渲染预览卡片",
+        "expectedStatus": 200,
+        "assertion": "验证无图含链接动态成功渲染预览卡片"
+      }
+    ]
+  }
+}
