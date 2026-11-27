@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-1af6fffe",
+    "timestamp": "2026-11-27T15:01:09.651Z",
+    "category": "approval",
+    "action": "release_approved",
+    "label": "验收通过并批准上线",
+    "actor": "验收审批人",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-fb-mwz3eeyd-e431",
+    "prdTitle": "社区动态展示优化与深色模式支持",
+    "branch": "autodev/feat-20261127-144434",
+    "prNumber": 21,
+    "status": "success",
+    "detail": "验收通过并合入 main（Commit 80d81a2），已自动部署生产：https://atd-v1-community.809740942.workers.dev"
+  },
+  {
     "id": "aud-19dfbc65",
     "timestamp": "2026-11-27T14:44:42.811Z",
     "category": "execution",
