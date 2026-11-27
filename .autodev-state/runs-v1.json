@@ -160,7 +160,7 @@
         }
       ]
     },
-    "status": "pr_created",
+    "status": "approved",
     "draftPr": {
       "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/19",
       "prNumber": 19,
@@ -179,6 +179,44 @@
       "archivedSpecPath": "docs/iterations/run-fb-mwyvk07p-94af-spec.json",
       "createdAt": "2026-11-27T11:05:03.571Z",
       "initializedEmptyRepo": false
+    },
+    "lastAgySession": {
+      "sessionId": "14cda100-1b0f-4066-bd20-ea3fc442e6c3",
+      "branchName": "autodev/feat-20261127-110458",
+      "actionsRunId": 45987492750,
+      "exitCode": 0,
+      "reused": false,
+      "consecutiveReuseCount": 0,
+      "updatedAt": "2026-11-27T11:15:44.507Z"
+    },
+    "latestCodingOutput": {
+      "content": "已启动类型检查、前端构建与 Playwright E2E 验收测试（涵盖新增用例及 `@提及` / 发帖编辑器回归套件），等待测试执行完成。\n已修复同一时刻多个悬浮资料卡重叠显示的问题，现已重新启动类型检查、生产构建及全量 Playwright E2E 回归测试，等待结果返回。\n已完成 [prd.md](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/docs/prd.md) 与 [spec.json](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/docs/spec.json) 中的全部任务与验收标准，代码已提交并推送至远端分支 `autodev/feat-20261127-110458`（commit `0b54419`）。\n\n### 核心改动概览\n\n1. **移除「意见反馈」入口按钮（T1）**\n   - 在 [CommunityPage.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/pages/CommunityPage.tsx) 中移除了桌面端左侧栏与移动端顶栏的「意见反馈」按钮及 `FeedbackDialog` 弹窗引用，统一通过发帖 `@官方反馈` / `@官方账号` 提交反馈。\n\n2. **修复 `@官方账号` 发帖触发后端反馈与工单持久化（T1）**\n   - 新增幂等 D1 迁移 [0008_feedback_tickets.sql](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/migrations/0008_feedback_tickets.sql)，创建 `feedback_tickets` 与 `comment_ticket_events` 表。\n   - 新增 [feedback-tickets.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/lib/feedback-tickets.ts)，并在 [official.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/lib/official.ts)、[mentions.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/lib/mentions.ts) 与 [users.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/users.ts) 中支持 `@官方反馈`、`@official_feedback`、`@官方`、`@官方账号` 等官方别名匹配与防邮箱误触发。\n   - 在 [posts.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/posts.ts) 的 `POST /api/posts` 中，当帖子提及官方反馈账号时，原子写入 `autodev_feedback_queue`（并异步触发 `tryPushToAutoDevStudio`）与 `feedback_tickets`（初始状态 `pending` / 待处理），同时在帖子序列化结果中返回 `feedbackTicket`。\n\n3. **编辑器 `@用户` 视觉区分度与 Hover 资料卡预览（T2）**\n   - 更新 [mentions.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/lib/mentions.ts) 与 [PostComposer.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/PostComposer.tsx)：\n     - 在文本域后增加同步滚动的语法高亮层（`composer-highlight-layer` / `composer-mention-highlight`），对 `@用户` 与 `@官方反馈` 提供高对比度色彩与下划线高亮（同时忽略邮箱与 URL 路径）。\n     - 新增实时提及预览区（`composer-mention-preview`），展示可交互的 `@用户` 徽章及「发布后将自动创建反馈工单」提示。\n   - 新增悬浮资料卡组件 [UserHoverCard.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/UserHoverCard.tsx)（支持单卡片互斥切换、Portal 定位防裁切与资料缓存），并集成至 [PostComposer.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/PostComposer.tsx) 与 [HashtagText.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/HashtagText.tsx)，实现在编辑器预览区、动态卡片及详情页中悬停 `@用户` 即可展开用户资料卡。\n\n4. **管理员工单状态流转与原帖评论区回显联动（T3）**\n   - 在 [admin.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/admin.ts) 新增 `GET /api/admin/feedback-tickets` 与 `POST /api/admin/feedback-tickets/:id/reply`（校验 `admin_session`），以 `official_feedback` 身份在原帖下发表回复评论、记录 `comment_ticket_events`、更新 `feedback_tickets.status`（支持 `confirmed` 已确认、`in_progress` 处理中、`launched` 已上线、`closed` 已关闭）并推送站内评论通知给反馈作者。\n   - 在 [posts.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/posts.ts) 的 `POST /api/posts/:id/comments` 增加严格权限校验：非管理员传 `ticketStatus` 返回 `403`，普通评论不改变工单状态，管理员会话可直接触发工单状态流转。\n   - 新增 [TicketStatusBadge.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/TicketStatusBadge.tsx)，并在 [AdminPage.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/pages/AdminPage.tsx)、[PostCard.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/PostCard.tsx) 与 [PostDetailDialog.tsx](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/client/src/components/PostDetailDialog.tsx) 中展示工单当前状态与评论区状态流转回显。\n\n### 验证结果\n\n- `npx tsc --noEmit`：通过（0 错误）\n- `npm run build`：通过（Vite 生产构建成功）\n- `npx playwright test`（含新增的 [run-fb-mwyvk07p-94af.spec.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-fb-mwyvk07p-94af.spec.ts) 及全部已有 E2E 套件）：**32 passed (53.5s)**\n- `git status`：工作区干净，已推送至 `origin/autodev/feat-20261127-110458`",
+      "commitSha": "0b54419",
+      "model": "gemini-4-hydrogen-high",
+      "actionsRunId": 45987492750,
+      "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/45987492750",
+      "repairRounds": 0,
+      "capturedAt": "2026-11-27T11:15:44.507Z",
+      "tokenUsage": {
+        "inputTokens": 314075,
+        "outputTokens": 82831,
+        "totalTokens": 396906,
+        "source": "reported",
+        "model": "gemini-4-hydrogen-high"
+      }
+    },
+    "checkedCriteriaIds": [],
+    "approvalNote": "",
+    "approvedAt": "2026-11-27T11:16:09.562Z",
+    "mergedRelease": {
+      "mergedAt": "2026-11-27T11:16:15.483Z",
+      "mergeCommitSha": "25969607f357f7090ce81542827645a6009ed883",
+      "baseBranch": "main",
+      "prNumber": 19,
+      "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/19",
+      "commitUrl": "https://github.com/jiangfengwhu/atd-v1/commit/25969607f357f7090ce81542827645a6009ed883",
+      "mergeMethod": "squash",
+      "branchDeleted": true
     }
   },
   {
