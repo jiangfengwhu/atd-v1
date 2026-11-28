@@ -1,0 +1,82 @@
+{
+  "apiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/api/messages/share-recipients",
+      "method": "GET",
+      "scenario": "已登录用户获取私信分享好友候选列表（优先展示关注/近期会话用户并支持昵称检索）",
+      "expectedStatus": 200,
+      "assertion": "返回 recipients 数组，包含目标好友昵称及关系标记，且不包含当前用户自己"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/api/messages/share-recipients",
+      "method": "GET",
+      "scenario": "未登录访问私信分享好友候选接口",
+      "expectedStatus": 401,
+      "assertion": "返回 401 未登录错误提示"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/posts/:id/share-dm",
+      "method": "POST",
+      "scenario": "已登录用户将帖子通过私信分享给单个好友并附带留言",
+      "expectedStatus": 201,
+      "assertion": "返回 ok: true、sentCount: 1、sharesCount >= 1 及包含 sharedPost 摘要的消息对象"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/api/posts/:id/share-dm",
+      "method": "POST",
+      "scenario": "已登录用户一次性将帖子私信分享给多位好友且不填写附言",
+      "expectedStatus": 201,
+      "assertion": "返回 sentCount: 2，sharesCount 累加 2，两条消息均携带 sharedPost"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/posts/:id/share-dm",
+      "method": "POST",
+      "scenario": "未登录调用私信分享帖子接口",
+      "expectedStatus": 401,
+      "assertion": "返回 401 拒绝未授权分享"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/api/posts/:id/share-dm",
+      "method": "POST",
+      "scenario": "分享不存在的帖子 ID",
+      "expectedStatus": 404,
+      "assertion": "返回 404 帖子不存在"
+    },
+    {
+      "id": "TC-07",
+      "endpoint": "/api/posts/:id/share",
+      "method": "POST",
+      "scenario": "通过复制链接与复制分享文案渠道触发分享计数",
+      "expectedStatus": 200,
+      "assertion": "返回 ok: true、累加后的 sharesCount、sharePath 为 /posts/:id 及对应 channel"
+    },
+    {
+      "id": "TC-08",
+      "endpoint": "/api/messages/with/:peerId",
+      "method": "GET",
+      "scenario": "接收方拉取私信会话详情核对分享动态卡片数据",
+      "expectedStatus": 200,
+      "assertion": "messages 数组中对应消息包含完整 sharedPost（id、unavailable: false、contentPreview、author）"
+    },
+    {
+      "id": "TC-09",
+      "endpoint": "/api/messages/conversations",
+      "method": "GET",
+      "scenario": "接收方查看私信会话列表未读计数与分享动态标记",
+      "expectedStatus": 200,
+      "assertion": "会话 unreadCount >= 1 且 lastMessage.sharedPostId 等于被分享帖子 ID"
+    }
+  ],
+  "e2eTestCode": "import { test, expect, type APIRequestContext } from '@playwright/test';\n\nfunction makeEmail(prefix: string): string {\n  const rand = Math.random().toString(36).slice(2, 7);\n  return `${prefix}-${Date.now()}-${rand}@example.com`;\n}\n\nasync function loginUser(\n  request: APIRequestContext,\n  email: string,\n  nickname: string\n): Promise<{ id: string; email: string; nickname: string }> {\n  const sendRes = await request.post('/api/auth/send-code', { data: { email } });\n  expect(sendRes.status()).toBe(200);\n  const sendJson = await sendRes.json();\n  const verifyRes = await request.post('/api/auth/verify-code', {\n    data: { email, code: sendJson.devCode, nickname },\n  });\n  expect(verifyRes.status()).toBe(200);\n  return (await verifyRes.json()).user;\n}\n\ntest.describe.serial('帖子多途径分享与站内私信分享基础 E2E 套件', () => {\n  test('1. 帖子卡片与详情页多途径分享菜单（复制链接、复制分享文案）', async ({ page }) => {\n    await page.setViewportSize({ width: 1440, height: 900 });\n    await loginUser(page.request, makeEmail('share-menu'), '多途径测试员');\n\n    const postText = `多途径分享测试动态-${Date.now()}`;\n    const createRes = await page.request.post('/api/posts', { data: { content: postText } });\n    expect(createRes.status()).toBe(201);\n    const postId = (await createRes.json()).post.id;\n\n    await page.goto('/');\n    const card = page.locator('article').filter({ hasText: postText }).first();\n    await expect(card).toBeVisible({ timeout: 10000 });\n\n    const shareBtn = card.getByRole('button', { name: /分享/i }).first();\n    await shareBtn.click();\n\n    const menu = page.getByRole('menu').first();\n    await expect(menu).toBeVisible();\n    await expect(menu.getByRole('menuitem', { name: /复制链接/i }).first()).toBeVisible();\n    await expect(menu.getByRole('menuitem', { name: /私信/i }).first()).toBeVisible();\n\n    const sharePromise = page.waitForResponse(\n      (res) => res.url().includes(`/api/posts/${postId}/share`) && res.request().method() === 'POST'\n    );\n    await menu.getByRole('menuitem', { name: /复制链接/i }).first().click();\n    const shareRes = await sharePromise;\n    expect(shareRes.status()).toBe(200);\n    const shareJson = await shareRes.json();\n    expect(shareJson.sharesCount).toBe(1);\n  });\n\n  test('2. 帖子通过站内私信分享给好友并在私信中点击动态卡片直达原帖', async ({ page, browser }) => {\n    await page.setViewportSize({ width: 1440, height: 900 });\n    const ctxB = await browser.newContext();\n    try {\n      const suffix = Date.now().toString().slice(-4);\n      const userA = await loginUser(page.request, makeEmail('dm-share-a'), `分享人${suffix}`);\n      const userB = await loginUser(ctxB.request, makeEmail('dm-share-b'), `好友小乙${suffix}`);\n\n      await page.request.post(`/api/users/${userB.id}/follow`);\n\n      const postText = `推荐阅读的架构笔记-${Date.now()}`;\n      const createRes = await page.request.post('/api/posts', { data: { content: postText } });\n      expect(createRes.status()).toBe(201);\n      const postId = (await createRes.json()).post.id;\n\n      await page.goto(`/posts/${postId}`);\n      const detailDialog = page.getByRole('dialog').first();\n      await expect(detailDialog).toBeVisible({ timeout: 10000 });\n\n      await detailDialog.getByRole('button', { name: /分享/i }).first().click();\n      const menu = page.getByRole('menu').first();\n      await expect(menu).toBeVisible();\n      await menu.getByRole('menuitem', { name: /私信/i }).first().click();\n\n      const dmShareDialog = page.getByRole('dialog').last();\n      await expect(dmShareDialog).toBeVisible({ timeout: 10000 });\n\n      const searchInput = dmShareDialog.getByPlaceholder(/搜索/i).first();\n      await searchInput.fill(userB.nickname);\n      const recipientBtn = dmShareDialog.getByText(userB.nickname).first();\n      await expect(recipientBtn).toBeVisible({ timeout: 8000 });\n      await recipientBtn.click();\n\n      const noteText = `这篇很实用快看看-${suffix}`;\n      const noteInput = dmShareDialog.getByPlaceholder(/附言|留言|说点什么/i).first();\n      await noteInput.fill(noteText);\n\n      const shareDmPromise = page.waitForResponse(\n        (res) => res.url().includes(`/api/posts/${postId}/share-dm`) && res.request().method() === 'POST'\n      );\n      await dmShareDialog.getByRole('button', { name: /发送/i }).last().click();\n      const shareDmRes = await shareDmPromise;\n      expect(shareDmRes.status()).toBe(201);\n\n      const pageB = await ctxB.newPage();\n      await pageB.setViewportSize({ width: 1440, height: 900 });\n      await pageB.goto('/messages');\n      const convItem = pageB.getByText(userA.nickname).first();\n      await expect(convItem).toBeVisible({ timeout: 10000 });\n      await convItem.click();\n\n      await expect(pageB.getByText(noteText).first()).toBeVisible({ timeout: 10000 });\n      const sharedCard = pageB.getByText(postText).first();\n      await expect(sharedCard).toBeVisible({ timeout: 10000 });\n      await sharedCard.click();\n\n      const openedDetail = pageB.getByRole('dialog').first();\n      await expect(openedDetail).toBeVisible({ timeout: 10000 });\n      await expect(openedDetail).toContainText(postText);\n      await pageB.close();\n    } finally {\n      await ctxB.close();\n    }\n  });\n});\n",
+  "coverageNotes": [
+    "覆盖信息流 PostCard 与详情页 /posts/:id 的多途径分享菜单展开与复制链接计数",
+    "覆盖私信分享好友候选列表检索、选择好友、填写附言并调用 POST /api/posts/:id/share-dm",
+    "覆盖接收方在私信界面查看动态分享卡片并点击卡片直达原帖详情的端到端闭环"
+  ]
+}
