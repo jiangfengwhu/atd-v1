@@ -1,6 +1,319 @@
 {
   "testReports": [
     {
+      "id": "tr-gh-46111689123",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "actionsRunId": 46111689123,
+      "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/46111689123",
+      "workflowName": "AutoDev AGY Coding Runner",
+      "branch": "autodev/feat-20261128-052004",
+      "pipelineRunId": "run-fb-210738e0",
+      "prNumber": 23,
+      "kind": "e2e",
+      "status": "passed",
+      "total": 40,
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "passRate": 100,
+      "durationMs": 75486,
+      "executedAt": "2026-11-28T05:34:11.041Z",
+      "summary": "自动化 E2E 验收（gemini-4-hydrogen-high / auto · 自动返工 1 轮）：40 通过 / 0 失败 / 0 跳过",
+      "cases": [
+        {
+          "id": "check-type",
+          "title": "TypeScript / Lint 静态检查 (typecheck)",
+          "status": "passed",
+          "durationMs": 4168
+        },
+        {
+          "id": "check-build",
+          "title": "生产构建检查 (npm run build)",
+          "status": "passed",
+          "durationMs": 2584
+        },
+        {
+          "id": "pw-2",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 1. 宽屏左侧导航栏改版、居中紧凑间距几何审计与通知入口验证",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 709
+        },
+        {
+          "id": "pw-3",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 2. 通知模块全链路 API 契约、防自发、参数边界、跨用户隔离与删帖清理",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 639
+        },
+        {
+          "id": "pw-4",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 3. WebSocket 握手安全边界、通知实时推送与零 HTTP 轮询网络审计",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 9250
+        },
+        {
+          "id": "pw-5",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 4. 私信 WebSocket 实时收发、已读接口校验与聊天窗零轮询审计",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 9281
+        },
+        {
+          "id": "pw-6",
+          "title": "run-7026568c.spec.ts › 通知接入、主流导航栏、Instagram双栏详情与WebSocket实时推送盲测套件 › 5. 动态详情页 Instagram 风格左右双栏几何结构、互动闭环与移动端适配",
+          "file": "run-7026568c.spec.ts",
+          "status": "passed",
+          "durationMs": 1181
+        },
+        {
+          "id": "pw-7",
+          "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 1. 健康检查、左右分栏几何结构、左侧导航项与底部个人资料退出登录",
+          "file": "run-96e1a2ad.spec.ts",
+          "status": "passed",
+          "durationMs": 1039
+        },
+        {
+          "id": "pw-8",
+          "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 2. 个人主页资料修改、安全边界、关注粉丝与评论二级回复闭环",
+          "file": "run-96e1a2ad.spec.ts",
+          "status": "passed",
+          "durationMs": 1029
+        },
+        {
+          "id": "pw-9",
+          "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 3. 私信权限隔离、边界校验、未读已读回执与 UI 聊天交互",
+          "file": "run-96e1a2ad.spec.ts",
+          "status": "passed",
+          "durationMs": 1039
+        },
+        {
+          "id": "pw-10",
+          "title": "run-96e1a2ad.spec.ts › 社区初期迭代（个人主页、私信、图片裁剪、左右布局）加固盲测套件 › 4. 发布图文集成图片裁剪编辑（比例/旋转/确认裁剪）与持久化发布",
+          "file": "run-96e1a2ad.spec.ts",
+          "status": "passed",
+          "durationMs": 1764
+        },
+        {
+          "id": "pw-11",
+          "title": "run-9b961baa.spec.ts › 动态改版（X.com列表流、点击/收藏/分享直达、右侧导航、多账号切换）加固盲测套件 › 1. 主页单列列表形态、点击统计并发累加、收藏隐私隔离、分享 URL 直达与删帖级联清理",
+          "file": "run-9b961baa.spec.ts",
+          "status": "passed",
+          "durationMs": 1857
+        },
+        {
+          "id": "pw-12",
+          "title": "run-9b961baa.spec.ts › 动态改版（X.com列表流、点击/收藏/分享直达、右侧导航、多账号切换）加固盲测套件 › 2. 右侧导航（热门话题、推荐关注）接口契约、隐私脱敏、三栏几何布局与交互闭环",
+          "file": "run-9b961baa.spec.ts",
+          "status": "passed",
+          "durationMs": 1298
+        },
+        {
+          "id": "pw-13",
+          "title": "run-9b961baa.spec.ts › 动态改版（X.com列表流、点击/收藏/分享直达、右侧导航、多账号切换）加固盲测套件 › 3. 多账号安全切换、防越权接管、UI 身份状态同步、添加账号与分级退出闭环",
+          "file": "run-9b961baa.spec.ts",
+          "status": "passed",
+          "durationMs": 1441
+        },
+        {
+          "id": "pw-14",
+          "title": "run-aec3b8f5.spec.ts › 发布功能优化、三栏独立滚动、收藏直达与通知分类已读加固盲测套件 › 1. 品牌改名dev社区、三栏独立滚动、吸顶Tab同宽对齐、右侧搜索、紧凑卡片与配色/隐形滚动条审计",
+          "file": "run-aec3b8f5.spec.ts",
+          "status": "passed",
+          "durationMs": 1487
+        },
+        {
+          "id": "pw-15",
+          "title": "run-aec3b8f5.spec.ts › 发布功能优化、三栏独立滚动、收藏直达与通知分类已读加固盲测套件 › 2. X.com 风格无标题发布、拖拽/粘贴图片、正文 #话题 解析边界与左侧独立收藏页闭环",
+          "file": "run-aec3b8f5.spec.ts",
+          "status": "passed",
+          "durationMs": 1698
+        },
+        {
+          "id": "pw-16",
+          "title": "run-aec3b8f5.spec.ts › 发布功能优化、三栏独立滚动、收藏直达与通知分类已读加固盲测套件 › 3. 通知红点按分类点击即已读、分项独立扣减、安全隔离与并发幂等校验",
+          "file": "run-aec3b8f5.spec.ts",
+          "status": "passed",
+          "durationMs": 1034
+        },
+        {
+          "id": "pw-17",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 1. 健康检查、首页渲染与隐藏路由 /admin 入口审计",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 396
+        },
+        {
+          "id": "pw-18",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 2. 邮箱验证码登录安全边界（非法邮箱、冷却、错误码、UI 登录与防重放）",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 882
+        },
+        {
+          "id": "pw-19",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 3. 图文发布、图片上传、搜索、点赞、评论与持久化闭环",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 1164
+        },
+        {
+          "id": "pw-20",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 4. 未登录拦截与跨用户越权删帖权限隔离",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 146
+        },
+        {
+          "id": "pw-21",
+          "title": "run-f8b35bdc.spec.ts › 图文文字社区全链路加固盲测 E2E 套件 › 5. 隐藏路由 /admin 全流程：鉴权、Resend 密钥脱敏配置、改密与状态回滚",
+          "file": "run-f8b35bdc.spec.ts",
+          "status": "passed",
+          "durationMs": 801
+        },
+        {
+          "id": "pw-22",
+          "title": "run-fb-210738e0.spec.ts › 帖子多途径分享与站内私信分享加固盲测 E2E 套件 › 1. API 安全隔离、参数边界、重复接收人去重与并发分享计数一致性",
+          "file": "run-fb-210738e0.spec.ts",
+          "status": "passed",
+          "durationMs": 403
+        },
+        {
+          "id": "pw-23",
+          "title": "run-fb-210738e0.spec.ts › 帖子多途径分享与站内私信分享加固盲测 E2E 套件 › 2. 信息流与详情页多途径分享菜单、匿名访客私信分享登录引导、深色模式与移动端防溢出",
+          "file": "run-fb-210738e0.spec.ts",
+          "status": "passed",
+          "durationMs": 1514
+        },
+        {
+          "id": "pw-24",
+          "title": "run-fb-210738e0.spec.ts › 帖子多途径分享与站内私信分享加固盲测 E2E 套件 › 3. 帖子详情页通过私信分享给好友 -> 接收方私信卡片展示与直达 -> 原帖删除后优雅降级",
+          "file": "run-fb-210738e0.spec.ts",
+          "status": "passed",
+          "durationMs": 2478
+        },
+        {
+          "id": "pw-25",
+          "title": "run-fb-mwvm5j18-21b8.spec.ts › 发布界面精简化与增强交互体验 E2E 验收套件 › AC-1: 确认内联与弹窗发布编辑器均已移除图片上传与外链按钮",
+          "file": "run-fb-mwvm5j18-21b8.spec.ts",
+          "status": "passed",
+          "durationMs": 807
+        },
+        {
+          "id": "pw-26",
+          "title": "run-fb-mwvm5j18-21b8.spec.ts › 发布界面精简化与增强交互体验 E2E 验收套件 › AC-2: 拖拽本地图片自动预览上传，并拦截非图片非法文件",
+          "file": "run-fb-mwvm5j18-21b8.spec.ts",
+          "status": "passed",
+          "durationMs": 1142
+        },
+        {
+          "id": "pw-27",
+          "title": "run-fb-mwvm5j18-21b8.spec.ts › 发布界面精简化与增强交互体验 E2E 验收套件 › AC-3: 正文粘贴包含 URL 文本自动识别与格式化，纯文本粘贴不受干扰且发布后链接可点击",
+          "file": "run-fb-mwvm5j18-21b8.spec.ts",
+          "status": "passed",
+          "durationMs": 832
+        },
+        {
+          "id": "pw-28",
+          "title": "run-fb-mwvm5j18-21b8.spec.ts › 发布界面精简化与增强交互体验 E2E 验收套件 › AC-4: 手机端 (375px) 与平板端 (768px) 发布界面响应式布局无溢出",
+          "file": "run-fb-mwvm5j18-21b8.spec.ts",
+          "status": "passed",
+          "durationMs": 1659
+        },
+        {
+          "id": "pw-29",
+          "title": "run-fb-mwyuql5l-e8a0.spec.ts › 发帖支持@用户提及与官方反馈账号MVP E2E 验收套件 › AC-1: 首页发帖框输入 @ 展示官方反馈账号并置顶，支持选择插入且邮箱前缀不误触发",
+          "file": "run-fb-mwyuql5l-e8a0.spec.ts",
+          "status": "passed",
+          "durationMs": 1340
+        },
+        {
+          "id": "pw-30",
+          "title": "run-fb-mwyuql5l-e8a0.spec.ts › 发帖支持@用户提及与官方反馈账号MVP E2E 验收套件 › AC-2: 发布包含 @官方反馈 的帖子，列表与详情高亮渲染、可跳转官方主页且官方账号受权限保护",
+          "file": "run-fb-mwyuql5l-e8a0.spec.ts",
+          "status": "passed",
+          "durationMs": 1664
+        },
+        {
+          "id": "pw-31",
+          "title": "run-fb-mwyuql5l-e8a0.spec.ts › 发帖支持@用户提及与官方反馈账号MVP E2E 验收套件 › AC-3: 在帖子中 @普通已注册用户，后端正确关联且前端列表和详情页均高亮可点击",
+          "file": "run-fb-mwyuql5l-e8a0.spec.ts",
+          "status": "passed",
+          "durationMs": 1571
+        },
+        {
+          "id": "pw-32",
+          "title": "run-fb-mwyuql5l-e8a0.spec.ts › 发帖支持@用户提及与官方反馈账号MVP E2E 验收套件 › AC-4: 输入不存在的 @用户名 与邮箱地址发帖，不报错、不崩溃且不误解析为有效提及",
+          "file": "run-fb-mwyuql5l-e8a0.spec.ts",
+          "status": "passed",
+          "durationMs": 1122
+        },
+        {
+          "id": "pw-33",
+          "title": "run-fb-mwyvk07p-94af.spec.ts › 交互体验优化：反馈机制与@提醒功能增强 E2E 验收套件 › AC-1: 确认桌面端与移动端首页均已移除“意见反馈”按钮及弹窗入口",
+          "file": "run-fb-mwyvk07p-94af.spec.ts",
+          "status": "passed",
+          "durationMs": 662
+        },
+        {
+          "id": "pw-34",
+          "title": "run-fb-mwyvk07p-94af.spec.ts › 交互体验优化：反馈机制与@提醒功能增强 E2E 验收套件 › AC-2: 发帖 @官方账号 / @官方反馈 后，数据库生成对应工单条目且普通邮箱不误触发",
+          "file": "run-fb-mwyvk07p-94af.spec.ts",
+          "status": "passed",
+          "durationMs": 1201
+        },
+        {
+          "id": "pw-35",
+          "title": "run-fb-mwyvk07p-94af.spec.ts › 交互体验优化：反馈机制与@提醒功能增强 E2E 验收套件 › AC-3 & AC-4: 编辑器内 @用户 与普通文本具备显著视觉对比，且 Hover 预览可展开用户资料卡",
+          "file": "run-fb-mwyvk07p-94af.spec.ts",
+          "status": "passed",
+          "durationMs": 1531
+        },
+        {
+          "id": "pw-36",
+          "title": "run-fb-mwyvk07p-94af.spec.ts › 交互体验优化：反馈机制与@提醒功能增强 E2E 验收套件 › AC-5: 仅管理员评论回复可触发工单状态流转（确认反馈与上线），并在评论区准确回显与通知作者",
+          "file": "run-fb-mwyvk07p-94af.spec.ts",
+          "status": "passed",
+          "durationMs": 1504
+        },
+        {
+          "id": "pw-37",
+          "title": "run-fb-mwz3eeyd-e431.spec.ts › 社区动态展示优化与深色模式支持 E2E 验收套件 › AC-1: feed 正文 @用户 无边框居中展示，官方认证使用 SVG 图标而非文字标签",
+          "file": "run-fb-mwz3eeyd-e431.spec.ts",
+          "status": "passed",
+          "durationMs": 862
+        },
+        {
+          "id": "pw-38",
+          "title": "run-fb-mwz3eeyd-e431.spec.ts › 社区动态展示优化与深色模式支持 E2E 验收套件 › AC-2: 全局支持 light/dark 模式切换、持久化且深色模式下对比度正常无反色异常",
+          "file": "run-fb-mwz3eeyd-e431.spec.ts",
+          "status": "passed",
+          "durationMs": 1478
+        },
+        {
+          "id": "pw-39",
+          "title": "run-fb-mwz3eeyd-e431.spec.ts › 社区动态展示优化与深色模式支持 E2E 验收套件 › AC-3: 无图动态包含 URL 时渲染图文预览卡片且支持直接跳转，有图或纯文本不误渲染",
+          "file": "run-fb-mwz3eeyd-e431.spec.ts",
+          "status": "passed",
+          "durationMs": 1126
+        }
+      ],
+      "rawLogExcerpt": "es transformed.\nrendering chunks...\ncomputing gzip size...\n\u001b[2m../dist/client/\u001b[22m\u001b[32mindex.html                 \u001b[39m\u001b[1m\u001b[2m  1.67 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:   0.76 kB\u001b[22m\n\u001b[2m../dist/client/\u001b[22m\u001b[2massets/\u001b[22m\u001b[35mindex-DqsARxac.css  \u001b[39m\u001b[1m\u001b[2m 64.26 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip:  10.50 kB\u001b[22m\n\u001b[2m../dist/client/\u001b[22m\u001b[2massets/\u001b[22m\u001b[36mindex-BSPV0Q1l.js   \u001b[39m\u001b[1m\u001b[2m478.96 kB\u001b[22m\u001b[1m\u001b[22m\u001b[2m │ gzip: 137.00 kB\u001b[22m\n\u001b[32m✓ built in 2.34s\u001b[39m\n=== Playwright E2E Verification ===\n                   \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"e84a462666f665784b08-32df2e4ce65b695c4b7d\",\n              \"file\": \"run-fb-mwz3eeyd-e431.spec.ts\",\n              \"line\": 139,\n              \"column\": 3\n            },\n            {\n              \"title\": \"AC-3: 无图动态包含 URL 时渲染图文预览卡片且支持直接跳转，有图或纯文本不误渲染\",\n              \"ok\": true,\n              \"tags\": [],\n              \"tests\": [\n                {\n                  \"timeout\": 45000,\n                  \"annotations\": [\n                    {\n                      \"type\": \"serial\",\n                      \"location\": {\n                        \"file\": \"/data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-fb-mwz3eeyd-e431.spec.ts\",\n                        \"line\": 55,\n                        \"column\": 15\n                      }\n                    }\n                  ],\n                  \"expectedStatus\": \"passed\",\n                  \"projectId\": \"\",\n                  \"projectName\": \"\",\n                  \"results\": [\n                    {\n                      \"workerIndex\": 0,\n                      \"parallelIndex\": 0,\n                      \"status\": \"passed\",\n                      \"duration\": 1126,\n                      \"errors\": [],\n                      \"stdout\": [],\n                      \"stderr\": [],\n                      \"retry\": 0,\n                      \"startTime\": \"2026-11-28T05:34:09.691Z\",\n                      \"annotations\": [\n                        {\n                          \"type\": \"serial\",\n                          \"location\": {\n                            \"file\": \"/data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-fb-mwz3eeyd-e431.spec.ts\",\n                            \"line\": 55,\n                            \"column\": 15\n                          }\n                        }\n                      ],\n                      \"attachments\": []\n                    }\n                  ],\n                  \"status\": \"expected\"\n                }\n              ],\n              \"id\": \"e84a462666f665784b08-4d1a6dfa5ed742b90bce\",\n              \"file\": \"run-fb-mwz3eeyd-e431.spec.ts\",\n              \"line\": 224,\n              \"column\": 3\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"errors\": [],\n  \"stats\": {\n    \"startTime\": \"2026-11-28T05:33:02.854Z\",\n    \"duration\": 68151.24500000001,\n    \"expected\": 38,\n    \"skipped\": 0,\n    \"unexpected\": 0,\n    \"flaky\": 0\n  }\n}\n",
+      "agySessionId": "134f4f0f-c268-4029-a0e7-29e3eaf5e732",
+      "agySessionReused": true,
+      "agyExitCode": 0,
+      "codingFinalOutput": "Diagnosed the root cause in [run-9b961baa.spec.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-9b961baa.spec.ts) (test 2 assumed an empty database so a 0-follower creator and heat-30 tag would rank in top 10/5, which fails after prior tests populate D1). Updated test 2 to boost the test tag and creator followers above current top metrics, and running `npx tsc --noEmit && npm run build && npx playwright test tests/e2e/run-9b961baa.spec.ts` now.\n`run-9b961baa.spec.ts` passed (3/3) against the populated local D1 database. Running the full Playwright E2E regression suite (`npx playwright test`) now before committing and pushing.\n### Root-Cause Analysis & Fix Summary\n\n1. **[tests/e2e/run-9b961baa.spec.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-9b961baa.spec.ts#L192-L296) — Test 2 (`右侧导航（热门话题、推荐关注）接口契约、隐私脱敏、三栏几何布局与交互闭环`)**\n   - **Root Cause**: **Test script defect** (shared-database state assumption).\n     - Application endpoints `GET /api/discover/recommended-users` and `GET /api/discover/topics` in [discover.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/src/routes/discover.ts#L40-L148) legitimately order recommended users by `followers_count DESC, posts_count DESC, u.created_at DESC` and trending topics by `heat_score DESC`.\n     - Test 2 in [run-9b961baa.spec.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-9b961baa.spec.ts) created a new `creator` with `0` followers and a `hotTag` with `heatScore = 30`, assuming an empty database. When prior E2E tests in the same run (including the new DM-share tests) populated `>= 10` users with `>= 1` follower or topics with `heatScore > 30`, `creator` fell outside the top 10/5 rankings, causing `expect(recJson.users.some((u) => u.id === creator.id)).toBe(true)` to fail (`Received: false`).\n   - **Fix**: Updated test 2 in [run-9b961baa.spec.ts](file:///data/home/actions-runner-3/_work/atd-v1/atd-v1/tests/e2e/run-9b961baa.spec.ts#L224-L263) to inspect the current maximum `heatScore` and `followersCount` from `/api/discover/topics?limit=1` and `/api/discover/recommended-users?limit=1`, boost `firstHotPostId` via `/api/posts/:id/share` if needed, and have fresh fan accounts follow `creator` so `hotTag` and `creator` genuinely rank at the top regardless of prior test data, while keeping all API contract, privacy, geometry, and UI assertions intact.\n\n### Verification & Push\n\n- `npx playwright test tests/e2e/run-9b961baa.spec.ts` (against the populated 159-user local D1 database): **3 passed (12.6s)**.\n- `npx playwright test` (full suite): **38 passed (1.2m)**.\n- `npx tsc --noEmit && npm run build`: exited with code 0 (`dist/client` built cleanly).\n- Committed (`9c6dd2f`) and pushed to `origin/autodev/feat-20261128-052004`; `git status` reports a clean working tree.",
+      "repairRounds": 1,
+      "tokenUsage": {
+        "inputTokens": 537638,
+        "outputTokens": 116700,
+        "totalTokens": 654338,
+        "source": "reported",
+        "model": "gemini-4-hydrogen-high"
+      }
+    },
+    {
       "id": "tr-gh-46018654823",
       "repoFullName": "jiangfengwhu/atd-v1",
       "actionsRunId": 46018654823,
