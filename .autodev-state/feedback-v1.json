@@ -124,6 +124,19 @@
   ],
   "batches": [
     {
+      "id": "fb-batch-mx05s8ea-a2eb",
+      "createdAt": "2026-11-28T08:39:02.530Z",
+      "trigger": "cron",
+      "scannedCount": 0,
+      "acceptedCount": 0,
+      "rejectedMaliciousCount": 0,
+      "rejectedInvalidCount": 0,
+      "needsManualPrdCount": 0,
+      "summary": "今日暂无待巡检的用户反馈",
+      "feedbackIds": [],
+      "status": "completed_empty"
+    },
+    {
       "id": "fb-direct-mwzyfl43-8e9c",
       "createdAt": "2026-11-28T05:13:15.171Z",
       "trigger": "manual",
