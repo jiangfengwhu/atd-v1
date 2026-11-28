@@ -1,5 +1,20 @@
 [
   {
+    "id": "aud-d89fef55",
+    "timestamp": "2026-11-28T05:20:10.980Z",
+    "category": "planning",
+    "action": "draft_pr_created",
+    "label": "创建规格 Draft PR",
+    "actor": "控制面操作员",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-fb-210738e0",
+    "prdTitle": "用户反馈迭代：帖子支持站内私信分享给好友，类似x.com的那种多途径分享",
+    "branch": "autodev/feat-20261128-052004",
+    "prNumber": 23,
+    "status": "success",
+    "detail": "创建规格 Draft PR #23（特性分支 autodev/feat-20261128-052004，提交 850c470）"
+  },
+  {
     "id": "aud-a049da49",
     "timestamp": "2026-11-28T05:13:17.602Z",
     "category": "execution",

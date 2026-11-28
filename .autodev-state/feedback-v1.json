@@ -3,7 +3,7 @@
     {
       "id": "fb-mwzyerb8-1825df",
       "createdAt": "2026-11-28T05:12:36.548Z",
-      "updatedAt": "2026-11-28T05:18:49.958Z",
+      "updatedAt": "2026-11-28T05:20:10.980Z",
       "repoFullName": "jiangfengwhu/atd-v1",
       "content": "@官方反馈 帖子支持站内私信分享给好友，类似x.com的那种多途径分享",
       "categoryHint": "feature",
@@ -28,7 +28,9 @@
       "repliedStageKeys": [
         "job-5a25f179:planning_started"
       ],
-      "linkedRunId": "run-fb-210738e0"
+      "linkedRunId": "run-fb-210738e0",
+      "linkedPrNumber": 23,
+      "linkedPrUrl": "https://github.com/jiangfengwhu/atd-v1/pull/23"
     },
     {
       "id": "fb-mwz32zkh-8c4a5a",
@@ -127,7 +129,7 @@
       "rejectedMaliciousCount": 0,
       "rejectedInvalidCount": 0,
       "needsManualPrdCount": 0,
-      "summary": "已完成完整架构策划与盲测方案（5 项任务），请在 ST-01 架构策划部或飞书卡片审阅后点击「创建 Draft PR」进入编码。",
+      "summary": "已创建 Draft PR #23（分支 autodev/feat-20261128-052004），等待派发 AGY 编码。",
       "feedbackIds": [
         "fb-mwzyerb8-1825df"
       ],
@@ -135,7 +137,9 @@
       "linkedJobId": "job-5a25f179",
       "linkedIssueNumber": 22,
       "linkedIssueUrl": "https://github.com/jiangfengwhu/atd-v1/issues/22",
-      "linkedRunId": "run-fb-210738e0"
+      "linkedRunId": "run-fb-210738e0",
+      "linkedPrNumber": 23,
+      "linkedPrUrl": "https://github.com/jiangfengwhu/atd-v1/pull/23"
     },
     {
       "id": "fb-direct-mwz33lmc-0569",
