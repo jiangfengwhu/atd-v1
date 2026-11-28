@@ -24,6 +24,7 @@ import {
   type PostItem,
   type PublicUserProfile,
   type ReplyActivityItem,
+  type ShareChannel,
   type UserProfile,
 } from '@/lib/api';
 import { AvatarBadge } from '@/components/AvatarBadge';
@@ -46,11 +47,15 @@ interface ProfileViewProps {
   userId: string;
   currentUser: UserProfile | null;
   refreshKey?: number;
+  shareSync?: { postId: string; sharesCount: number; seq: number } | null;
   onRequireAuth: () => void;
   onOpenEditProfile: () => void;
   onOpenPost: (postId: string) => void;
   onOpenUserProfile: (userId: string) => void;
   onStartMessage: (peerId: string) => void;
+  onShareViaDm: (post: PostItem) => void;
+  onPostShared?: (postId: string, sharesCount: number, channel?: ShareChannel) => void;
+  onToast?: (message: string) => void;
   onCurrentUserUpdated: (user: UserProfile) => void;
 }
 
@@ -58,11 +63,15 @@ export function ProfileView({
   userId,
   currentUser,
   refreshKey = 0,
+  shareSync,
   onRequireAuth,
   onOpenEditProfile,
   onOpenPost,
   onOpenUserProfile,
   onStartMessage,
+  onShareViaDm,
+  onPostShared,
+  onToast,
   onCurrentUserUpdated,
 }: ProfileViewProps) {
   const [profile, setProfile] = React.useState<PublicUserProfile | null>(null);
@@ -263,22 +272,24 @@ export function ProfileView({
     }
   };
 
-  const handleSharePost = async (postId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const res = await api.sharePost(postId);
-      const shareUrl = `${window.location.origin}${res.sharePath}`;
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl).catch(() => {});
-      }
-      const updateList = (list: PostItem[]) =>
-        list.map((p) => (p.id === postId ? { ...p, sharesCount: res.sharesCount } : p));
-      setPostsItems(updateList);
-      setLikesItems(updateList);
-      setBookmarksItems(updateList);
-    } catch {
-      // Ignore transient share errors
-    }
+  React.useEffect(() => {
+    if (!shareSync) return;
+    const updateList = (list: PostItem[]) =>
+      list.map((p) =>
+        p.id === shareSync.postId ? { ...p, sharesCount: shareSync.sharesCount } : p
+      );
+    setPostsItems(updateList);
+    setLikesItems(updateList);
+    setBookmarksItems(updateList);
+  }, [shareSync]);
+
+  const handlePostSharedLocal = (postId: string, sharesCount: number, channel?: ShareChannel) => {
+    const updateList = (list: PostItem[]) =>
+      list.map((p) => (p.id === postId ? { ...p, sharesCount } : p));
+    setPostsItems(updateList);
+    setLikesItems(updateList);
+    setBookmarksItems(updateList);
+    onPostShared?.(postId, sharesCount, channel);
   };
 
   if (loadingProfile) {
@@ -533,7 +544,9 @@ export function ProfileView({
                       onOpen={onOpenPost}
                       onToggleLike={handleTogglePostLike}
                       onToggleBookmark={handleTogglePostBookmark}
-                      onShare={handleSharePost}
+                      onShareViaDm={onShareViaDm}
+                      onPostShared={handlePostSharedLocal}
+                      onToast={onToast}
                       onOpenAuthor={onOpenUserProfile}
                     />
                   ))}
@@ -555,7 +568,9 @@ export function ProfileView({
                       onOpen={onOpenPost}
                       onToggleLike={handleTogglePostLike}
                       onToggleBookmark={handleTogglePostBookmark}
-                      onShare={handleSharePost}
+                      onShareViaDm={onShareViaDm}
+                      onPostShared={handlePostSharedLocal}
+                      onToast={onToast}
                       onOpenAuthor={onOpenUserProfile}
                     />
                   ))}
@@ -578,7 +593,9 @@ export function ProfileView({
                         onOpen={onOpenPost}
                         onToggleLike={handleTogglePostLike}
                         onToggleBookmark={handleTogglePostBookmark}
-                        onShare={handleSharePost}
+                        onShareViaDm={onShareViaDm}
+                        onPostShared={handlePostSharedLocal}
+                        onToast={onToast}
                         onOpenAuthor={onOpenUserProfile}
                       />
                     ))}

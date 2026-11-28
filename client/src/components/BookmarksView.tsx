@@ -1,16 +1,19 @@
 import * as React from 'react';
 import { Bookmark, Loader2, RefreshCw } from 'lucide-react';
-import { api, ApiError, type PostItem, type UserProfile } from '@/lib/api';
+import { api, ApiError, type PostItem, type ShareChannel, type UserProfile } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { PostCard } from '@/components/PostCard';
 
 interface BookmarksViewProps {
   currentUser: UserProfile;
   refreshKey?: number;
+  shareSync?: { postId: string; sharesCount: number; seq: number } | null;
   onOpenPost: (postId: string) => void;
   onOpenAuthor: (userId: string) => void;
   onSelectTag: (tag: string) => void;
-  onSharePost: (postId: string, e: React.MouseEvent) => Promise<void> | void;
+  onShareViaDm: (post: PostItem) => void;
+  onPostShared: (postId: string, sharesCount: number, channel?: ShareChannel) => void;
+  onToast?: (message: string) => void;
   onBookmarkChanged?: (postId: string, bookmarked: boolean, bookmarksCount: number) => void;
   onLikeChanged?: (postId: string, liked: boolean, likesCount: number) => void;
   onGoFeed: () => void;
@@ -19,10 +22,13 @@ interface BookmarksViewProps {
 export function BookmarksView({
   currentUser,
   refreshKey = 0,
+  shareSync,
   onOpenPost,
   onOpenAuthor,
   onSelectTag,
-  onSharePost,
+  onShareViaDm,
+  onPostShared,
+  onToast,
   onBookmarkChanged,
   onLikeChanged,
   onGoFeed,
@@ -49,6 +55,15 @@ export function BookmarksView({
   React.useEffect(() => {
     loadBookmarks();
   }, [loadBookmarks, currentUser.id, refreshKey]);
+
+  React.useEffect(() => {
+    if (!shareSync) return;
+    setItems((prev) =>
+      prev.map((p) =>
+        p.id === shareSync.postId ? { ...p, sharesCount: shareSync.sharesCount } : p
+      )
+    );
+  }, [shareSync]);
 
   const handleToggleLike = async (postId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -147,7 +162,14 @@ export function BookmarksView({
               onOpen={onOpenPost}
               onToggleLike={handleToggleLike}
               onToggleBookmark={handleToggleBookmark}
-              onShare={onSharePost}
+              onShareViaDm={onShareViaDm}
+              onPostShared={(postId, sharesCount, channel) => {
+                setItems((prev) =>
+                  prev.map((p) => (p.id === postId ? { ...p, sharesCount } : p))
+                );
+                onPostShared(postId, sharesCount, channel);
+              }}
+              onToast={onToast}
               onOpenAuthor={onOpenAuthor}
               onSelectTag={onSelectTag}
             />

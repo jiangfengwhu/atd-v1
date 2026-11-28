@@ -4,17 +4,16 @@ import {
   MessageCircle,
   Hash,
   Bookmark,
-  Share2,
   Eye,
-  Check,
 } from 'lucide-react';
-import type { PostItem } from '@/lib/api';
+import type { PostItem, ShareChannel } from '@/lib/api';
 import { extractHashtagsFromContent } from '@/lib/hashtags';
 import { getPrimaryPreviewUrl } from '@/lib/urlParser';
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { HashtagText } from '@/components/HashtagText';
 import { LinkPreview } from '@/components/LinkPreview';
 import { OfficialBadge } from '@/components/OfficialBadge';
+import { SharePostMenu } from '@/components/SharePostMenu';
 import { TicketStatusBadge } from '@/components/TicketStatusBadge';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
@@ -23,7 +22,9 @@ interface PostCardProps {
   onOpen: (postId: string) => void;
   onToggleLike: (postId: string, e: React.MouseEvent) => void;
   onToggleBookmark?: (postId: string, e: React.MouseEvent) => void;
-  onShare?: (postId: string, e: React.MouseEvent) => Promise<void> | void;
+  onShareViaDm?: (post: PostItem) => void;
+  onPostShared?: (postId: string, sharesCount: number, channel: ShareChannel) => void;
+  onToast?: (message: string) => void;
   onOpenAuthor?: (userId: string) => void;
   onSelectTag?: (tag: string, e: React.MouseEvent) => void;
 }
@@ -33,12 +34,13 @@ export function PostCard({
   onOpen,
   onToggleLike,
   onToggleBookmark,
-  onShare,
+  onShareViaDm,
+  onPostShared,
+  onToast,
   onOpenAuthor,
   onSelectTag,
 }: PostCardProps) {
   const [imgError, setImgError] = React.useState(false);
-  const [copied, setCopied] = React.useState(false);
 
   const fallbackTags = React.useMemo(() => {
     if (!post.tags || post.tags.length === 0) return [];
@@ -50,14 +52,6 @@ export function PostCard({
     if (post.imageUrl && !imgError) return null;
     return getPrimaryPreviewUrl(post.content);
   }, [post.content, post.imageUrl, imgError]);
-
-  const handleShareClick = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!onShare) return;
-    await onShare(post.id, e);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <article
@@ -219,22 +213,17 @@ export function PostCard({
               <span className="tabular-nums">{post.viewsCount ?? 0}</span>
             </span>
 
-            <button
-              type="button"
-              onClick={handleShareClick}
-              aria-label="分享"
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors',
-                copied
-                  ? 'bg-emerald-50 text-emerald-600 font-semibold dark:bg-emerald-950/60 dark:text-emerald-400'
-                  : 'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/60 dark:hover:text-blue-400'
-              )}
-            >
-              {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-              <span className="tabular-nums">
-                {copied ? '已复制' : post.sharesCount ?? 0}
-              </span>
-            </button>
+            <SharePostMenu
+              post={post}
+              placement="down"
+              align="right"
+              triggerVariant="card"
+              onShareViaDm={(targetPost) => onShareViaDm?.(targetPost)}
+              onShareSuccess={(postId, sharesCount, channel) =>
+                onPostShared?.(postId, sharesCount, channel)
+              }
+              onToast={onToast}
+            />
           </div>
         </div>
       </div>

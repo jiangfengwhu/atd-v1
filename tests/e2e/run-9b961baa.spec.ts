@@ -126,13 +126,16 @@ test.describe.serial('动态改版（X.com列表流、点击/收藏/分享直达
       const ownBookmarksJson = await (await page.request.get(`/api/users/${userA.id}/activity?tab=bookmarks`)).json();
       expect(ownBookmarksJson.items.some((p: { id: string }) => p.id === postId)).toBe(true);
 
-      // UI 点击分享按钮，校验分享接口与直达路径
+      // UI 点击分享按钮打开多途径菜单并选择“复制链接”，校验分享接口与直达路径
       const shareBtn = card1.getByRole('button', { name: /分享/i }).first();
       await expect(shareBtn).toBeVisible();
+      await shareBtn.click();
+      const copyLinkItem = page.getByRole('menu').first().getByRole('menuitem', { name: /复制链接/i }).first();
+      await expect(copyLinkItem).toBeVisible();
       const sharePromise = page.waitForResponse(
         (res) => res.url().includes(`/api/posts/${postId}/share`) && res.request().method() === 'POST'
       );
-      await shareBtn.click();
+      await copyLinkItem.click();
       const shareRes = await sharePromise;
       expect(shareRes.status()).toBe(200);
       const shareJson = await shareRes.json();

@@ -8,9 +8,7 @@ import {
   Hash,
   CornerDownRight,
   Bookmark,
-  Share2,
   Eye,
-  Check,
 } from 'lucide-react';
 import {
   api,
@@ -18,6 +16,7 @@ import {
   type CommentItem,
   type FeedbackTicketStatus,
   type PostItem,
+  type ShareChannel,
   type UserProfile,
 } from '@/lib/api';
 import { extractHashtagsFromContent } from '@/lib/hashtags';
@@ -29,16 +28,21 @@ import { AvatarBadge } from '@/components/AvatarBadge';
 import { HashtagText } from '@/components/HashtagText';
 import { LinkPreview } from '@/components/LinkPreview';
 import { OfficialBadge } from '@/components/OfficialBadge';
+import { SharePostMenu } from '@/components/SharePostMenu';
 import { TICKET_STATUS_META, TicketStatusBadge } from '@/components/TicketStatusBadge';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
 interface PostDetailDialogProps {
   postId: string | null;
   currentUser: UserProfile | null;
+  shareSync?: { postId: string; sharesCount: number; seq: number } | null;
   onClose: () => void;
   onRequireAuth: () => void;
   onPostUpdated: (post: PostItem) => void;
   onPostDeleted: (postId: string) => void;
+  onShareViaDm?: (post: PostItem) => void;
+  onPostShared?: (postId: string, sharesCount: number, channel?: ShareChannel) => void;
+  onToast?: (message: string) => void;
   onOpenAuthor?: (userId: string) => void;
   onSelectTag?: (tag: string) => void;
 }
@@ -46,10 +50,14 @@ interface PostDetailDialogProps {
 export function PostDetailDialog({
   postId,
   currentUser,
+  shareSync,
   onClose,
   onRequireAuth,
   onPostUpdated,
   onPostDeleted,
+  onShareViaDm,
+  onPostShared,
+  onToast,
   onOpenAuthor,
   onSelectTag,
 }: PostDetailDialogProps) {
@@ -66,7 +74,6 @@ export function PostDetailDialog({
   const [replyText, setReplyText] = React.useState('');
   const [submittingReply, setSubmittingReply] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
-  const [copiedShare, setCopiedShare] = React.useState(false);
   const [isAdmin, setIsAdmin] = React.useState(false);
   const [selectedTicketStatus, setSelectedTicketStatus] = React.useState<
     '' | FeedbackTicketStatus
@@ -81,7 +88,6 @@ export function PostDetailDialog({
       setComments([]);
       setReplyTarget(null);
       setReplyText('');
-      setCopiedShare(false);
       setIsAdmin(false);
       setSelectedTicketStatus('');
       return;
@@ -132,6 +138,15 @@ export function PostDetailDialog({
       cancelled = true;
     };
   }, [postId]);
+
+  React.useEffect(() => {
+    if (!shareSync) return;
+    setPost((prev) =>
+      prev && prev.id === shareSync.postId
+        ? { ...prev, sharesCount: shareSync.sharesCount }
+        : prev
+    );
+  }, [shareSync]);
 
   const fallbackTags = React.useMemo(() => {
     if (!post || !post.tags || post.tags.length === 0) return [];
@@ -188,24 +203,6 @@ export function PostDetailDialog({
       if (err instanceof ApiError && err.status === 401) {
         onRequireAuth();
       }
-    }
-  };
-
-  const handleShare = async () => {
-    if (!post) return;
-    try {
-      const res = await api.sharePost(post.id);
-      const shareUrl = `${window.location.origin}${res.sharePath}`;
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl).catch(() => {});
-      }
-      const updated = { ...post, sharesCount: res.sharesCount };
-      setPost(updated);
-      onPostUpdated(updated);
-      setCopiedShare(true);
-      window.setTimeout(() => setCopiedShare(false), 2000);
-    } catch {
-      // Ignore transient share errors
     }
   };
 
@@ -684,24 +681,20 @@ export function PostDetailDialog({
                       />
                       <span>{post.bookmarksCount ?? 0}</span>
                     </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={handleShare}
-                      aria-label="分享"
-                      className={cn(
-                        'h-8 rounded-full gap-1 px-2.5 text-xs',
-                        copiedShare && 'border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400'
-                      )}
-                    >
-                      {copiedShare ? (
-                        <Check className="h-3.5 w-3.5" />
-                      ) : (
-                        <Share2 className="h-3.5 w-3.5" />
-                      )}
-                      <span>{copiedShare ? '已复制' : post.sharesCount ?? 0}</span>
-                    </Button>
+                    <SharePostMenu
+                      post={post}
+                      placement="up"
+                      align="left"
+                      triggerVariant="detail"
+                      onShareViaDm={(targetPost) => onShareViaDm?.(targetPost)}
+                      onShareSuccess={(sharedPostId, sharesCount, channel) => {
+                        const updated = { ...post, sharesCount };
+                        setPost(updated);
+                        onPostUpdated(updated);
+                        onPostShared?.(sharedPostId, sharesCount, channel);
+                      }}
+                      onToast={onToast}
+                    />
                   </div>
                   <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
                     <Eye className="h-3.5 w-3.5" />

@@ -225,7 +225,7 @@ test.describe.serial('帖子多途径分享与站内私信分享加固盲测 E2E
     await expect(detailDialog).toBeVisible({ timeout: 10000 });
     await expect(detailDialog).toContainText(postText);
 
-    await detailDialog.getByRole('button', { name: /分享/i }).first().click();
+    await detailDialog.getByRole('button', { name: /^分享$/i }).first().click();
     const detailMenu = page.getByRole('menu').first();
     await expect(detailMenu).toBeVisible({ timeout: 8000 });
     await expect(detailMenu.getByRole('menuitem', { name: /复制链接/i }).first()).toBeVisible();
@@ -248,13 +248,13 @@ test.describe.serial('帖子多途径分享与站内私信分享加固盲测 E2E
     await expect(card).toBeVisible({ timeout: 10000 });
 
     // 仅打开菜单并按 Escape 关闭，不应提前累加分享数
-    await card.getByRole('button', { name: /分享/i }).first().click();
+    await card.getByRole('button', { name: /^分享$/i }).first().click();
     await expect(page.getByRole('menu').first()).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByRole('menu')).toHaveCount(0);
 
     // 选择“复制链接”
-    await card.getByRole('button', { name: /分享/i }).first().click();
+    await card.getByRole('button', { name: /^分享$/i }).first().click();
     const copyLinkPromise = page.waitForResponse(
       (res) => res.url().includes(`/api/posts/${postId}/share`) && res.request().method() === 'POST'
     );
@@ -262,7 +262,7 @@ test.describe.serial('帖子多途径分享与站内私信分享加固盲测 E2E
     expect((await copyLinkPromise).status()).toBe(200);
 
     // 选择“复制分享文案”
-    await card.getByRole('button', { name: /分享/i }).first().click();
+    await card.getByRole('button', { name: /^分享$/i }).first().click();
     const copyTextPromise = page.waitForResponse(
       (res) => res.url().includes(`/api/posts/${postId}/share`) && res.request().method() === 'POST'
     );
@@ -278,7 +278,7 @@ test.describe.serial('帖子多途径分享与站内私信分享加固盲测 E2E
 
     // 3) 移动端 375px 展开分享菜单不引发横向溢出
     await page.setViewportSize({ width: 375, height: 812 });
-    await card.getByRole('button', { name: /分享/i }).first().click();
+    await card.getByRole('button', { name: /^分享$/i }).first().click();
     await expect(page.getByRole('menu').first()).toBeVisible();
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth
@@ -319,7 +319,7 @@ test.describe.serial('帖子多途径分享与站内私信分享加固盲测 E2E
       const detailDialog = page.getByRole('dialog').first();
       await expect(detailDialog).toBeVisible({ timeout: 10000 });
 
-      await detailDialog.getByRole('button', { name: /分享/i }).first().click();
+      await detailDialog.getByRole('button', { name: /^分享$/i }).first().click();
       const menu = page.getByRole('menu').first();
       await expect(menu).toBeVisible({ timeout: 8000 });
       await menu.getByRole('menuitem', { name: /私信/i }).first().click();

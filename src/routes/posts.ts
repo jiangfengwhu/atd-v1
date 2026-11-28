@@ -40,6 +40,8 @@ import {
 import { sha256Hex } from '../lib/crypto';
 import { tryPushToAutoDevStudio } from './signals';
 import { isValidAdminSession } from './admin';
+import { pushUserEvent, type SharedPostSummary } from '../lib/realtime';
+import { buildConversationKey, getMessagesUnreadCount } from './messages';
 
 export interface PostRow {
   id: string;
@@ -809,7 +811,33 @@ postRoutes.post('/:id/bookmark', async (c) => {
   });
 });
 
+const VALID_SHARE_CHANNELS = new Set(['copy_link', 'copy_text', 'external'] as const);
+type ShareChannel = 'copy_link' | 'copy_text' | 'external';
+
 postRoutes.post('/:id/share', async (c) => {
+  const rawBody = await c.req.text().catch(() => '');
+  let channel: ShareChannel = 'copy_link';
+  if (rawBody.trim().length > 0) {
+    let parsed: { channel?: unknown } | null = null;
+    try {
+      parsed = JSON.parse(rawBody) as { channel?: unknown };
+    } catch {
+      return c.json({ error: '请求格式错误' }, 400);
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return c.json({ error: '请求格式错误' }, 400);
+    }
+    if (parsed.channel !== undefined) {
+      if (
+        typeof parsed.channel !== 'string' ||
+        !VALID_SHARE_CHANNELS.has(parsed.channel as ShareChannel)
+      ) {
+        return c.json({ error: '分享渠道参数无效' }, 400);
+      }
+      channel = parsed.channel as ShareChannel;
+    }
+  }
+
   const postId = c.req.param('id');
   const post = await c.env.DB.prepare('SELECT id FROM posts WHERE id = ? LIMIT 1')
     .bind(postId)
@@ -840,7 +868,217 @@ postRoutes.post('/:id/share', async (c) => {
     ok: true,
     sharesCount: Number(metrics?.shares_count ?? 1),
     sharePath: `/posts/${postId}`,
+    channel,
   });
+});
+
+postRoutes.post('/:id/share-dm', async (c) => {
+  const user = await getSessionUser(c.env.DB, c.req.header('cookie'));
+  if (!user) {
+    return c.json({ error: '请先登录后再通过私信分享' }, 401);
+  }
+
+  const body = await c.req
+    .json<{ recipientIds?: unknown; note?: unknown }>()
+    .catch(() => null);
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return c.json({ error: '请求格式错误' }, 400);
+  }
+
+  if (!Array.isArray(body.recipientIds) || body.recipientIds.length === 0) {
+    return c.json({ error: '请至少选择一位好友' }, 400);
+  }
+
+  const uniqueRecipients: string[] = [];
+  const seenRecipients = new Set<string>();
+  for (const rawId of body.recipientIds) {
+    if (typeof rawId !== 'string' || !rawId.trim()) {
+      return c.json({ error: '接收人参数无效' }, 400);
+    }
+    const cleanId = rawId.trim();
+    if (!seenRecipients.has(cleanId)) {
+      seenRecipients.add(cleanId);
+      uniqueRecipients.push(cleanId);
+    }
+  }
+
+  if (uniqueRecipients.length < 1 || uniqueRecipients.length > 10) {
+    return c.json({ error: '单次最多可分享给 10 位好友' }, 400);
+  }
+
+  if (seenRecipients.has(user.id)) {
+    return c.json({ error: '不能将动态私信分享给自己' }, 400);
+  }
+
+  if (body.note !== undefined && body.note !== null && typeof body.note !== 'string') {
+    return c.json({ error: '附言格式无效' }, 400);
+  }
+  const note = typeof body.note === 'string' ? body.note.trim() : '';
+  if (note.length > 1000) {
+    return c.json({ error: '附言长度不能超过 1000 个字符' }, 400);
+  }
+
+  const postId = c.req.param('id');
+  const recipientPlaceholders = uniqueRecipients.map(() => '?').join(', ');
+
+  const [postRow, recipientRows] = await Promise.all([
+    c.env.DB.prepare(
+      `SELECT p.id, p.content, p.image_url, p.created_at,
+              u.id AS author_id, u.nickname AS author_nickname, u.avatar_seed AS author_avatar_seed,
+              COALESCE(up.avatar_url, '') AS author_avatar_url,
+              CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS author_is_official,
+              COALESCE(oa.badge_label, '') AS author_official_badge
+       FROM posts p
+       JOIN users u ON u.id = p.author_id
+       LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN official_accounts oa ON oa.user_id = u.id
+       WHERE p.id = ?
+       LIMIT 1`
+    )
+      .bind(postId)
+      .first<{
+        id: string;
+        content: string;
+        image_url: string;
+        created_at: string;
+        author_id: string;
+        author_nickname: string;
+        author_avatar_seed: string;
+        author_avatar_url: string;
+        author_is_official: number;
+        author_official_badge: string;
+      }>(),
+    c.env.DB.prepare(`SELECT id FROM users WHERE id IN (${recipientPlaceholders})`)
+      .bind(...uniqueRecipients)
+      .all<{ id: string }>(),
+  ]);
+
+  if (!postRow) {
+    return c.json({ error: '动态不存在或已被删除' }, 404);
+  }
+
+  const foundIds = new Set((recipientRows.results ?? []).map((r) => r.id));
+  if (foundIds.size !== uniqueRecipients.length) {
+    return c.json({ error: '部分接收好友不存在' }, 404);
+  }
+
+  const authorIsOfficial = Boolean(postRow.author_is_official);
+  const sharedPost: SharedPostSummary = {
+    id: postRow.id,
+    unavailable: false,
+    contentPreview: makeContentPreview(postRow.content, 140),
+    imageUrl: postRow.image_url ?? '',
+    author: {
+      id: postRow.author_id,
+      nickname: postRow.author_nickname,
+      avatarSeed: postRow.author_avatar_seed,
+      avatarUrl: postRow.author_avatar_url ?? '',
+      isOfficial: authorIsOfficial,
+      ...(authorIsOfficial
+        ? { officialBadge: postRow.author_official_badge || '官方' }
+        : {}),
+    },
+    createdAt: postRow.created_at,
+  };
+
+  const nowIso = new Date().toISOString();
+  const createdMessages: Array<{
+    id: string;
+    conversationKey: string;
+    senderId: string;
+    receiverId: string;
+    content: string;
+    sharedPost: SharedPostSummary;
+    isRead: false;
+    createdAt: string;
+  }> = [];
+
+  const statements = [];
+  for (const recipientId of uniqueRecipients) {
+    const msgId = crypto.randomUUID();
+    const convKey = buildConversationKey(user.id, recipientId);
+    statements.push(
+      c.env.DB.prepare(
+        `INSERT INTO direct_messages (id, conversation_key, sender_id, receiver_id, content, is_read, created_at)
+         VALUES (?, ?, ?, ?, ?, 0, ?)`
+      ).bind(msgId, convKey, user.id, recipientId, note, nowIso),
+      c.env.DB.prepare(
+        `INSERT INTO direct_message_post_shares (message_id, post_id, created_at)
+         VALUES (?, ?, ?)`
+      ).bind(msgId, postId, nowIso)
+    );
+    createdMessages.push({
+      id: msgId,
+      conversationKey: convKey,
+      senderId: user.id,
+      receiverId: recipientId,
+      content: note,
+      sharedPost,
+      isRead: false,
+      createdAt: nowIso,
+    });
+  }
+
+  statements.push(
+    c.env.DB.prepare(
+      `INSERT INTO post_metrics (post_id, views_count, bookmarks_count, shares_count, updated_at)
+       VALUES (?, 0, 0, ?, ?)
+       ON CONFLICT(post_id) DO UPDATE SET
+         shares_count = post_metrics.shares_count + excluded.shares_count,
+         updated_at = excluded.updated_at`
+    ).bind(postId, uniqueRecipients.length, nowIso)
+  );
+
+  await c.env.DB.batch(statements);
+
+  const metrics = await c.env.DB.prepare(
+    'SELECT shares_count FROM post_metrics WHERE post_id = ? LIMIT 1'
+  )
+    .bind(postId)
+    .first<{ shares_count: number }>();
+
+  const senderPayload = {
+    id: user.id,
+    nickname: user.nickname,
+    avatarSeed: user.avatarSeed,
+    avatarUrl: user.avatarUrl,
+    bio: user.bio,
+  };
+
+  const [senderUnread, ...receiverUnreads] = await Promise.all([
+    getMessagesUnreadCount(c.env.DB, user.id),
+    ...createdMessages.map((m) => getMessagesUnreadCount(c.env.DB, m.receiverId)),
+  ]);
+
+  await Promise.all(
+    createdMessages.flatMap((msg, idx) => [
+      pushUserEvent(c.env, msg.receiverId, {
+        type: 'dm:new',
+        message: msg,
+        sender: senderPayload,
+        receiverId: msg.receiverId,
+        totalUnread: receiverUnreads[idx] ?? 1,
+      }),
+      pushUserEvent(c.env, user.id, {
+        type: 'dm:new',
+        message: msg,
+        sender: senderPayload,
+        receiverId: msg.receiverId,
+        totalUnread: senderUnread,
+      }),
+    ])
+  );
+
+  return c.json(
+    {
+      ok: true,
+      postId,
+      sharesCount: Number(metrics?.shares_count ?? createdMessages.length),
+      sentCount: createdMessages.length,
+      messages: createdMessages,
+    },
+    201
+  );
 });
 
 postRoutes.post('/:id/comments', async (c) => {

@@ -2,9 +2,10 @@ import { Hono } from 'hono';
 import type { D1Database } from '@cloudflare/workers-types';
 import type { AppEnv } from '../types';
 import { getSessionUser } from './auth';
-import { pushUserEvent } from '../lib/realtime';
+import { pushUserEvent, type SharedPostSummary } from '../lib/realtime';
+import { escapeSqlLike, makeContentPreview } from '../lib/validation';
 
-async function getMessagesUnreadCount(db: D1Database, userId: string): Promise<number> {
+export async function getMessagesUnreadCount(db: D1Database, userId: string): Promise<number> {
   const row = await db
     .prepare('SELECT COUNT(*) AS cnt FROM direct_messages WHERE receiver_id = ? AND is_read = 0')
     .bind(userId)
@@ -20,7 +21,31 @@ interface PeerRow {
   bio: string;
 }
 
-interface DmRow {
+interface ShareRecipientRow {
+  id: string;
+  nickname: string;
+  avatar_seed: string;
+  avatar_url: string;
+  bio: string;
+  is_official: number;
+  official_badge: string;
+  is_following: number;
+  is_follower: number;
+  last_dm_at: string | null;
+}
+
+interface DmConversationRow {
+  id: string;
+  conversation_key: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  shared_post_id: string | null;
+  is_read: number;
+  created_at: string;
+}
+
+interface DmThreadRow {
   id: string;
   conversation_key: string;
   sender_id: string;
@@ -28,13 +53,142 @@ interface DmRow {
   content: string;
   is_read: number;
   created_at: string;
+  shared_post_id: string | null;
+  post_exists_id: string | null;
+  post_content: string | null;
+  post_image_url: string | null;
+  post_created_at: string | null;
+  post_author_id: string | null;
+  post_author_nickname: string | null;
+  post_author_avatar_seed: string | null;
+  post_author_avatar_url: string | null;
+  post_author_is_official: number | null;
+  post_author_official_badge: string | null;
 }
 
-function buildConversationKey(userA: string, userB: string): string {
+export function buildConversationKey(userA: string, userB: string): string {
   return userA < userB ? `${userA}:${userB}` : `${userB}:${userA}`;
 }
 
+function serializeSharedPost(row: DmThreadRow): SharedPostSummary | null {
+  if (!row.shared_post_id) return null;
+  if (!row.post_exists_id || !row.post_author_id) {
+    return {
+      id: row.shared_post_id,
+      unavailable: true,
+      contentPreview: '',
+      imageUrl: '',
+      author: null,
+      createdAt: null,
+    };
+  }
+
+  const isOfficial = Boolean(row.post_author_is_official);
+  return {
+    id: row.shared_post_id,
+    unavailable: false,
+    contentPreview: makeContentPreview(row.post_content ?? '', 140),
+    imageUrl: row.post_image_url ?? '',
+    author: {
+      id: row.post_author_id,
+      nickname: row.post_author_nickname ?? '',
+      avatarSeed: row.post_author_avatar_seed ?? '',
+      avatarUrl: row.post_author_avatar_url ?? '',
+      isOfficial,
+      ...(isOfficial ? { officialBadge: row.post_author_official_badge || '官方' } : {}),
+    },
+    createdAt: row.post_created_at ?? null,
+  };
+}
+
 export const messageRoutes = new Hono<AppEnv>();
+
+messageRoutes.get('/share-recipients', async (c) => {
+  const user = await getSessionUser(c.env.DB, c.req.header('cookie'));
+  if (!user) {
+    return c.json({ error: '请先登录' }, 401);
+  }
+
+  const q = (c.req.query('q') || '').trim().slice(0, 30);
+  const limitRaw = c.req.query('limit');
+  const limit = limitRaw !== undefined ? Number(limitRaw) : 15;
+
+  if (limitRaw === '' || !Number.isInteger(limit) || limit < 1 || limit > 30) {
+    return c.json({ error: 'limit 参数需为 1 到 30 的整数' }, 400);
+  }
+
+  const whereParts = ['u.id != ?'];
+  const whereBindings: (string | number)[] = [user.id];
+
+  if (q) {
+    const likePattern = `%${escapeSqlLike(q)}%`;
+    whereParts.push("u.nickname LIKE ? ESCAPE '\\'");
+    whereBindings.push(likePattern);
+  }
+
+  const prefixPattern = q ? `${escapeSqlLike(q.toLowerCase())}%` : '';
+  const orderPrefixExpr = q
+    ? "CASE WHEN LOWER(u.nickname) LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END ASC,"
+    : '';
+  const orderBindings = q ? [prefixPattern] : [];
+
+  const rows = await c.env.DB.prepare(
+    `SELECT
+       u.id,
+       u.nickname,
+       u.avatar_seed,
+       COALESCE(up.avatar_url, '') AS avatar_url,
+       COALESCE(up.bio, '') AS bio,
+       CASE WHEN oa.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_official,
+       COALESCE(oa.badge_label, '') AS official_badge,
+       CASE WHEN uf_out.following_id IS NOT NULL THEN 1 ELSE 0 END AS is_following,
+       CASE WHEN uf_in.follower_id IS NOT NULL THEN 1 ELSE 0 END AS is_follower,
+       (
+         SELECT MAX(dm.created_at)
+         FROM direct_messages dm
+         WHERE (dm.sender_id = ? AND dm.receiver_id = u.id)
+            OR (dm.sender_id = u.id AND dm.receiver_id = ?)
+       ) AS last_dm_at
+     FROM users u
+     LEFT JOIN user_profiles up ON up.user_id = u.id
+     LEFT JOIN official_accounts oa ON oa.user_id = u.id
+     LEFT JOIN user_follows uf_out ON uf_out.follower_id = ? AND uf_out.following_id = u.id
+     LEFT JOIN user_follows uf_in ON uf_in.follower_id = u.id AND uf_in.following_id = ?
+     WHERE ${whereParts.join(' AND ')}
+     ORDER BY
+       ${orderPrefixExpr}
+       CASE WHEN last_dm_at IS NOT NULL THEN 1 ELSE 0 END DESC,
+       CASE WHEN uf_out.following_id IS NOT NULL AND uf_in.follower_id IS NOT NULL THEN 1 ELSE 0 END DESC,
+       is_following DESC,
+       is_follower DESC,
+       last_dm_at DESC,
+       u.created_at DESC
+     LIMIT ?`
+  )
+    .bind(user.id, user.id, user.id, user.id, ...whereBindings, ...orderBindings, limit)
+    .all<ShareRecipientRow>();
+
+  return c.json({
+    recipients: (rows.results ?? []).map((r) => {
+      const isOfficial = Boolean(r.is_official);
+      const isFollowing = Boolean(r.is_following);
+      const isFollower = Boolean(r.is_follower);
+      return {
+        id: r.id,
+        nickname: r.nickname,
+        avatarSeed: r.avatar_seed,
+        avatarUrl: r.avatar_url ?? '',
+        bio: r.bio ?? '',
+        isOfficial,
+        ...(isOfficial ? { officialBadge: r.official_badge || '官方' } : {}),
+        isFollowing,
+        isFollower,
+        isMutualFollow: isFollowing && isFollower,
+        hasConversation: Boolean(r.last_dm_at),
+      };
+    }),
+  });
+});
 
 messageRoutes.get('/conversations', async (c) => {
   const user = await getSessionUser(c.env.DB, c.req.header('cookie'));
@@ -43,19 +197,28 @@ messageRoutes.get('/conversations', async (c) => {
   }
 
   const allMsgs = await c.env.DB.prepare(
-    `SELECT id, conversation_key, sender_id, receiver_id, content, is_read, created_at
-     FROM direct_messages
-     WHERE sender_id = ? OR receiver_id = ?
-     ORDER BY created_at DESC`
+    `SELECT dm.id, dm.conversation_key, dm.sender_id, dm.receiver_id, dm.content,
+            dmps.post_id AS shared_post_id,
+            dm.is_read, dm.created_at
+     FROM direct_messages dm
+     LEFT JOIN direct_message_post_shares dmps ON dmps.message_id = dm.id
+     WHERE dm.sender_id = ? OR dm.receiver_id = ?
+     ORDER BY dm.created_at DESC`
   )
     .bind(user.id, user.id)
-    .all<DmRow>();
+    .all<DmConversationRow>();
 
   const convMap = new Map<
     string,
     {
       peerId: string;
-      lastMessage: { id: string; senderId: string; content: string; createdAt: string };
+      lastMessage: {
+        id: string;
+        senderId: string;
+        content: string;
+        sharedPostId: string | null;
+        createdAt: string;
+      };
       unreadCount: number;
     }
   >();
@@ -76,6 +239,7 @@ messageRoutes.get('/conversations', async (c) => {
           id: row.id,
           senderId: row.sender_id,
           content: row.content,
+          sharedPostId: row.shared_post_id ?? null,
           createdAt: row.created_at,
         },
         unreadCount: isUnreadForMe ? 1 : 0,
@@ -189,14 +353,30 @@ messageRoutes.get('/with/:peerId', async (c) => {
   }
 
   const rows = await c.env.DB.prepare(
-    `SELECT id, conversation_key, sender_id, receiver_id, content, is_read, created_at
-     FROM direct_messages
-     WHERE conversation_key = ?
-     ORDER BY created_at ASC
+    `SELECT dm.id, dm.conversation_key, dm.sender_id, dm.receiver_id, dm.content, dm.is_read, dm.created_at,
+            dmps.post_id AS shared_post_id,
+            p.id AS post_exists_id,
+            p.content AS post_content,
+            p.image_url AS post_image_url,
+            p.created_at AS post_created_at,
+            pu.id AS post_author_id,
+            pu.nickname AS post_author_nickname,
+            pu.avatar_seed AS post_author_avatar_seed,
+            COALESCE(pup.avatar_url, '') AS post_author_avatar_url,
+            CASE WHEN poa.user_id IS NOT NULL THEN 1 ELSE 0 END AS post_author_is_official,
+            COALESCE(poa.badge_label, '') AS post_author_official_badge
+     FROM direct_messages dm
+     LEFT JOIN direct_message_post_shares dmps ON dmps.message_id = dm.id
+     LEFT JOIN posts p ON p.id = dmps.post_id
+     LEFT JOIN users pu ON pu.id = p.author_id
+     LEFT JOIN user_profiles pup ON pup.user_id = pu.id
+     LEFT JOIN official_accounts poa ON poa.user_id = pu.id
+     WHERE dm.conversation_key = ?
+     ORDER BY dm.created_at ASC
      LIMIT ? OFFSET ?`
   )
     .bind(convKey, limit, offset)
-    .all<DmRow>();
+    .all<DmThreadRow>();
 
   return c.json({
     peer: {
@@ -211,6 +391,7 @@ messageRoutes.get('/with/:peerId', async (c) => {
       senderId: m.sender_id,
       receiverId: m.receiver_id,
       content: m.content,
+      sharedPost: serializeSharedPost(m),
       isRead: Boolean(m.is_read),
       createdAt: m.created_at,
     })),
@@ -293,6 +474,7 @@ messageRoutes.post('/with/:peerId', async (c) => {
     senderId: user.id,
     receiverId: peerId,
     content,
+    sharedPost: null,
     isRead: false,
     createdAt: nowIso,
   };

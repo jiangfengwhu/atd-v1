@@ -1,5 +1,23 @@
 import type { Bindings } from '../types';
 
+export interface SharedPostAuthorSummary {
+  id: string;
+  nickname: string;
+  avatarSeed: string;
+  avatarUrl: string;
+  isOfficial: boolean;
+  officialBadge?: string;
+}
+
+export interface SharedPostSummary {
+  id: string;
+  unavailable: boolean;
+  contentPreview: string;
+  imageUrl: string;
+  author: SharedPostAuthorSummary | null;
+  createdAt: string | null;
+}
+
 export interface RealtimeUnreadByType {
   comment: number;
   like: number;
@@ -29,6 +47,7 @@ export type RealtimeServerEvent =
         senderId: string;
         receiverId: string;
         content: string;
+        sharedPost?: SharedPostSummary | null;
         isRead: boolean;
         createdAt: string;
       };
