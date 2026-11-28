@@ -1,0 +1,8 @@
+{
+  "branchName": "autodev/feat-20261128-052004",
+  "prNumber": 23,
+  "e2eTestPath": "tests/e2e/run-fb-210738e0.spec.ts",
+  "e2eVaultPath": ".autodev-e2e-vault/run-fb-210738e0/e2e.spec.ts",
+  "prTitle": "[AutoDev Spec] 用户反馈迭代：帖子支持站内私信分享给好友，类似x.com的那种多途径分享",
+  "createdAt": "2026-11-28T05:20:09.564Z"
+}
