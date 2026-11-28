@@ -1,0 +1,178 @@
+{
+  "reviewSummary": "初版 QA 规范覆盖了主干分享路径，但在安全隔离（隐私邮箱防泄露与第三方私信越权）、非法输入边界（自发自收、重复接收人去重、超 10 人上限、超长附言、非法 channel）、删帖后私信卡片容错、未登录访客引导与多端深浅色视口适配、以及批量多人与并发分享计数一致性方面存在明显盲区。本次评审已补充 6 项 Critic 缺陷项，并将接口清单扩充至 16 条、E2E 盲测脚本加固为覆盖全部边界与安全契约的完整套件。",
+  "findings": [
+    {
+      "id": "CRIT-01",
+      "category": "security",
+      "severity": "high",
+      "issue": "初版未校验好友候选接口的邮箱隐私防泄露与第三方用户私信越权隔离（IDOR）",
+      "recommendation": "在接口与 E2E 中断言 GET /api/messages/share-recipients 返回体绝不包含任何用户邮箱且排除当前登录用户本人；同时构造无关用户 C，验证其访问 /api/messages/conversations 与 /api/messages/with/:peerId 时无法看到 A 分享给 B 的动态私信及附言。"
+    },
+    {
+      "id": "CRIT-02",
+      "category": "invalid_input",
+      "severity": "high",
+      "issue": "初版缺少对 POST /api/posts/:id/share-dm 及 /share 的非法参数与边界值测试",
+      "recommendation": "补充断言：空 recipientIds 返回 400、包含当前登录用户本人 ID 返回 400、接收人数量超过 10 人返回 400、包含不存在的接收人 ID 返回 404、附言超过 1000 字符返回 400、重复传入同一 recipientId 时后端去重仅发送 1 条且 sharesCount 仅 +1；POST /api/posts/:id/share 传入未知 channel 返回 400。"
+    },
+    {
+      "id": "CRIT-03",
+      "category": "boundary",
+      "severity": "high",
+      "issue": "缺少“原帖被作者删除后，历史私信中动态分享卡片降级展示”的验证",
+      "recommendation": "在 E2E 中新增删帖回归步骤：作者删除已被私信分享的原帖后，接收方刷新 /messages 并打开会话，接口应返回 200 且 sharedPost.unavailable 为 true，界面优雅显示“已删除/不可查看”占位卡片且零前端 pageerror。"
+    },
+    {
+      "id": "CRIT-04",
+      "category": "ui_interaction",
+      "severity": "medium",
+      "issue": "未验证匿名访客点击“通过私信发送”时的登录引导，以及详情页 /posts/:id、移动端 375px 与深色模式下的菜单/弹窗层级与防溢出表现",
+      "recommendation": "增加未登录用户在 /posts/:id 点击“分享 -> 通过私信发送”触发登录弹窗的校验；验证分享菜单在 375px 移动端与深色模式下正常可见且无横向滚动溢出。"
+    },
+    {
+      "id": "CRIT-05",
+      "category": "concurrency",
+      "severity": "medium",
+      "issue": "未校验单次批量分享给多位好友及并发分享请求下 sharesCount 计数原子累加的一致性",
+      "recommendation": "在测试中一次性将帖子私信分享给 B、C 两位好友，并并发发起 3 次 POST /api/posts/:id/share 请求，最终从 GET /api/posts/:id 核对 sharesCount 精确等于所有有效分享次数总和，且 B 与 C 各自收到独立私信及未读计数。"
+    },
+    {
+      "id": "CRIT-06",
+      "category": "boundary",
+      "severity": "medium",
+      "issue": "未覆盖“无附言纯动态卡片分享”时会话列表预览可读性与在线实时推送送达",
+      "recommendation": "测试不填附言（note 为空）分享帖子给好友后，会话列表仍展示可读摘要（如“[分享了动态]”）而非空白，且接收方停留在 /messages 页面时能实时收到该分享动态卡片。"
+    }
+  ],
+  "finalApiTestChecklist": [
+    {
+      "id": "TC-01",
+      "endpoint": "/api/messages/share-recipients",
+      "method": "GET",
+      "scenario": "未登录访问私信分享好友候选接口",
+      "expectedStatus": 401,
+      "assertion": "返回 401 未登录错误提示"
+    },
+    {
+      "id": "TC-02",
+      "endpoint": "/api/messages/share-recipients",
+      "method": "GET",
+      "scenario": "已登录用户获取候选列表、按昵称搜索与隐私边界审计",
+      "expectedStatus": 200,
+      "assertion": "返回 recipients 数组，已关注/近期私信好友靠前，不含本人 ID，且响应全文绝不泄露任何用户 email"
+    },
+    {
+      "id": "TC-03",
+      "endpoint": "/api/messages/share-recipients",
+      "method": "GET",
+      "scenario": "传入非法 limit 参数（如 0、31、abc）",
+      "expectedStatus": 400,
+      "assertion": "返回 400 参数校验错误"
+    },
+    {
+      "id": "TC-04",
+      "endpoint": "/api/posts/:id/share-dm",
+      "method": "POST",
+      "scenario": "未登录用户调用站内私信分享帖子接口",
+      "expectedStatus": 401,
+      "assertion": "返回 401 拒绝请求"
+    },
+    {
+      "id": "TC-05",
+      "endpoint": "/api/posts/:id/share-dm",
+      "method": "POST",
+      "scenario": "非法边界参数：空 recipientIds、包含本人 ID、超过 10 位接收人、附言超过 1000 字",
+      "expectedStatus": 400,
+      "assertion": "上述每类非法请求均返回 400 且不产生脏消息或异常递增 sharesCount"
+    },
+    {
+      "id": "TC-06",
+      "endpoint": "/api/posts/:id/share-dm",
+      "method": "POST",
+      "scenario": "分享不存在的帖子 ID 或包含不存在的接收人 ID",
+      "expectedStatus": 404,
+      "assertion": "返回 404，原子校验失败时不产生部分写入"
+    },
+    {
+      "id": "TC-07",
+      "endpoint": "/api/posts/:id/share-dm",
+      "method": "POST",
+      "scenario": "recipientIds 包含重复用户 ID 时后端自动去重",
+      "expectedStatus": 201,
+      "assertion": "sentCount 为 1、仅写入 1 条私信记录且 sharesCount 仅增加 1"
+    },
+    {
+      "id": "TC-08",
+      "endpoint": "/api/posts/:id/share-dm",
+      "method": "POST",
+      "scenario": "已登录用户将帖子私信分享给单个好友并附带留言",
+      "expectedStatus": 201,
+      "assertion": "返回 ok: true、sentCount: 1、累加后的 sharesCount 及带完整 sharedPost 的消息对象"
+    },
+    {
+      "id": "TC-09",
+      "endpoint": "/api/posts/:id/share-dm",
+      "method": "POST",
+      "scenario": "已登录用户一次性向两位好友无附言（空 note）批量分享帖子",
+      "expectedStatus": 201,
+      "assertion": "返回 sentCount: 2、sharesCount 精确增加 2，两位接收人各自收到携带 sharedPost 的私信"
+    },
+    {
+      "id": "TC-10",
+      "endpoint": "/api/posts/:id/share",
+      "method": "POST",
+      "scenario": "无请求体（兼容旧调用）及携带 copy_link / copy_text / external 渠道参数分享",
+      "expectedStatus": 200,
+      "assertion": "均返回 ok: true、递增的 sharesCount、sharePath 为 /posts/:id 及对应 channel"
+    },
+    {
+      "id": "TC-11",
+      "endpoint": "/api/posts/:id/share",
+      "method": "POST",
+      "scenario": "传入未知非法 channel 参数",
+      "expectedStatus": 400,
+      "assertion": "返回 400 拒绝非法渠道"
+    },
+    {
+      "id": "TC-12",
+      "endpoint": "/api/posts/:id/share",
+      "method": "POST",
+      "scenario": "并发发起多次分享计数请求",
+      "expectedStatus": 200,
+      "assertion": "所有并发请求均成功，最终 GET /api/posts/:id 的 sharesCount 精确累加无丢数"
+    },
+    {
+      "id": "TC-13",
+      "endpoint": "/api/messages/conversations",
+      "method": "GET",
+      "scenario": "接收方拉取会话列表核对未读数与分享动态标识",
+      "expectedStatus": 200,
+      "assertion": "对应会话 unreadCount >= 1 且 lastMessage.sharedPostId 等于被分享帖子 ID"
+    },
+    {
+      "id": "TC-14",
+      "endpoint": "/api/messages/with/:peerId",
+      "method": "GET",
+      "scenario": "接收方拉取私信详情，校验 sharedPost 结构及第三方越权隔离",
+      "expectedStatus": 200,
+      "assertion": "接收方获取完整 sharedPost（unavailable: false）；无关第三方拉取会话不包含该私信内容与 sharedPost"
+    },
+    {
+      "id": "TC-15",
+      "endpoint": "/api/messages/with/:peerId",
+      "method": "GET",
+      "scenario": "原帖被作者删除后拉取历史私信会话详情",
+      "expectedStatus": 200,
+      "assertion": "接口不报错，对应消息的 sharedPost.id 保留且 sharedPost.unavailable 为 true"
+    },
+    {
+      "id": "TC-16",
+      "endpoint": "/api/messages/with/:peerId",
+      "method": "POST",
+      "scenario": "回归验证普通文本私信空内容仍受原有校验约束",
+      "expectedStatus": 400,
+      "assertion": "仅发送空白文本的普通私信接口继续返回 400，不破坏既有契约"
+    }
+  ],
+  "finalE2eTestCode": "import { test, expect, type APIRequestContext } from '@playwright/test';\n\nfunction makeEmail(prefix: string): string {\n  const rand = Math.random().toString(36).slice(2, 7);\n  return `${prefix}-${Date.now()}-${rand}@example.com`;\n}\n\nasync function loginUser(\n  request: APIRequestContext,\n  email: string,\n  nickname: string\n): Promise<{ id: string; email: string; nickname: string }> {\n  const sendRes = await request.post('/api/auth/send-code', { data: { email } });\n  expect(sendRes.status(), 'send-code 应返回 200').toBe(200);\n  const sendJson = await sendRes.json();\n  expect(sendJson.devCode).toMatch(/^\\d{6}$/);\n\n  const verifyRes = await request.post('/api/auth/verify-code', {\n    data: { email, code: sendJson.devCode, nickname },\n  });\n  expect(verifyRes.status(), 'verify-code 应返回 200').toBe(200);\n  const verifyJson = await verifyRes.json();\n  expect(verifyJson.ok).toBe(true);\n  return verifyJson.user;\n}\n\ntest.describe.serial('帖子多途径分享与站内私信分享加固盲测 E2E 套件', () => {\n  test('1. API 安全隔离、参数边界、重复接收人去重与并发分享计数一致性', async ({ browser }) => {\n    const ctxA = await browser.newContext();\n    const ctxB = await browser.newContext();\n    const ctxC = await browser.newContext();\n    const anonCtx = await browser.newContext();\n\n    try {\n      const suffix = Date.now().toString().slice(-4);\n      const emailA = makeEmail('share-api-a');\n      const emailB = makeEmail('share-api-b');\n      const emailC = makeEmail('share-api-c');\n\n      const userA = await loginUser(ctxA.request, emailA, `分享作者${suffix}`);\n      const userB = await loginUser(ctxB.request, emailB, `接收好友乙${suffix}`);\n      const userC = await loginUser(ctxC.request, emailC, `旁观者丙${suffix}`);\n\n      // 关注关系便于验证候选排序\n      expect((await ctxA.request.post(`/api/users/${userB.id}/follow`)).status()).toBe(200);\n\n      const postContent = `接口边界校验动态-${Date.now()} 测试多途径与私信分享`;\n      const createRes = await ctxA.request.post('/api/posts', { data: { content: postContent } });\n      expect(createRes.status()).toBe(201);\n      const postId: string = (await createRes.json()).post.id;\n\n      // 1) 未登录访问候选与私信分享接口必须返回 401\n      expect((await anonCtx.request.get('/api/messages/share-recipients')).status()).toBe(401);\n      expect(\n        (\n          await anonCtx.request.post(`/api/posts/${postId}/share-dm`, {\n            data: { recipientIds: [userB.id] },\n          })\n        ).status()\n      ).toBe(401);\n\n      // 2) 好友候选接口：非法 limit 返回 400；正常查询不含本人且绝不泄露邮箱\n      expect((await ctxA.request.get('/api/messages/share-recipients?limit=0')).status()).toBe(400);\n      expect((await ctxA.request.get('/api/messages/share-recipients?limit=99')).status()).toBe(400);\n\n      const recRes = await ctxA.request.get(\n        `/api/messages/share-recipients?q=${encodeURIComponent(userB.nickname)}`\n      );\n      expect(recRes.status()).toBe(200);\n      const recText = await recRes.text();\n      expect(recText, '好友候选列表严禁泄露任何用户邮箱').not.toContain(emailB);\n      expect(recText, '好友候选列表严禁泄露本人邮箱').not.toContain(emailA);\n      const recJson = JSON.parse(recText);\n      expect(Array.isArray(recJson.recipients)).toBe(true);\n      expect(recJson.recipients.some((u: { id: string }) => u.id === userA.id)).toBe(false);\n      expect(recJson.recipients.some((u: { id: string }) => u.id === userB.id)).toBe(true);\n\n      // 3) share-dm 非法参数与不存在资源拦截\n      expect(\n        (await ctxA.request.post(`/api/posts/${postId}/share-dm`, { data: { recipientIds: [] } })).status()\n      ).toBe(400);\n      expect(\n        (\n          await ctxA.request.post(`/api/posts/${postId}/share-dm`, {\n            data: { recipientIds: [userA.id] },\n          })\n        ).status()\n      ).toBe(400);\n      expect(\n        (\n          await ctxA.request.post(`/api/posts/${postId}/share-dm`, {\n            data: { recipientIds: Array.from({ length: 11 }, (_, i) => `fake-user-${i}`) },\n          })\n        ).status()\n      ).toBe(400);\n      expect(\n        (\n          await ctxA.request.post(`/api/posts/${postId}/share-dm`, {\n            data: { recipientIds: [userB.id], note: '评'.repeat(1005) },\n          })\n        ).status()\n      ).toBe(400);\n      expect(\n        (\n          await ctxA.request.post('/api/posts/non-existent-post-id/share-dm', {\n            data: { recipientIds: [userB.id] },\n          })\n        ).status()\n      ).toBe(404);\n      expect(\n        (\n          await ctxA.request.post(`/api/posts/${postId}/share-dm`, {\n            data: { recipientIds: ['non-existent-user-id'] },\n          })\n        ).status()\n      ).toBe(404);\n\n      // 4) 重复 recipientIds 自动去重：仅发 1 条且 sharesCount 仅 +1\n      const dedupNote = `去重校验附言-${Date.now()}`;\n      const dedupRes = await ctxA.request.post(`/api/posts/${postId}/share-dm`, {\n        data: { recipientIds: [userB.id, userB.id], note: dedupNote },\n      });\n      expect(dedupRes.status()).toBe(201);\n      const dedupJson = await dedupRes.json();\n      expect(dedupJson.ok).toBe(true);\n      expect(dedupJson.sentCount).toBe(1);\n      expect(dedupJson.sharesCount).toBe(1);\n      expect(dedupJson.messages).toHaveLength(1);\n      expect(dedupJson.messages[0].sharedPost?.id).toBe(postId);\n      expect(dedupJson.messages[0].sharedPost?.unavailable).toBe(false);\n\n      // 5) 私信权限隔离：用户 C 绝不可看到 A 分享给 B 的私信与附言\n      const convCText = await (await ctxC.request.get('/api/messages/conversations')).text();\n      expect(convCText).not.toContain(dedupNote);\n      expect(convCText).not.toContain(postId);\n      const threadCText = await (await ctxC.request.get(`/api/messages/with/${userA.id}`)).text();\n      expect(threadCText).not.toContain(dedupNote);\n      expect(threadCText).not.toContain(postId);\n\n      // 6) 多渠道 /share 兼容无 body、合法 channel、拒绝非法 channel 及并发累加准确性\n      const badChannel = await ctxA.request.post(`/api/posts/${postId}/share`, {\n        data: { channel: 'invalid_channel' },\n      });\n      expect(badChannel.status()).toBe(400);\n\n      const [s1, s2, s3] = await Promise.all([\n        ctxA.request.post(`/api/posts/${postId}/share`),\n        ctxA.request.post(`/api/posts/${postId}/share`, { data: { channel: 'copy_link' } }),\n        ctxA.request.post(`/api/posts/${postId}/share`, { data: { channel: 'copy_text' } }),\n      ]);\n      expect(s1.status()).toBe(200);\n      expect(s2.status()).toBe(200);\n      expect(s3.status()).toBe(200);\n\n      // 7) 批量多人无附言分享给 B 和 C（+2），总分享数应为 1 + 3 + 2 = 6\n      const batchRes = await ctxA.request.post(`/api/posts/${postId}/share-dm`, {\n        data: { recipientIds: [userB.id, userC.id], note: '' },\n      });\n      expect(batchRes.status()).toBe(201);\n      const batchJson = await batchRes.json();\n      expect(batchJson.sentCount).toBe(2);\n      expect(batchJson.sharesCount).toBe(6);\n\n      const postDetailRes = await ctxA.request.get(`/api/posts/${postId}`);\n      expect(postDetailRes.status()).toBe(200);\n      expect((await postDetailRes.json()).post.sharesCount).toBe(6);\n\n      // 校验 C 的会话列表存在分享动态标识及未读\n      const convCJson = await (await ctxC.request.get('/api/messages/conversations')).json();\n      expect(convCJson.totalUnread).toBeGreaterThanOrEqual(1);\n      const convWithA = convCJson.conversations.find(\n        (c: { peer: { id: string } }) => c.peer.id === userA.id\n      );\n      expect(convWithA).toBeTruthy();\n      expect(convWithA.lastMessage.sharedPostId).toBe(postId);\n\n      // 回归校验：普通文本私信空内容仍返回 400\n      expect(\n        (await ctxA.request.post(`/api/messages/with/${userB.id}`, { data: { content: '   ' } })).status()\n      ).toBe(400);\n    } finally {\n      await ctxA.close();\n      await ctxB.close();\n      await ctxC.close();\n      await anonCtx.close();\n    }\n  });\n\n  test('2. 信息流与详情页多途径分享菜单、匿名访客私信分享登录引导、深色模式与移动端防溢出', async ({\n    page,\n    browser,\n  }) => {\n    const pageErrors: string[] = [];\n    page.on('pageerror', (err) => pageErrors.push(err.message));\n    await page.setViewportSize({ width: 1440, height: 900 });\n\n    const authorCtx = await browser.newContext();\n    let postId = '';\n    const postText = `类X多途径分享展示帖-${Date.now()}`;\n    try {\n      await loginUser(authorCtx.request, makeEmail('ui-share-author'), '分享展示作者');\n      const createRes = await authorCtx.request.post('/api/posts', { data: { content: postText } });\n      expect(createRes.status()).toBe(201);\n      postId = (await createRes.json()).post.id;\n    } finally {\n      await authorCtx.close();\n    }\n\n    // 1) 未登录访客直达 /posts/:id 点击分享菜单 -> 通过私信发送，应弹出登录弹窗而非报错\n    await page.goto(`/posts/${postId}`);\n    const detailDialog = page.getByRole('dialog').first();\n    await expect(detailDialog).toBeVisible({ timeout: 10000 });\n    await expect(detailDialog).toContainText(postText);\n\n    await detailDialog.getByRole('button', { name: /分享/i }).first().click();\n    const detailMenu = page.getByRole('menu').first();\n    await expect(detailMenu).toBeVisible({ timeout: 8000 });\n    await expect(detailMenu.getByRole('menuitem', { name: /复制链接/i }).first()).toBeVisible();\n    await expect(detailMenu.getByRole('menuitem', { name: /私信/i }).first()).toBeVisible();\n    await expect(\n      detailMenu.getByRole('menuitem', { name: /复制分享文案|复制文案/i }).first()\n    ).toBeVisible();\n\n    await detailMenu.getByRole('menuitem', { name: /私信/i }).first().click();\n    const authEmailInput = page\n      .getByPlaceholder(/邮箱|email/i)\n      .or(page.locator('input[type=\"email\"]'))\n      .first();\n    await expect(authEmailInput).toBeVisible({ timeout: 8000 });\n\n    // 2) 登录后回到首页信息流测试复制链接与复制分享文案多途径操作\n    await loginUser(page.request, makeEmail('ui-share-viewer'), '多途径访客');\n    await page.goto('/');\n    const card = page.locator('article').filter({ hasText: postText }).first();\n    await expect(card).toBeVisible({ timeout: 10000 });\n\n    // 仅打开菜单并按 Escape 关闭，不应提前累加分享数\n    await card.getByRole('button', { name: /分享/i }).first().click();\n    await expect(page.getByRole('menu').first()).toBeVisible();\n    await page.keyboard.press('Escape');\n    await expect(page.getByRole('menu')).toHaveCount(0);\n\n    // 选择“复制链接”\n    await card.getByRole('button', { name: /分享/i }).first().click();\n    const copyLinkPromise = page.waitForResponse(\n      (res) => res.url().includes(`/api/posts/${postId}/share`) && res.request().method() === 'POST'\n    );\n    await page.getByRole('menu').first().getByRole('menuitem', { name: /复制链接/i }).first().click();\n    expect((await copyLinkPromise).status()).toBe(200);\n\n    // 选择“复制分享文案”\n    await card.getByRole('button', { name: /分享/i }).first().click();\n    const copyTextPromise = page.waitForResponse(\n      (res) => res.url().includes(`/api/posts/${postId}/share`) && res.request().method() === 'POST'\n    );\n    await page\n      .getByRole('menu')\n      .first()\n      .getByRole('menuitem', { name: /复制分享文案|复制文案/i })\n      .first()\n      .click();\n    const copyTextRes = await copyTextPromise;\n    expect(copyTextRes.status()).toBe(200);\n    expect((await copyTextRes.json()).sharesCount).toBe(2);\n\n    // 3) 移动端 375px 展开分享菜单不引发横向溢出\n    await page.setViewportSize({ width: 375, height: 812 });\n    await card.getByRole('button', { name: /分享/i }).first().click();\n    await expect(page.getByRole('menu').first()).toBeVisible();\n    const overflow = await page.evaluate(\n      () => document.documentElement.scrollWidth - window.innerWidth\n    );\n    expect(overflow).toBeLessThanOrEqual(2);\n\n    expect(pageErrors, '多途径分享菜单交互不应产生前端异常').toEqual([]);\n  });\n\n  test('3. 帖子详情页通过私信分享给好友 -> 接收方私信卡片展示与直达 -> 原帖删除后优雅降级', async ({\n    page,\n    browser,\n  }) => {\n    const pageErrorsA: string[] = [];\n    const pageErrorsB: string[] = [];\n    page.on('pageerror', (err) => pageErrorsA.push(err.message));\n    await page.setViewportSize({ width: 1440, height: 900 });\n\n    const ctxB = await browser.newContext();\n    const pageB = await ctxB.newPage();\n    pageB.on('pageerror', (err) => pageErrorsB.push(err.message));\n    await pageB.setViewportSize({ width: 1440, height: 900 });\n\n    try {\n      const suffix = Date.now().toString().slice(-4);\n      const userA = await loginUser(page.request, makeEmail('e2e-flow-a'), `主讲人甲${suffix}`);\n      const userB = await loginUser(ctxB.request, makeEmail('e2e-flow-b'), `听众好友乙${suffix}`);\n\n      await page.request.post(`/api/users/${userB.id}/follow`);\n\n      const postText = `端到端私信卡片分享全文-${Date.now()} 欢迎点击查看细节`;\n      const createRes = await page.request.post('/api/posts', { data: { content: postText } });\n      expect(createRes.status()).toBe(201);\n      const postId: string = (await createRes.json()).post.id;\n\n      // 用户 A 在 /posts/:id 详情页通过私信分享给用户 B\n      await page.goto(`/posts/${postId}`);\n      const detailDialog = page.getByRole('dialog').first();\n      await expect(detailDialog).toBeVisible({ timeout: 10000 });\n\n      await detailDialog.getByRole('button', { name: /分享/i }).first().click();\n      const menu = page.getByRole('menu').first();\n      await expect(menu).toBeVisible({ timeout: 8000 });\n      await menu.getByRole('menuitem', { name: /私信/i }).first().click();\n\n      const dmDialog = page.getByRole('dialog').last();\n      await expect(dmDialog).toBeVisible({ timeout: 10000 });\n      await expect(dmDialog).toContainText(postText);\n\n      // 搜索并选择好友 B，填写附言并发送\n      const searchBox = dmDialog.getByPlaceholder(/搜索/i).first();\n      await expect(searchBox).toBeVisible();\n      await searchBox.fill(userB.nickname);\n\n      const peerOption = dmDialog.getByText(userB.nickname).first();\n      await expect(peerOption).toBeVisible({ timeout: 8000 });\n      await peerOption.click();\n\n      const customNote = `强推这篇干货-${suffix}`;\n      const noteBox = dmDialog.getByPlaceholder(/附言|留言|说点什么/i).first();\n      await expect(noteBox).toBeVisible();\n      await noteBox.fill(customNote);\n\n      const shareDmPromise = page.waitForResponse(\n        (res) => res.url().includes(`/api/posts/${postId}/share-dm`) && res.request().method() === 'POST'\n      );\n      await dmDialog.getByRole('button', { name: /发送/i }).last().click();\n      const shareDmRes = await shareDmPromise;\n      expect(shareDmRes.status()).toBe(201);\n      expect((await shareDmRes.json()).sharesCount).toBe(1);\n\n      // 用户 B 进入私信页查看会话列表与分享动态卡片\n      await pageB.goto('/messages');\n      const peerConvBtn = pageB.getByText(userA.nickname).first();\n      await expect(peerConvBtn).toBeVisible({ timeout: 10000 });\n      await peerConvBtn.click();\n\n      await expect(pageB.getByText(customNote).first()).toBeVisible({ timeout: 10000 });\n      const sharedPostCard = pageB.getByText(postText).first();\n      await expect(sharedPostCard).toBeVisible({ timeout: 10000 });\n\n      // 点击私信中的动态卡片，直达打开原帖详情弹窗\n      await sharedPostCard.click();\n      const openedDetail = pageB.getByRole('dialog').first();\n      await expect(openedDetail).toBeVisible({ timeout: 10000 });\n      await expect(openedDetail).toContainText(postText);\n      await openedDetail.getByRole('button', { name: /关闭弹窗/i }).first().click();\n      await expect(pageB.getByRole('dialog')).toHaveCount(0);\n\n      // 用户 A 删除原帖后，用户 B 重新加载私信会话仍正常渲染删除占位提示且无异常\n      const delRes = await page.request.delete(`/api/posts/${postId}`);\n      expect(delRes.status()).toBe(200);\n\n      const threadAfterDelRes = await ctxB.request.get(`/api/messages/with/${userA.id}`);\n      expect(threadAfterDelRes.status()).toBe(200);\n      const threadAfterDelJson = await threadAfterDelRes.json();\n      const sharedMsg = threadAfterDelJson.messages.find(\n        (m: { sharedPost?: { id?: string } | null }) => m.sharedPost?.id === postId\n      );\n      expect(sharedMsg).toBeTruthy();\n      expect(sharedMsg.sharedPost.unavailable).toBe(true);\n\n      await pageB.reload();\n      await pageB.getByText(userA.nickname).first().click();\n      await expect(pageB.getByText(customNote).first()).toBeVisible({ timeout: 10000 });\n      await expect(\n        pageB.getByText(/已删除|已被删除|不可查看|失效/i).first()\n      ).toBeVisible({ timeout: 10000 });\n\n      expect(pageErrorsA, '分享方页面不应产生前端异常').toEqual([]);\n      expect(pageErrorsB, '接收方页面不应产生前端异常').toEqual([]);\n    } finally {\n      await pageB.close();\n      await ctxB.close();\n    }\n  });\n});\n"
+}
