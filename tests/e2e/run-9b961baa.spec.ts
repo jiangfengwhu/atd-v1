@@ -205,6 +205,17 @@ test.describe.serial('动态改版（X.com列表流、点击/收藏/分享直达
       const hotPostTitle = `热词精选帖子-${Date.now()}`;
       const otherPostTitle = `其他分类帖子-${Date.now()}`;
 
+      const viewer = await loginUser(page.request, makeEmail('discover-viewer'), '探索用户');
+
+      // 在共享/累积测试数据库环境下，确保本次创建的 hotTag 与 creator 真实排入热门/推荐榜单前列
+      const [existingTopTopics, existingTopUsers] = await Promise.all([
+        (await page.request.get('/api/discover/topics?limit=1')).json(),
+        (await page.request.get('/api/discover/recommended-users?limit=1')).json(),
+      ]);
+      const currentMaxHeat = Number(existingTopTopics.topics?.[0]?.heatScore ?? 0);
+      const currentMaxFollowers = Number(existingTopUsers.users?.[0]?.followersCount ?? 0);
+
+      let firstHotPostId = '';
       // 发布多篇带热词标签的动态提升其热度排名
       for (let i = 0; i < 3; i += 1) {
         const res = await ctxCreator.request.post('/api/posts', {
@@ -214,12 +225,34 @@ test.describe.serial('动态改版（X.com列表流、点击/收藏/分享直达
           },
         });
         expect(res.status()).toBe(201);
+        if (i === 0) {
+          firstHotPostId = (await res.json()).post.id as string;
+        }
       }
       await ctxCreator.request.post('/api/posts', {
         data: { content: `${otherPostTitle} 用于验证点击热门话题筛选隔离`, tags: [otherTag] },
       });
 
-      const viewer = await loginUser(page.request, makeEmail('discover-viewer'), '探索用户');
+      if (currentMaxHeat >= 30 && firstHotPostId) {
+        const extraShares = Math.ceil((currentMaxHeat - 29) / 3) + 1;
+        for (let s = 0; s < extraShares; s += 1) {
+          expect((await ctxCreator.request.post(`/api/posts/${firstHotPostId}/share`)).status()).toBe(200);
+        }
+      }
+
+      const neededFans = Math.max(1, currentMaxFollowers + 1);
+      for (let batchStart = 0; batchStart < neededFans; batchStart += 4) {
+        const fanCtx = await browser.newContext();
+        try {
+          const batchEnd = Math.min(neededFans, batchStart + 4);
+          for (let f = batchStart; f < batchEnd; f += 1) {
+            await loginUser(fanCtx.request, makeEmail(`discover-fan-${f}`), `粉丝${f}`);
+            expect((await fanCtx.request.post(`/api/users/${creator.id}/follow`)).status()).toBe(200);
+          }
+        } finally {
+          await fanCtx.close();
+        }
+      }
 
       // 发现接口参数边界与隐私脱敏审计
       expect((await page.request.get('/api/discover/topics?limit=0')).status()).toBe(400);
