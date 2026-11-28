@@ -3,7 +3,7 @@
     {
       "id": "fb-mwzyerb8-1825df",
       "createdAt": "2026-11-28T05:12:36.548Z",
-      "updatedAt": "2026-11-28T05:20:10.980Z",
+      "updatedAt": "2026-11-28T05:20:51.845Z",
       "repoFullName": "jiangfengwhu/atd-v1",
       "content": "@官方反馈 帖子支持站内私信分享给好友，类似x.com的那种多途径分享",
       "categoryHint": "feature",
@@ -19,14 +19,15 @@
         "authorId": "a5c6b653-7c66-4397-8c8b-2c1c127be756",
         "authorNickname": "卡皮巴拉"
       },
-      "status": "plan_ready",
+      "status": "dispatched",
       "triageReason": "已立项并启动 ST-01 完整架构策划（Issue #22 / Job job-5a25f179，完成后待审阅建 PR）",
       "triageBatchId": "fb-direct-mwzyfl43-8e9c",
       "linkedJobId": "job-5a25f179",
       "linkedIssueNumber": 22,
       "linkedIssueUrl": "https://github.com/jiangfengwhu/atd-v1/issues/22",
       "repliedStageKeys": [
-        "job-5a25f179:planning_started"
+        "job-5a25f179:planning_started",
+        "run-fb-210738e0:coding_started"
       ],
       "linkedRunId": "run-fb-210738e0",
       "linkedPrNumber": 23,
@@ -129,11 +130,11 @@
       "rejectedMaliciousCount": 0,
       "rejectedInvalidCount": 0,
       "needsManualPrdCount": 0,
-      "summary": "已创建 Draft PR #23（分支 autodev/feat-20261128-052004），等待派发 AGY 编码。",
+      "summary": "已派发 AGY 编码实现（PR #23），完成后进入 ST-03 质检与 ST-04 验收上线。",
       "feedbackIds": [
         "fb-mwzyerb8-1825df"
       ],
-      "status": "plan_ready",
+      "status": "dispatched",
       "linkedJobId": "job-5a25f179",
       "linkedIssueNumber": 22,
       "linkedIssueUrl": "https://github.com/jiangfengwhu/atd-v1/issues/22",
