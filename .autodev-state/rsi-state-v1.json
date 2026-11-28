@@ -347,6 +347,58 @@
       "rawLogExcerpt": "hub.com/.extraheader' || :\"\n2026-11-28T05:18:40.0158828Z Removing includeIf entries pointing to credentials config files\n2026-11-28T05:18:40.0164712Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\\.gitdir:\n2026-11-28T05:18:40.0191167Z includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git.path\n2026-11-28T05:18:40.0191565Z includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-28T05:18:40.0191868Z includeif.gitdir:/github/workspace/.git.path\n2026-11-28T05:18:40.0192096Z includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-28T05:18:40.0196713Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git.path\n2026-11-28T05:18:40.0217984Z /data/home/actions-runner-3/_work/_temp/git-credentials-b135a3ac-1fb5-4b17-9125-86489a1f2a87.config\n2026-11-28T05:18:40.0225319Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git.path \\/data\\/home\\/actions\\-runner\\-3\\/_work\\/_temp\\/git\\-credentials\\-b135a3ac\\-1fb5\\-4b17\\-9125\\-86489a1f2a87\\.config\n2026-11-28T05:18:40.0473712Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-28T05:18:40.0498425Z /data/home/actions-runner-3/_work/_temp/git-credentials-b135a3ac-1fb5-4b17-9125-86489a1f2a87.config\n2026-11-28T05:18:40.0507348Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git/worktrees/*.path \\/data\\/home\\/actions\\-runner\\-3\\/_work\\/_temp\\/git\\-credentials\\-b135a3ac\\-1fb5\\-4b17\\-9125\\-86489a1f2a87\\.config\n2026-11-28T05:18:40.0682774Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path\n2026-11-28T05:18:40.0704362Z /github/runner_temp/git-credentials-b135a3ac-1fb5-4b17-9125-86489a1f2a87.config\n2026-11-28T05:18:40.0709772Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \\/github\\/runner_temp\\/git\\-credentials\\-b135a3ac\\-1fb5\\-4b17\\-9125\\-86489a1f2a87\\.config\n2026-11-28T05:18:40.0982438Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-28T05:18:40.1190828Z /github/runner_temp/git-credentials-b135a3ac-1fb5-4b17-9125-86489a1f2a87.config\n2026-11-28T05:18:40.1203816Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \\/github\\/runner_temp\\/git\\-credentials\\-b135a3ac\\-1fb5\\-4b17\\-9125\\-86489a1f2a87\\.config\n2026-11-28T05:18:40.1541266Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url\n2026-11-28T05:18:40.2066281Z Removing credentials config '/data/home/actions-runner-3/_work/_temp/git-credentials-b135a3ac-1fb5-4b17-9125-86489a1f2a87.config'\n2026-11-28T05:18:40.2377290Z Cleaning up orphan processes\n"
     },
     {
+      "id": "tr-gh-46020942478",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "actionsRunId": 46020942478,
+      "actionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/46020942478",
+      "workflowName": "AutoDev Cloudflare Workers Deploy",
+      "branch": "main",
+      "kind": "build_check",
+      "status": "partial",
+      "total": 5,
+      "passed": 3,
+      "failed": 1,
+      "skipped": 1,
+      "passRate": 75,
+      "durationMs": 16000,
+      "executedAt": "2026-11-27T15:00:29Z",
+      "summary": "流水线步骤校验：3/5 步通过，1 步失败",
+      "cases": [
+        {
+          "id": "step-1",
+          "title": "Checkout Target Branch",
+          "status": "passed",
+          "durationMs": 0
+        },
+        {
+          "id": "step-2",
+          "title": "Verify Cloudflare Credentials & Wrangler Config",
+          "status": "passed",
+          "durationMs": 0
+        },
+        {
+          "id": "step-3",
+          "title": "Install Dependencies & Build Project",
+          "status": "passed",
+          "durationMs": 0
+        },
+        {
+          "id": "step-4",
+          "title": "Provision D1 Database (if placeholder) & Apply Remote Migrations",
+          "status": "failed",
+          "durationMs": 0,
+          "error": "Step conclusion: failure"
+        },
+        {
+          "id": "step-5",
+          "title": "Deploy to Cloudflare Workers",
+          "status": "skipped",
+          "durationMs": 0
+        }
+      ],
+      "rawLogExcerpt": "hub.com/.extraheader' || :\"\n2026-11-27T15:00:26.6145182Z Removing includeIf entries pointing to credentials config files\n2026-11-27T15:00:26.6168056Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\\.gitdir:\n2026-11-27T15:00:26.6189482Z includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git.path\n2026-11-27T15:00:26.6189998Z includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-27T15:00:26.6190408Z includeif.gitdir:/github/workspace/.git.path\n2026-11-27T15:00:26.6191305Z includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-27T15:00:26.6200038Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git.path\n2026-11-27T15:00:26.6231535Z /data/home/actions-runner-3/_work/_temp/git-credentials-266e6020-690b-4b8b-91ad-e60a8068227e.config\n2026-11-27T15:00:26.6243475Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git.path \\/data\\/home\\/actions\\-runner\\-3\\/_work\\/_temp\\/git\\-credentials\\-266e6020\\-690b\\-4b8b\\-91ad\\-e60a8068227e\\.config\n2026-11-27T15:00:26.6312104Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-27T15:00:26.6363593Z /data/home/actions-runner-3/_work/_temp/git-credentials-266e6020-690b-4b8b-91ad-e60a8068227e.config\n2026-11-27T15:00:26.6373394Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git/worktrees/*.path \\/data\\/home\\/actions\\-runner\\-3\\/_work\\/_temp\\/git\\-credentials\\-266e6020\\-690b\\-4b8b\\-91ad\\-e60a8068227e\\.config\n2026-11-27T15:00:26.6425440Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path\n2026-11-27T15:00:26.6449973Z /github/runner_temp/git-credentials-266e6020-690b-4b8b-91ad-e60a8068227e.config\n2026-11-27T15:00:26.6456453Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \\/github\\/runner_temp\\/git\\-credentials\\-266e6020\\-690b\\-4b8b\\-91ad\\-e60a8068227e\\.config\n2026-11-27T15:00:26.6484039Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-27T15:00:26.6505693Z /github/runner_temp/git-credentials-266e6020-690b-4b8b-91ad-e60a8068227e.config\n2026-11-27T15:00:26.6519909Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \\/github\\/runner_temp\\/git\\-credentials\\-266e6020\\-690b\\-4b8b\\-91ad\\-e60a8068227e\\.config\n2026-11-27T15:00:26.6545917Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url\n2026-11-27T15:00:26.6824852Z Removing credentials config '/data/home/actions-runner-3/_work/_temp/git-credentials-266e6020-690b-4b8b-91ad-e60a8068227e.config'\n2026-11-27T15:00:26.7015325Z Cleaning up orphan processes\n"
+    },
+    {
       "id": "tr-gh-46018654823",
       "repoFullName": "jiangfengwhu/atd-v1",
       "actionsRunId": 46018654823,
@@ -2923,6 +2975,20 @@
     }
   ],
   "incidents": [
+    {
+      "id": "inc-da74a6db",
+      "sourceRefKey": "actions:46020942478",
+      "source": "deploy_error",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "title": "AutoDev Cloudflare Workers Deploy #46020942478 异常（failure）",
+      "errorSummary": "Provision D1 Database (if placeholder) & Apply Remote Migrations (Step conclusion: failure)",
+      "rawEvidence": "hub.com/.extraheader' || :\"\n2026-11-27T15:00:26.6145182Z Removing includeIf entries pointing to credentials config files\n2026-11-27T15:00:26.6168056Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\\.gitdir:\n2026-11-27T15:00:26.6189482Z includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git.path\n2026-11-27T15:00:26.6189998Z includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-27T15:00:26.6190408Z includeif.gitdir:/github/workspace/.git.path\n2026-11-27T15:00:26.6191305Z includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-27T15:00:26.6200038Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git.path\n2026-11-27T15:00:26.6231535Z /data/home/actions-runner-3/_work/_temp/git-credentials-266e6020-690b-4b8b-91ad-e60a8068227e.config\n2026-11-27T15:00:26.6243475Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git.path \\/data\\/home\\/actions\\-runner\\-3\\/_work\\/_temp\\/git\\-credentials\\-266e6020\\-690b\\-4b8b\\-91ad\\-e60a8068227e\\.config\n2026-11-27T15:00:26.6312104Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git/worktrees/*.path\n2026-11-27T15:00:26.6363593Z /data/home/actions-runner-3/_work/_temp/git-credentials-266e6020-690b-4b8b-91ad-e60a8068227e.config\n2026-11-27T15:00:26.6373394Z [command]/usr/bin/git config --local --unset includeif.gitdir:/data/home/actions-runner-3/_work/atd-v1/atd-v1/.git/worktrees/*.path \\/data\\/home\\/actions\\-runner\\-3\\/_work\\/_temp\\/git\\-credentials\\-266e6020\\-690b\\-4b8b\\-91ad\\-e60a8068227e\\.config\n2026-11-27T15:00:26.6425440Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path\n2026-11-27T15:00:26.6449973Z /github/runner_temp/git-credentials-266e6020-690b-4b8b-91ad-e60a8068227e.config\n2026-11-27T15:00:26.6456453Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \\/github\\/runner_temp\\/git\\-credentials\\-266e6020\\-690b\\-4b8b\\-91ad\\-e60a8068227e\\.config\n2026-11-27T15:00:26.6484039Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path\n2026-11-27T15:00:26.6505693Z /github/runner_temp/git-credentials-266e6020-690b-4b8b-91ad-e60a8068227e.config\n2026-11-27T15:00:26.6519909Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \\/github\\/runner_temp\\/git\\-credentials\\-266e6020\\-690b\\-4b8b\\-91ad\\-e60a8068227e\\.config\n2026-11-27T15:00:26.6545917Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url\n2026-11-27T15:00:26.6824852Z Removing credentials config '/data/home/actions-runner-3/_work/_temp/git-credentials-266e6020-690b-4b8b-91ad-e60a8068227e.config'\n2026-11-27T15:00:26.7015325Z Cleaning up orphan processes\n",
+      "relatedActionsRunId": 46020942478,
+      "relatedActionsUrl": "https://github.com/jiangfengwhu/atd-v1/actions/runs/46020942478",
+      "branch": "main",
+      "occurredAt": "2026-11-27T15:00:29Z",
+      "analysisStatus": "analyzing"
+    },
     {
       "id": "inc-fa2c5532",
       "sourceRefKey": "actions:45989081793",
