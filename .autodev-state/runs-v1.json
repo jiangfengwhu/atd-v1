@@ -623,7 +623,7 @@
       "source": "estimated",
       "model": "gemini-4-neon-high"
     },
-    "status": "pr_created",
+    "status": "approved",
     "checkedCriteriaIds": [],
     "draftPr": {
       "prUrl": "https://github.com/jiangfengwhu/atd-v1/pull/23",
@@ -668,7 +668,9 @@
         "source": "reported",
         "model": "gemini-4-hydrogen-high"
       }
-    }
+    },
+    "approvalNote": "",
+    "approvedAt": "2026-11-28T05:34:51.643Z"
   },
   {
     "id": "run-fb-mwz3eeyd-e431",

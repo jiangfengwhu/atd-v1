@@ -3,7 +3,7 @@
     {
       "id": "fb-mwzyerb8-1825df",
       "createdAt": "2026-11-28T05:12:36.548Z",
-      "updatedAt": "2026-11-28T05:20:51.845Z",
+      "updatedAt": "2026-11-28T05:34:54.164Z",
       "repoFullName": "jiangfengwhu/atd-v1",
       "content": "@官方反馈 帖子支持站内私信分享给好友，类似x.com的那种多途径分享",
       "categoryHint": "feature",
@@ -27,7 +27,8 @@
       "linkedIssueUrl": "https://github.com/jiangfengwhu/atd-v1/issues/22",
       "repliedStageKeys": [
         "job-5a25f179:planning_started",
-        "run-fb-210738e0:coding_started"
+        "run-fb-210738e0:coding_started",
+        "run-fb-210738e0:coding_completed"
       ],
       "linkedRunId": "run-fb-210738e0",
       "linkedPrNumber": 23,
