@@ -1,0 +1,185 @@
+{
+  "ambiguities": [
+    {
+      "id": "AMB-1",
+      "severity": "medium",
+      "title": "点击“分享”按钮由一键复制升级为多途径分享菜单，影响既有单点分享回归用例",
+      "detail": "现有 PostCard 与 PostDetailDialog 点击“分享”按钮会立即触发 POST /api/posts/:id/share 并复制链接，且历史测试 tests/e2e/run-9b961baa.spec.ts 依赖该单次点击行为。升级为类 X.com 多途径分享菜单后，点击“分享”应先展开选项菜单，仅在用户实际选择具体分享动作（复制链接、通过私信发送、复制分享文案、外部/系统分享）时才累加分享数。",
+      "clarificationSuggestion": "按 X.com 标准交互实现：点击分享图标展开多途径菜单，选择具体渠道后执行分享并累加 sharesCount；同时同步更新既有回归脚本 tests/e2e/run-9b961baa.spec.ts 中点击分享后进一步点击“复制链接”的步骤，保持功能验收语义一致。"
+    },
+    {
+      "id": "AMB-2",
+      "severity": "medium",
+      "title": "“好友”范围界定与站内私信分享对象排序规则",
+      "detail": "当前社区数据模型包含关注关系（user_follows）与私信会话（direct_messages），但没有独立的双向好友申请表。用户反馈提及“站内私信分享给好友”，需明确候选列表包含范围。",
+      "clarificationSuggestion": "私信分享弹窗默认优先展示“最近私信联系人”和“互相关注/已关注用户”（附带关系标签如“最近私信”“互相关注”“已关注”），并支持按昵称搜索站内其他社区用户（自动排除当前登录用户本人且不暴露邮箱），最多支持单次多选 10 位接收人。"
+    },
+    {
+      "id": "AMB-3",
+      "severity": "low",
+      "title": "外部多途径分享在桌面端浏览器不支持 Web Share API 时的降级体验",
+      "detail": "类似 X.com 的多途径分享通常包含复制链接、站内私信、复制分享文案与系统/外部应用分享，但桌面端 Chromium 及部分浏览器不支持 navigator.share。",
+      "clarificationSuggestion": "菜单固定提供“复制链接”、“通过私信发送”、“复制分享文案”和“更多方式分享”四项：当浏览器支持 navigator.share 时调用系统原生分享面板；不支持时优雅降级为复制带摘要的分享链接并给出清晰提示，确保全端可用且无报错。"
+    },
+    {
+      "id": "AMB-4",
+      "severity": "low",
+      "title": "被私信分享的原帖后续被作者删除时的历史消息展示",
+      "detail": "若发帖人在帖子被私信分享后删除该帖，私信双方查看历史会话时需避免出现空白气泡或接口报错。",
+      "clarificationSuggestion": "通过独立的 direct_message_post_shares 关联表记录 message_id 与 post_id，查询私信记录时 LEFT JOIN posts；当原帖已删除时返回 unavailable: true 标记，前端渲染“该动态已被删除或不可查看”的占位卡片。"
+    }
+  ],
+  "architectureSummary": "基于现有 Cloudflare Workers + Hono + D1 + Durable Objects + React/Vite/Tailwind 架构进行增量演进：1）数据层新增幂等迁移文件 migrations/0009_dm_post_shares.sql，创建独立关联表 direct_message_post_shares（以 message_id 为主键关联 post_id），不修改历史迁移与原表结构；2）服务端在 src/routes/messages.ts 新增好友候选检索接口 GET /api/messages/share-recipients，在 src/routes/posts.ts 新增私信分享接口 POST /api/posts/:id/share-dm（原子写入私信、关联表、批量累加 post_metrics.shares_count 并通过 Durable Objects 实时推送 dm:new 事件）并向后兼容地扩展 POST /api/posts/:id/share 的 channel 参数，同时升级 GET /api/messages/with/:peerId 与 GET /api/messages/conversations 返回结构化 sharedPost 摘要及删帖降级状态；3）前端新增可复用的多途径分享菜单 SharePostMenu 与好友选择分享弹窗 ShareViaDmDialog，统一接入 PostCard（动态流/收藏/个人主页）与 PostDetailDialog（/posts/:id 详情页），并升级 MessagesView 渲染可点击跳转原帖详情的动态卡片与会话列表预览，完整兼容浅/深色主题与 375px 移动端。",
+  "techDecisions": [
+    "严格遵循 Cloudflare D1 幂等迁移规范：新增 migrations/0009_dm_post_shares.sql 仅使用 CREATE TABLE IF NOT EXISTS 与 CREATE INDEX IF NOT EXISTS 建立 sidecar 关联表 direct_message_post_shares，避免 SQLite ALTER TABLE 重复执行失败风险，同时严禁改动 0001~0008 历史迁移；执行迁移前须核对 wrangler.toml 中 D1 binding/migrations_dir 与 CI 凭据。",
+    "保留 POST /api/messages/with/:peerId 既有文本私信校验逻辑（空正文返回 400），新增专用接口 POST /api/posts/:id/share-dm 处理帖子私信分享（支持 1~10 位接收人去重批量发送、选填附言、原子更新 post_metrics.shares_count 与 WebSocket 实时推送），兼顾向后兼容与原子一致性。",
+    "POST /api/posts/:id/share 保持无请求体时的完全向后兼容，新增可选参数 channel（copy_link | copy_text | external），所有分享渠道统一维护 post_metrics.shares_count 并自动联动 Discover 热门话题热度分计算。",
+    "前端在 CommunityPage 层集中挂载单个 ShareViaDmDialog 实例，PostCard（动态流、收藏页、个人主页）与 PostDetailDialog（含直达 /posts/:id 路由）共用 SharePostMenu 触发器，保证在详情弹窗内呼出私信分享弹窗时具备正确的 Radix Dialog 层级叠加与全局 sharesCount 状态同步。",
+    "在 PostDetailDialog 底部操作栏中，SharePostMenu 菜单采用向上展开定位以避免被弹窗底部裁切；所有分享入口在未登录点击“通过私信发送”时复用 requireAuthThen 流程，登录成功后自动续接打开私信分享弹窗。",
+    "由于“分享”按钮升级为多途径菜单，编码阶段需同步适配既有回归用例 tests/e2e/run-9b961baa.spec.ts 中针对分享按钮的点击断言（先点“分享”再点“复制链接”），确保全量 E2E 回归通过。"
+  ],
+  "apiContracts": [
+    {
+      "id": "API-1",
+      "method": "GET",
+      "path": "/api/messages/share-recipients",
+      "summary": "获取当前登录用户可私信分享的好友与社区用户候选列表（优先排序最近私信联系人与关注关系，支持昵称搜索，排除本人且绝不返回邮箱）",
+      "requestSchema": "Query: { q?: string (max 30 chars), limit?: number (integer 1..30, default 15) } | Auth: session cookie required",
+      "responseSchema": "200 OK: { recipients: Array<{ id: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string, isOfficial: boolean, officialBadge?: string, isFollowing: boolean, isFollower: boolean, isMutualFollow: boolean, hasConversation: boolean }> }",
+      "errorCodes": [
+        "400",
+        "401"
+      ]
+    },
+    {
+      "id": "API-2",
+      "method": "POST",
+      "path": "/api/posts/:id/share-dm",
+      "summary": "将指定帖子通过站内私信分享给 1~10 位好友（支持附言、自动去重接收人、原子累加帖子分享数并实时推送 dm:new 事件）",
+      "requestSchema": "Body JSON: { recipientIds: string[] (1..10 unique valid user IDs, cannot include self), note?: string (0..1000 chars after trim) } | Auth: session cookie required",
+      "responseSchema": "201 Created: { ok: true, postId: string, sharesCount: number, sentCount: number, messages: Array<{ id: string, conversationKey: string, senderId: string, receiverId: string, content: string, sharedPost: { id: string, unavailable: false, contentPreview: string, imageUrl: string, author: { id: string, nickname: string, avatarSeed: string, avatarUrl: string, isOfficial: boolean, officialBadge?: string }, createdAt: string }, isRead: false, createdAt: string }> }",
+      "errorCodes": [
+        "400",
+        "401",
+        "404"
+      ]
+    },
+    {
+      "id": "API-3",
+      "method": "POST",
+      "path": "/api/posts/:id/share",
+      "summary": "记录帖子分享计数并返回直达链接路径（向后兼容无请求体调用，新增可选分享渠道标识）",
+      "requestSchema": "Body JSON (optional): { channel?: 'copy_link' | 'copy_text' | 'external' }",
+      "responseSchema": "200 OK: { ok: true, sharesCount: number, sharePath: string, channel: 'copy_link' | 'copy_text' | 'external' }",
+      "errorCodes": [
+        "400",
+        "404"
+      ]
+    },
+    {
+      "id": "API-4",
+      "method": "GET",
+      "path": "/api/messages/with/:peerId",
+      "summary": "获取与指定用户的私信聊天记录（增量扩展每条消息的 sharedPost 字段，支持原帖已删除时的 unavailable 降级态）",
+      "requestSchema": "Query: { limit?: number (1..100, default 50), offset?: number (>=0, default 0) } | Auth: session cookie required",
+      "responseSchema": "200 OK: { peer: { id: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string }, messages: Array<{ id: string, senderId: string, receiverId: string, content: string, sharedPost: null | { id: string, unavailable: boolean, contentPreview: string, imageUrl: string, author: null | { id: string, nickname: string, avatarSeed: string, avatarUrl: string, isOfficial: boolean, officialBadge?: string }, createdAt: string | null }, isRead: boolean, createdAt: string }> }",
+      "errorCodes": [
+        "400",
+        "401",
+        "404"
+      ]
+    },
+    {
+      "id": "API-5",
+      "method": "GET",
+      "path": "/api/messages/conversations",
+      "summary": "获取当前登录用户的私信会话列表（增量扩展 lastMessage.sharedPostId 以便无附言分享时展示可读摘要）",
+      "requestSchema": "Auth: session cookie required",
+      "responseSchema": "200 OK: { conversations: Array<{ peer: { id: string, nickname: string, avatarSeed: string, avatarUrl: string, bio: string }, lastMessage: { id: string, senderId: string, content: string, sharedPostId: string | null, createdAt: string }, unreadCount: number }>, totalUnread: number }",
+      "errorCodes": [
+        "401"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-01",
+      "title": "新增私信分享动态的持久化数据模型迁移",
+      "module": "database",
+      "description": "新增幂等 D1 迁移脚本 migrations/0009_dm_post_shares.sql，创建 direct_message_post_shares(message_id TEXT PRIMARY KEY, post_id TEXT NOT NULL, created_at TEXT NOT NULL) 及 idx_dm_post_shares_post 索引，不修改历史迁移与既有表结构；核查 wrangler.toml 的 D1 绑定与迁移目录配置并执行本地迁移验证。",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "用户将社区动态通过私信分享给好友后，即使刷新页面或重新登录，私信记录中依然完整保留所分享的动态关联信息",
+        "系统现有发帖、评论、收藏、关注与历史私信记录在升级后全部保持完整无丢失"
+      ],
+      "estimatedComplexity": "S"
+    },
+    {
+      "id": "T-02",
+      "title": "实现私信分享好友检索与帖子私信分享服务端接口",
+      "module": "server-api",
+      "description": "1) 在 src/routes/messages.ts 实现 GET /api/messages/share-recipients（鉴权、排除自己、按最近私信联系人与关注关系优先排序、支持昵称模糊检索且不暴露邮箱），并扩展 GET /api/messages/with/:peerId 与 GET /api/messages/conversations 关联返回 sharedPost 摘要及原帖已删除时的 unavailable 兜底；2) 在 src/routes/posts.ts 实现 POST /api/posts/:id/share-dm（校验登录、帖子存在、1~10 位接收人存在且不含本人、附言上限 1000 字、去重接收人、原子批处理写入私信与分享关联并递增 shares_count、向双方推送含 sharedPost 的实时 dm:new 事件），并向后兼容地增强 POST /api/posts/:id/share 支持可选 channel 参数；3) 同步更新 src/lib/realtime.ts 类型定义。",
+      "dependsOn": [
+        "T-01"
+      ],
+      "acceptanceCriteria": [
+        "已登录用户打开站内私信分享时，可以按优先顺序看到最近联系或已关注的好友列表，并支持按昵称搜索其他社区用户，列表中不会出现自己也不会泄露他人邮箱",
+        "用户一次可以选择一位或多位好友（最多十位）发送同一条动态并附加可选留言，发送成功后对应动态的分享次数准确增加",
+        "若目标动态或目标用户不存在，或用户试图将动态分享给自己、留空接收人或超出附言字数限制，系统会明确拒绝并提示原因",
+        "私信分享内容仅对发送方与对应接收方可见，无关第三方无法查看到他人之间的分享私信",
+        "当已通过私信分享的动态后续被作者删除时，收发双方查看历史私信仍能正常打开且不会出错"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-03",
+      "title": "实现类 X.com 多途径分享菜单与站内私信分享弹窗",
+      "module": "client-share",
+      "description": "1) 新增 client/src/components/SharePostMenu.tsx，点击帖子分享图标弹出包含“复制链接”、“通过私信发送”、“复制分享文案”、“更多方式分享”的多途径菜单，支持点击外部与 Esc 关闭、深浅色模式及弹窗底部向上展开防裁切；2) 新增 client/src/components/ShareViaDmDialog.tsx，包含原帖摘要预览、好友实时搜索、关系标签、多选芯片（最多 10 人）、可选附言输入框与发送状态反馈；3) 在 PostCard、PostDetailDialog、BookmarksView、ProfileView 与 CommunityPage 全量接入多途径分享与全局 sharesCount 同步，未登录用户点击“通过私信发送”时引导登录并在登录后继续打开分享弹窗。",
+      "dependsOn": [
+        "T-02"
+      ],
+      "acceptanceCriteria": [
+        "用户在动态列表、收藏列表、个人主页或帖子详情页点击任意动态底部的分享按钮后，页面弹出多途径分享菜单，至少提供“复制链接”、“通过私信发送”、“复制分享文案”和“更多方式分享”选项",
+        "用户点击“复制链接”或“复制分享文案”后，页面给出复制成功提示且该动态的分享次数立即更新",
+        "未登录访客点击“通过私信发送”时，页面自动引导打开登录弹窗；完成登录后可直接继续分享给好友",
+        "已登录用户点击“通过私信发送”后，页面弹出私信分享窗口，顶部展示待分享动态预览，支持搜索昵称、勾选多位好友、输入选填附言并点击发送，发送成功后提示已分享并同步更新动态分享次数",
+        "在桌面端和手机端以及浅色和深色主题下，分享菜单与私信分享弹窗均排版清晰、操作按钮无遮挡且页面不出现横向滚动条"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-04",
+      "title": "升级私信界面支持动态分享卡片渲染、实时送达与点击直达",
+      "module": "client-messages",
+      "description": "更新 client/src/lib/api.ts、client/src/lib/realtime.ts、client/src/components/MessagesView.tsx 与 client/src/pages/CommunityPage.tsx：1) 会话列表在最新消息为分享动态时展示“[分享了动态]”或“[分享了动态] 附言内容”，避免无附言时空白；2) 聊天窗口渲染结构化动态分享卡片（作者头像/昵称/官方标识、正文摘要、可选配图缩略图与附言），点击卡片直接调用 onOpenPost 打开对应帖子详情弹窗；3) 当原帖被删除时渲染“该动态已被删除或不可查看”的灰态占位卡；4) 接收方停留在私信页时可通过实时通道即时收到分享动态卡片并更新未读数。",
+      "dependsOn": [
+        "T-02",
+        "T-03"
+      ],
+      "acceptanceCriteria": [
+        "接收方收到好友通过私信分享的动态后，导航栏与私信会话列表会显示未读提醒，会话预览展示分享动态提示及附言摘要",
+        "进入对应私信对话后，聊天记录中以清晰的动态卡片形式展示原作者昵称、动态摘要与配图（如有），并同步显示发送方填写的附言",
+        "接收方点击私信中的动态分享卡片后，可直接打开该动态的详情页面浏览正文与评论",
+        "如果该动态在分享后已被原作者删除，私信会话中会友好提示该动态已删除或不可查看，页面保持正常可继续聊天",
+        "当接收方正在私信页面在线查看时，好友发来的动态分享卡片会即时出现，无需手动刷新页面"
+      ],
+      "estimatedComplexity": "M"
+    },
+    {
+      "id": "T-05",
+      "title": "回归适配既有分享用例并完成全链路质量验证",
+      "module": "verification",
+      "description": "更新历史单点分享断言 tests/e2e/run-9b961baa.spec.ts（点击“分享”按钮后点击菜单内的“复制链接”项）以匹配新的多途径分享交互；执行类型检查、前端构建、本地 D1 迁移及全量 Playwright E2E 回归测试，确保无新增前端异常或既有功能退化。",
+      "dependsOn": [
+        "T-03",
+        "T-04"
+      ],
+      "acceptanceCriteria": [
+        "用户在动态列表通过分享菜单复制链接后，访客通过该链接仍可直接打开对应动态详情页",
+        "社区既有登录、发帖、评论、收藏、关注、普通文本私信、深色模式与多途径私信分享全部正常运行且无异常报错"
+      ],
+      "estimatedComplexity": "S"
+    }
+  ]
+}
