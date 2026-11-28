@@ -1,5 +1,16 @@
 [
   {
+    "id": "aud-b2f8c89a",
+    "timestamp": "2026-11-28T05:12:36.549Z",
+    "category": "planning",
+    "action": "user_feedback_ingested",
+    "label": "采集线上用户反馈",
+    "actor": "atd-v1 线上应用",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "status": "success",
+    "detail": "收到用户反馈 fb-mwzyerb8-1825df（路由 /posts/:uuid）：@官方反馈 帖子支持站内私信分享给好友，类似x.com的那种多途径分享"
+  },
+  {
     "id": "aud-e7f9bae2",
     "timestamp": "2026-11-27T16:26:54.717Z",
     "category": "execution",

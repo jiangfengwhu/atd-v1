@@ -1,6 +1,27 @@
 {
   "records": [
     {
+      "id": "fb-mwzyerb8-1825df",
+      "createdAt": "2026-11-28T05:12:36.548Z",
+      "updatedAt": "2026-11-28T05:12:36.548Z",
+      "repoFullName": "jiangfengwhu/atd-v1",
+      "content": "@官方反馈 帖子支持站内私信分享给好友，类似x.com的那种多途径分享",
+      "categoryHint": "feature",
+      "pageRoute": "/posts/:uuid",
+      "appVersion": "1.0.0",
+      "reporterHash": "u_98ba361f6fa6",
+      "metadata": {
+        "sourceApp": "atd-v1-community",
+        "source": "post_mention",
+        "postId": "c8750aec-f52a-4018-848d-8dc8e6c61e8c",
+        "ticketId": "tkt_618720d68cc4478ba830",
+        "feedbackQueueId": "fb_75377814b6b744f18052",
+        "authorId": "a5c6b653-7c66-4397-8c8b-2c1c127be756",
+        "authorNickname": "卡皮巴拉"
+      },
+      "status": "pending"
+    },
+    {
       "id": "fb-mwz32zkh-8c4a5a",
       "createdAt": "2026-11-27T14:35:39.281Z",
       "updatedAt": "2026-11-27T16:26:54.716Z",
