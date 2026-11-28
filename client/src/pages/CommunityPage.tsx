@@ -29,6 +29,7 @@ import {
   ApiError,
   type AccountSummary,
   type PostItem,
+  type ShareChannel,
   type UserProfile,
 } from '@/lib/api';
 import { useTheme } from '@/hooks/useTheme';
@@ -47,6 +48,7 @@ import { ProfileDialog } from '@/components/ProfileDialog';
 import { ProfileView } from '@/components/ProfileView';
 import { MessagesView } from '@/components/MessagesView';
 import { NotificationsView } from '@/components/NotificationsView';
+import { ShareViaDmDialog } from '@/components/ShareViaDmDialog';
 import { cn } from '@/lib/utils';
 
 type ActiveNav = 'feed' | 'bookmarks' | 'notifications' | 'messages' | 'profile';
@@ -126,6 +128,12 @@ export function CommunityPage() {
   const [accountMenuOpen, setAccountMenuOpen] = React.useState(false);
   const [switchingAccountId, setSwitchingAccountId] = React.useState<string | null>(null);
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
+  const [shareDmPost, setShareDmPost] = React.useState<PostItem | null>(null);
+  const [shareSync, setShareSync] = React.useState<{
+    postId: string;
+    sharesCount: number;
+    seq: number;
+  } | null>(null);
   const accountMenuRef = React.useRef<HTMLDivElement | null>(null);
 
   const showToast = React.useCallback((msg: string) => {
@@ -464,22 +472,27 @@ export function CommunityPage() {
     }
   };
 
-  const handleSharePost = async (postId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const res = await api.sharePost(postId);
-      const shareUrl = `${window.location.origin}${res.sharePath}`;
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl).catch(() => {});
-      }
+  const handlePostSharedCount = React.useCallback(
+    (postId: string, sharesCount: number, _channel?: ShareChannel) => {
       setPosts((prev) =>
-        prev.map((p) => (p.id === postId ? { ...p, sharesCount: res.sharesCount } : p))
+        prev.map((p) => (p.id === postId ? { ...p, sharesCount } : p))
       );
+      setShareSync((prev) => ({
+        postId,
+        sharesCount,
+        seq: (prev?.seq ?? 0) + 1,
+      }));
       setDiscoverRefreshKey((k) => k + 1);
-      showToast('已复制分享链接');
-    } catch {
-      showToast('分享失败，请稍后重试');
+    },
+    []
+  );
+
+  const handleRequestShareViaDm = (post: PostItem) => {
+    if (!user) {
+      requireAuthThen(() => setShareDmPost(post));
+      return;
     }
+    setShareDmPost(post);
   };
 
   const applyAccountTransition = (
@@ -1166,7 +1179,9 @@ export function CommunityPage() {
                           onOpen={openPostDetail}
                           onToggleLike={handleToggleLike}
                           onToggleBookmark={handleToggleBookmark}
-                          onShare={handleSharePost}
+                          onShareViaDm={handleRequestShareViaDm}
+                          onPostShared={handlePostSharedCount}
+                          onToast={showToast}
                           onOpenAuthor={goUserProfile}
                           onSelectTag={(tag) => setActiveTag(activeTag === tag ? '' : tag)}
                         />
@@ -1182,10 +1197,13 @@ export function CommunityPage() {
                     <BookmarksView
                       currentUser={user}
                       refreshKey={bookmarksRefreshKey}
+                      shareSync={shareSync}
                       onOpenPost={openPostDetail}
                       onOpenAuthor={goUserProfile}
                       onSelectTag={handleSelectTagFromAnyView}
-                      onSharePost={handleSharePost}
+                      onShareViaDm={handleRequestShareViaDm}
+                      onPostShared={handlePostSharedCount}
+                      onToast={showToast}
                       onGoFeed={goFeed}
                       onBookmarkChanged={(postId, bookmarked, bookmarksCount) => {
                         setPosts((prev) =>
@@ -1258,6 +1276,7 @@ export function CommunityPage() {
                     <MessagesView
                       currentUser={user}
                       initialPeerId={messagePeerId}
+                      onOpenPost={openPostDetail}
                       onOpenUserProfile={goUserProfile}
                       onUnreadUpdated={setMessagesUnread}
                     />
@@ -1283,11 +1302,15 @@ export function CommunityPage() {
                       userId={resolvedProfileId}
                       currentUser={user}
                       refreshKey={profileRefreshKey}
+                      shareSync={shareSync}
                       onRequireAuth={() => requireAuthThen()}
                       onOpenEditProfile={() => setProfileOpen(true)}
                       onOpenPost={openPostDetail}
                       onOpenUserProfile={goUserProfile}
                       onStartMessage={(peerId) => goMessages(peerId)}
+                      onShareViaDm={handleRequestShareViaDm}
+                      onPostShared={handlePostSharedCount}
+                      onToast={showToast}
                       onCurrentUserUpdated={(updated) => {
                         setUser(updated);
                         setProfileRefreshKey((k) => k + 1);
@@ -1438,6 +1461,7 @@ export function CommunityPage() {
       <PostDetailDialog
         postId={detailPostId}
         currentUser={user}
+        shareSync={shareSync}
         onClose={closePostDetail}
         onRequireAuth={() => requireAuthThen()}
         onPostUpdated={(updated) => {
@@ -1453,8 +1477,23 @@ export function CommunityPage() {
           setProfileRefreshKey((k) => k + 1);
           setDiscoverRefreshKey((k) => k + 1);
         }}
+        onShareViaDm={handleRequestShareViaDm}
+        onPostShared={handlePostSharedCount}
+        onToast={showToast}
         onOpenAuthor={goUserProfile}
         onSelectTag={handleSelectTagFromAnyView}
+      />
+
+      <ShareViaDmDialog
+        post={shareDmPost}
+        open={Boolean(shareDmPost)}
+        onOpenChange={(open) => {
+          if (!open) setShareDmPost(null);
+        }}
+        onShared={(postId, sharesCount) => {
+          handlePostSharedCount(postId, sharesCount);
+        }}
+        onToast={showToast}
       />
 
       <ProfileDialog

@@ -182,6 +182,31 @@ export interface ReplyActivityItem {
   createdAt: string;
 }
 
+export type ShareChannel = 'copy_link' | 'copy_text' | 'external';
+
+export interface ShareRecipientItem {
+  id: string;
+  nickname: string;
+  avatarSeed: string;
+  avatarUrl: string;
+  bio: string;
+  isOfficial: boolean;
+  officialBadge?: string;
+  isFollowing: boolean;
+  isFollower: boolean;
+  isMutualFollow: boolean;
+  hasConversation: boolean;
+}
+
+export interface SharedPostSummary {
+  id: string;
+  unavailable: boolean;
+  contentPreview: string;
+  imageUrl: string;
+  author: PostAuthor | null;
+  createdAt: string | null;
+}
+
 export interface ConversationItem {
   peer: {
     id: string;
@@ -194,6 +219,7 @@ export interface ConversationItem {
     id: string;
     senderId: string;
     content: string;
+    sharedPostId?: string | null;
     createdAt: string;
   };
   unreadCount: number;
@@ -204,6 +230,7 @@ export interface DirectMessageItem {
   senderId: string;
   receiverId: string;
   content: string;
+  sharedPost?: SharedPostSummary | null;
   isRead: boolean;
   createdAt: string;
 }
@@ -468,11 +495,26 @@ export const api = {
       { method: 'POST' }
     ),
 
-  sharePost: (id: string) =>
-    requestJson<{ ok: true; sharesCount: number; sharePath: string }>(
+  sharePost: (id: string, channel?: ShareChannel) =>
+    requestJson<{ ok: true; sharesCount: number; sharePath: string; channel: ShareChannel }>(
       `/api/posts/${encodeURIComponent(id)}/share`,
-      { method: 'POST' }
+      {
+        method: 'POST',
+        ...(channel ? { body: JSON.stringify({ channel }) } : {}),
+      }
     ),
+
+  sharePostViaDm: (id: string, payload: { recipientIds: string[]; note?: string }) =>
+    requestJson<{
+      ok: true;
+      postId: string;
+      sharesCount: number;
+      sentCount: number;
+      messages: (DirectMessageItem & { conversationKey: string })[];
+    }>(`/api/posts/${encodeURIComponent(id)}/share-dm`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   addComment: (
     id: string,
@@ -522,6 +564,15 @@ export const api = {
   },
 
   // Direct Messages
+  listShareRecipients: (q = '', limit = 15) => {
+    const sp = new URLSearchParams();
+    if (q) sp.set('q', q);
+    sp.set('limit', String(limit));
+    return requestJson<{ recipients: ShareRecipientItem[] }>(
+      `/api/messages/share-recipients?${sp.toString()}`
+    );
+  },
+
   listConversations: () =>
     requestJson<{ conversations: ConversationItem[]; totalUnread: number }>(
       '/api/messages/conversations'
