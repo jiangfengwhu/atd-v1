@@ -1,5 +1,33 @@
 [
   {
+    "id": "aud-03e50d56",
+    "timestamp": "2026-11-28T05:35:48.103Z",
+    "category": "execution",
+    "action": "atd_v1_feedback_post_replied",
+    "label": "自动以 @官方反馈 回复社区原帖",
+    "actor": "官方反馈机器人",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-fb-210738e0",
+    "prNumber": 23,
+    "status": "success",
+    "detail": "已以 @官方反馈 自动回复原帖（c8750aec-f52a-4018-848d-8dc8e6c61e8c · 工单状态 -> launched · 阶段 launched）"
+  },
+  {
+    "id": "aud-d3149c2b",
+    "timestamp": "2026-11-28T05:35:46.160Z",
+    "category": "approval",
+    "action": "release_approved",
+    "label": "验收通过并批准上线",
+    "actor": "验收审批人",
+    "repoFullName": "jiangfengwhu/atd-v1",
+    "runId": "run-fb-210738e0",
+    "prdTitle": "用户反馈迭代：帖子支持站内私信分享给好友，类似x.com的那种多途径分享",
+    "branch": "autodev/feat-20261128-052004",
+    "prNumber": 23,
+    "status": "success",
+    "detail": "验收通过并合入 main（Commit aa695e4），已自动部署生产：https://atd-v1-community.809740942.workers.dev"
+  },
+  {
     "id": "aud-e2f391ed",
     "timestamp": "2026-11-28T05:34:54.165Z",
     "category": "execution",
